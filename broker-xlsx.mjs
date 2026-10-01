@@ -71,7 +71,7 @@ export function suggestBrokerColumns(rows) {
 }
 
 /** Normalize only confirmed name, current market value and optional ISIN columns. */
-export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf) {
+export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf, { strictWidth = false } = {}) {
   const errors = [];
   const notices = ['Choose Stock or Mutual fund and verify the asset category for every row before replacing your holdings.'];
   if (!Array.isArray(rows) || !Number.isInteger(headerIndex) || headerIndex < 0 || headerIndex >= rows.length ||
@@ -94,23 +94,28 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf) {
   for (let index = headerIndex + 1; index < rows.length; index++) {
     const row = rows[index];
     if (!Array.isArray(row) || row.every(cell => cell == null || String(cell).trim() === '')) continue;
+    if (strictWidth && row.length !== header.length) {
+      errors.push(`Report row ${index + 1}: expected ${header.length} CSV columns, found ${row.length}. Check commas and quotes.`);
+      if (errors.length >= 5) break;
+      continue;
+    }
     const name = String(row[columns.name] ?? '').trim();
     const raw = row[columns.value];
     const value = numericAmount(raw);
     if (/^(?:grand )?total$/i.test(name)) {
-      if (value === null) errors.push(`Workbook row ${index + 1}: the reported total is invalid.`);
+      if (value === null) errors.push(`Report row ${index + 1}: the reported total is invalid.`);
       else reportedTotal = value;
       continue;
     }
     const isin = columns.isin == null ? '' : String(row[columns.isin] ?? '').trim().toUpperCase();
     if (!name || name.length > 200 || value === null || value <= 0 || value > 10_000_000_000 ||
         (isin && !/^[A-Z]{2}[A-Z0-9]{10}$/.test(isin))) {
-      errors.push(`Workbook row ${index + 1}: check the name, current value and ISIN.`);
+      errors.push(`Report row ${index + 1}: check the name, current value and ISIN.`);
       if (errors.length >= 5) break;
       continue;
     }
     const key = `${name.toLocaleLowerCase('en-IN')}|${value}|${isin}`;
-    if (seen.has(key)) { errors.push(`Workbook row ${index + 1}: duplicate row; check the report before import.`); continue; }
+    if (seen.has(key)) { errors.push(`Report row ${index + 1}: duplicate row; check the report before import.`); continue; }
     seen.add(key);
     holdings.push({ name, type: null, asset: null, value, asOf, amc: null, isin: isin || null, amfi: null, exposure: null });
     if (holdings.length > MAX_ROWS) { errors.push('Import at most 200 holdings at a time.'); break; }
@@ -118,7 +123,7 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf) {
   if (!holdings.length && !errors.length) errors.push('No holdings were found below the selected header.');
   const total = holdings.reduce((sum, holding) => sum + holding.value, 0);
   if (reportedTotal !== null && Math.abs(reportedTotal - total) > 1)
-    errors.push('The workbook total does not match the selected rows and value column.');
+    errors.push('The report total does not match the selected rows and value column.');
   return { holdings: errors.length ? [] : holdings, errors: errors.slice(0, 5), notices };
 }
 

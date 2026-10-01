@@ -1,5 +1,5 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs';
-import { parseHoldingsCsv } from './csv.mjs';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { validateImportReview, validateImportMerge } from './import-review.mjs';
 import { setGoalHolding, relinkAfterReplacingHoldings, linkAddedHoldings } from './goals.mjs';
@@ -25,6 +25,7 @@ function validEnteredDate(value) {
 let pendingImport = null;
 let pendingPerformance = new Map();
 let brokerRows = null;
+let brokerSource = 'Broker XLSX';
 let accountAuthenticated = false;
 let accountPortfolioAccess = false;
 let hasSavedPortfolio = false;
@@ -685,8 +686,16 @@ $('#broker-read').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Reading in this tab…';
   try {
-    const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs');
-    brokerRows = await readBrokerWorkbook(file);
+    if (!file) throw new Error('Choose a broker holdings XLSX or CSV report.');
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      if (file.size > 1_000_000) throw new Error('Choose a broker CSV smaller than 1 MB.');
+      brokerRows = parseBrokerCsvRows(await file.text());
+      brokerSource = 'Broker CSV';
+    } else if (file.name.toLowerCase().endsWith('.xlsx')) {
+      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs');
+      brokerRows = await readBrokerWorkbook(file);
+      brokerSource = 'Broker XLSX';
+    } else throw new Error('Choose a broker holdings XLSX or CSV report.');
     const suggested = suggestBrokerColumns(brokerRows);
     const select = $('#broker-header');
     select.replaceChildren();
@@ -700,10 +709,10 @@ $('#broker-read').addEventListener('click', async () => {
     fillBrokerColumns(suggested.headerIndex);
     $('#broker-map').hidden = false;
   } catch (error) {
-    $('#broker-error').textContent = error?.message || 'The workbook could not be read in this browser.';
+    $('#broker-error').textContent = error?.message || 'The report could not be read in this browser.';
   } finally {
     button.disabled = false;
-    button.textContent = 'Read workbook in this tab';
+    button.textContent = 'Read report in this tab';
   }
 });
 
@@ -713,20 +722,20 @@ $('#broker-preview').addEventListener('click', () => {
   const selected = id => $(id).value === '' ? null : Number($(id).value);
   const result = parseBrokerHoldingsRows(brokerRows, Number($('#broker-header').value),
     { name: selected('#broker-name'), value: selected('#broker-value'), isin: selected('#broker-isin') },
-    $('#broker-date').value);
+    $('#broker-date').value, { strictWidth: brokerSource === 'Broker CSV' });
   if (result.errors.length) {
     $('#broker-error').textContent = result.errors.join(' ');
     $('#import-preview').hidden = true;
     return;
   }
-  showImportPreview(result.holdings, 'Broker XLSX', result.notices);
+  showImportPreview(result.holdings, brokerSource, result.notices);
 });
 
 function showImportPreview(holdings, label, notices, performance = []) {
   pendingImport = holdings.map(holding => ({ ...holding }));
   pendingPerformance = new Map(performance.map(item => [item.id, item.annualPercent]));
   $('#cas-performance-note').hidden = label !== 'CAS';
-  if (label !== 'Broker XLSX') $('#broker-map').hidden = true;
+  if (!label.startsWith('Broker ')) $('#broker-map').hidden = true;
   $('#import-preview').dataset.source = label;
   renderImportRows();
   $('#import-preview').hidden = false;
@@ -761,7 +770,7 @@ function refreshImportSummary() {
 function renderImportRows() {
   const list = $('#import-rows');
   list.replaceChildren();
-  const broker = $('#import-preview').dataset.source === 'Broker XLSX';
+  const broker = $('#import-preview').dataset.source.startsWith('Broker ');
   const demat = $('#import-preview').dataset.source === 'Demat CAS';
   pendingImport.forEach((holding, index) => {
     const item = document.createElement('li');

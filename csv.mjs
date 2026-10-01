@@ -68,6 +68,19 @@ export function parseHoldingsCsv(text) {
   return { holdings: errors.length ? [] : holdings, errors };
 }
 
+/** Read a broker CSV as rows for explicit column mapping; do not infer holdings here. */
+export function parseBrokerCsvRows(text) {
+  if (typeof text !== 'string' || new TextEncoder().encode(text).length > MAX_BYTES)
+    throw new Error('Choose a UTF-8 broker CSV smaller than 1 MB.');
+  if (text.includes('\uFFFD')) throw new Error('This CSV is not valid UTF-8. Export a UTF-8 holdings report.');
+  const rows = parseRows(text.replace(/^\uFEFF/, ''));
+  if (rows.length < 2 || rows.length > MAX_HOLDINGS + 15)
+    throw new Error('Choose a holdings CSV with a header and at most 200 positions.');
+  if (rows.some(row => row.length > 80))
+    throw new Error('This CSV has too many columns for a holdings report.');
+  return rows;
+}
+
 function canonical(value, options) {
   return [...options].find(option => option.toLowerCase() === value.toLowerCase()) || null;
 }
