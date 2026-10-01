@@ -349,6 +349,11 @@ function render() {
   $('#issuer-note').textContent = result.largestIssuer ? `${result.largestIssuer[0]} · ${issuerRoute}` : 'Fund constituent data is missing';
   $('#amc-value').textContent = result.largestAmc && result.fundValue ? `${(result.largestAmc.value / result.fundValue * 100).toFixed(0)}%+` : 'Unknown';
   $('#amc-note').textContent = result.largestAmc ? `${result.largestAmc.name} · ${pct(result.amcCoveredValue, result.fundValue)} of fund value has known fund houses` : 'Fund-house names are missing';
+  $('#plan-value').textContent = !result.fundValue ? 'No funds entered' : result.fundPlans.Regular ?
+    `${rupees(result.fundPlans.Regular)} Regular` : result.fundPlans.Direct ? `${rupees(result.fundPlans.Direct)} Direct` : 'Unknown';
+  $('#plan-note').textContent = result.fundValue ?
+    `${rupees(result.fundPlans.Direct)} labelled Direct · ${rupees(result.fundPlans.Regular)} labelled Regular · ${rupees(result.fundPlans.Unclear)} unclear. Names only; check current expense ratios and services.` :
+    'Add a mutual fund to review its plan label.';
   $('#coverage-note').textContent = result.classifiedPct < 100 ? 'Unknown fund constituents are excluded from this measure' : 'All entered value has named issuer coverage';
   $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length} review items.`;
   const canDownload = state.source === 'user' && state.holdings.length > 0 && state.goals.every(goal => goal.confirmed === true);

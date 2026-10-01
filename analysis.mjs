@@ -39,6 +39,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   let classifiedValue = 0;
   let fundValue = 0;
   let amcCoveredValue = 0;
+  const fundPlans = { Direct: 0, Regular: 0, Unclear: 0 };
 
   for (const holding of valid) {
     const value = Number(holding.value);
@@ -50,6 +51,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     assets[Object.hasOwn(assets, holding.asset) ? holding.asset : 'Other'] += value;
     if (holding.type === 'Mutual fund') {
       fundValue += value;
+      fundPlans[holding.granularity === 'fund_house' ? 'Unclear' : planFromName(holding.name)] += value;
       const amc = typeof holding.amc === 'string' ? holding.amc.trim() : '';
       if (amc) {
         amcCoveredValue += value;
@@ -157,6 +159,13 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       limitation: `Only ${(classifiedValue / total * 100).toFixed(1)}% of entered value has named-company coverage. ISINs and fund issuer names are not registry-verified; unknown or differently named fund holdings may add exposure.` });
   }
   const equityFunds = valid.filter(h => h.asset === 'Equity' && h.type === 'Mutual fund').length;
+  if (fundPlans.Regular > 0) {
+    findings.push({ key: 'plan', tone: 'blue', label: 'Fund costs', title: 'Check fund plan and ongoing cost',
+      detail: `${rupees(fundPlans.Regular)} of entered fund value has an explicit Regular Plan label. Check each scheme's current expense ratio and what service you receive before deciding whether its plan still fits.`,
+      question: 'What is the current expense ratio for each labelled plan, and what guidance or service do you use?',
+      basis: `Added ${rupees(fundPlans.Regular)} from mutual-fund names explicitly labelled Regular Plan; ${rupees(fundPlans.Direct)} is labelled Direct Plan and ${rupees(fundPlans.Unclear)} has no clear plan label.`,
+      limitation: 'Labels are read from entered names and are not registry-verified. No current expense ratios, exit loads, tax lots or switching costs were supplied, so savings and a switch decision cannot be calculated.' });
+  }
   if (equityFunds >= 3) {
     findings.push({ key: 'funds', tone: 'blue', label: 'Fund roles', title: 'Check what each equity fund adds',
       detail: 'Several equity funds may own similar companies. Review their underlying holdings and the job each fund plays.',
@@ -176,12 +185,20 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
     goalDateCheck,
     largestGoalPosition,
-    largestIssuer, largestIssuerSources, largestAmc, fundValue, amcCoveredValue, asOfSummary,
+    largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, amcCoveredValue, asOfSummary,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,
     scenario, shock,
     findings: findings.slice(0, 3),
   };
+}
+
+/** Leave ambiguous or absent plan names unknown; an AMC summary is handled by the caller. */
+function planFromName(name) {
+  if (typeof name !== 'string') return 'Unclear';
+  const direct = /\bdirect\s*plan\b|(?:^|[-–(])\s*direct\s*(?=$|[-–)])/i.test(name);
+  const regular = /\bregular\s*plan\b|(?:^|[-–(])\s*regular\s*(?=$|[-–)])/i.test(name);
+  return direct === regular ? 'Unclear' : direct ? 'Direct' : 'Regular';
 }
 
 /** Combine only entries with the same valid-format ISIN and classification. */
