@@ -7,7 +7,7 @@ import { MIX_ASSETS, compareMixPlan, validMixPlan } from './mix-plan.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
-    returnPct: 0, inflationPct: 0, equityDropPct: 20, linkedIds: sampleHoldings.map(holding => holding.id) };
+    returnPct: 0, inflationPct: 0, equityDropPct: 20, confirmed: false, linkedIds: sampleHoldings.map(holding => holding.id) };
 }
 const firstGoal = demoGoal();
 const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals: [firstGoal], activeGoalId: firstGoal.id, goal: firstGoal };
@@ -80,7 +80,7 @@ function syncGoalSelector() {
   for (const goal of state.goals) {
     const option = document.createElement('option');
     option.value = goal.id;
-    option.textContent = goal.name;
+    option.textContent = state.source !== 'demo' && goal.confirmed === false ? `${goal.name} (confirm details)` : goal.name;
     select.append(option);
   }
   select.value = state.activeGoalId;
@@ -90,14 +90,19 @@ function syncGoalSelector() {
 
 function render() {
   syncGoalSelector();
-  const result = analyzePortfolio(state.holdings, state.goal);
+  const needsGoalConfirmation = state.source !== 'demo' && state.goal.confirmed === false;
+  const result = analyzePortfolio(state.holdings, needsGoalConfirmation ? { ...state.goal, years: 0, target: 0 } : state.goal);
   renderMixPlan(result);
   $('#portfolio-value').textContent = rupees(result.total);
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
-  $('#goal-years-value').textContent = `${state.goal.years} years`;
-  $('#age-at-goal').textContent = `Age ${Number(state.goal.age) + Number(state.goal.years)} at the goal date`;
+  $('#goal-years-value').textContent = needsGoalConfirmation ? 'Goal details needed' : `${state.goal.years} years`;
+  $('#age-at-goal').textContent = needsGoalConfirmation ? 'Age at goal pending' : `Age ${Number(state.goal.age) + Number(state.goal.years)} at the goal date`;
   $('#goal-gap').textContent = result.goalGap === null ? '—' : rupees(result.goalGap);
-  $('#goal-gap-note').textContent = 'Simple arithmetic before growth, inflation or tax';
+  $('#goal-gap-note').textContent = needsGoalConfirmation ? 'Confirm age, cost and time horizon below.' : 'Simple arithmetic before growth, inflation or tax';
+  $('#goal-setup-note').hidden = !needsGoalConfirmation;
+  $('#goal-confirm-note').hidden = !needsGoalConfirmation;
+  $('#goal-edit-link').textContent = needsGoalConfirmation ? 'Confirm goal details ↗' : 'Change goal details ↗';
+  if (!creatingGoal) $('#goal-form button[type="submit"]').textContent = needsGoalConfirmation ? 'Confirm goal details →' : 'Update my view →';
   $('#goal-assigned').textContent = `${rupees(result.goalTotal)} assigned from ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}`;
   $('#goal-coverage-note').textContent = result.goalHoldingCount === 0 ? 'Choose holdings below to link them to this goal.' :
     result.goalHoldingCount === state.holdings.length ? 'All entered holdings are linked to this goal.' :
@@ -110,24 +115,24 @@ function render() {
   $('#coverage').textContent = `${result.classifiedPct.toFixed(0)}%`;
   $('#mix-summary').textContent = `Equity ${result.equityPct.toFixed(0)}% · Debt ${pct(result.assets.Debt, result.total)} · Gold ${pct(result.assets.Gold, result.total)}`;
   $('#summary-asof').textContent = result.asOfSummary;
-  $('#goal-title').textContent = state.goal.name;
+  $('#goal-title').textContent = needsGoalConfirmation ? 'Set your goal' : state.goal.name;
   const scenario = result.scenario;
   $('#scenario-cost').textContent = scenario ? rupees(scenario.futureCost) : '—';
   $('#scenario-value').textContent = scenario ? rupees(scenario.projectedValue) : '—';
   $('#scenario-gap').textContent = scenario ? rupees(scenario.futureGap) : '—';
   $('#scenario-monthly').textContent = scenario ? rupees(Math.ceil(scenario.monthlyTotalNeeded)) : '—';
-  const shock = result.shock;
+  const shock = needsGoalConfirmation ? null : result.shock;
   $('#shock-drop').textContent = shock ? `${shock.dropPct}%` : '—';
   $('#shock-loss').textContent = shock ? rupees(shock.loss) : '—';
   $('#shock-value').textContent = shock ? rupees(shock.valueAfterLoss) : '—';
   $('#shock-gap').textContent = shock ? rupees(shock.gapAfterLoss) : '—';
-  $('#shock-note').textContent = shock
+  $('#shock-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : shock
     ? `This subtracts ${shock.dropPct}% once from only the holdings marked Equity and linked to this goal. It uses today's entered values and goal cost; it excludes future growth, contributions, inflation, taxes and changes in other assets. It is a what-if loss, not a prediction or a target allocation.`
     : 'Enter a valid equity-loss percentage to see this illustration.';
-  $('#scenario-note').textContent = scenario
+  $('#scenario-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : scenario
     ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. This is arithmetic, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
     : 'Enter valid goal assumptions to see an illustrative scenario.';
-  if (result.findings.some(finding => finding.key === 'valuation')) {
+  if (scenario && result.findings.some(finding => finding.key === 'valuation')) {
     $('#scenario-note').textContent += ' Check the valuation dates flagged in your review before relying on these figures.';
   }
   $('#workspace-note').textContent = state.source === 'demo' ? 'Illustrative portfolio · values are entered, not live' :
@@ -239,7 +244,7 @@ function render() {
   $('#amc-note').textContent = result.largestAmc ? `${result.largestAmc.name} · ${pct(result.amcCoveredValue, result.fundValue)} of fund value has known fund houses` : 'Fund-house names are missing';
   $('#coverage-note').textContent = result.classifiedPct < 100 ? 'Unknown fund constituents are excluded from this measure' : 'All entered value has named issuer coverage';
   $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length} review items.`;
-  $('#download-review').disabled = state.source !== 'user' || state.holdings.length === 0;
+  $('#download-review').disabled = state.source !== 'user' || state.holdings.length === 0 || state.goals.some(goal => goal.confirmed === false);
   updateAccountActions();
 }
 
@@ -283,7 +288,7 @@ $('#goal-form').addEventListener('submit', event => {
     return;
   }
   $('#form-error').textContent = '';
-  const details = { name: $('#goal-name').value.trim() || 'My goal', years, target, age, monthlyContribution, returnPct, inflationPct, equityDropPct };
+  const details = { name: $('#goal-name').value.trim() || 'My goal', years, target, age, monthlyContribution, returnPct, inflationPct, equityDropPct, confirmed: true };
   if (creatingGoal) {
     const added = { id: crypto.randomUUID(), ...details, linkedIds: [] };
     state.goals.push(added);
@@ -307,6 +312,7 @@ $('#add-goal').addEventListener('click', () => {
   if (state.goals.length >= 10) return;
   creatingGoal = true;
   $('#mix-plan-details').hidden = true;
+  $('#goal-confirm-note').hidden = true;
   $('#goal-name').value = '';
   $('#goal-years').value = '10';
   $('#goal-target').value = '';
@@ -339,7 +345,10 @@ $('#holding-form').addEventListener('submit', event => {
     return;
   }
   $('#holding-error').textContent = '';
-  state.holdings.push({ id: crypto.randomUUID(), name, type, asset, value, exposure: type === 'Stock' ? { [name]: 1 } : null });
+  const added = { id: crypto.randomUUID(), name, type, asset, value, exposure: type === 'Stock' ? { [name]: 1 } : null };
+  state.holdings.push(added);
+  state.goals = setGoalHolding(state.goals, state.activeGoalId, added.id, true);
+  state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   if (state.source === 'demo') state.source = 'mixed';
   event.target.reset();
   $('#holding-asset').disabled = false;
@@ -554,8 +563,10 @@ $('#cancel-import').addEventListener('click', () => {
 
 function updateAccountActions() {
   if (!accountAuthenticated) return;
-  $('#account-save').disabled = state.source !== 'user' || state.holdings.length === 0;
-  $('#account-description').textContent = state.source === 'user'
+  const unconfirmedGoals = state.goals.some(goal => goal.confirmed === false);
+  $('#account-save').disabled = state.source !== 'user' || state.holdings.length === 0 || unconfirmedGoals;
+  $('#account-description').textContent = unconfirmedGoals && state.source === 'user'
+    ? 'Confirm each goal’s details before saving. Original CAS PDFs and passwords are not saved.' : state.source === 'user'
     ? 'Save normalized holdings and goal inputs for later. Original CAS PDFs and passwords are not saved.'
     : 'Clear the fictional example or import your own holdings before saving. Original CAS PDFs and passwords are not saved.';
   $('#account-load').hidden = !hasSavedPortfolio;
