@@ -2,9 +2,9 @@ import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLoss
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
-  { id: 'broad', name: 'Sample Broad Market Fund', type: 'Mutual fund', asset: 'Equity', value: 420000, amc: 'Example Asset Management', exposure: { 'Example Bank': 0.10, 'Other issuers': 0.90 }, asOf: '2026-08-31' },
-  { id: 'growth', name: 'Sample Growth Fund', type: 'Mutual fund', asset: 'Equity', value: 280000, amc: 'Example Asset Management', exposure: { 'Example Bank': 0.15, 'Other issuers': 0.85 }, asOf: '2026-08-31' },
-  { id: 'banking', name: 'Sample Banking Theme Fund', type: 'Mutual fund', asset: 'Equity', value: 120000, amc: 'Example Asset Management', exposure: { 'Example Bank': 0.25, 'Other issuers': 0.75 }, asOf: '2026-08-31' },
+  { id: 'broad', name: 'Sample Broad Market Fund', type: 'Mutual fund', asset: 'Equity', value: 420000, amc: 'Example Asset Management', isin: 'INF000000001', exposure: { 'Example Bank': 0.10, 'Other issuers': 0.90 }, asOf: '2026-08-31' },
+  { id: 'growth', name: 'Sample Growth Fund', type: 'Mutual fund', asset: 'Equity', value: 280000, amc: 'Example Asset Management', isin: 'INF000000002', exposure: { 'Example Bank': 0.15, 'Other issuers': 0.85 }, asOf: '2026-08-31' },
+  { id: 'banking', name: 'Sample Banking Theme Fund', type: 'Mutual fund', asset: 'Equity', value: 120000, amc: 'Example Asset Management', isin: 'INF000000003', exposure: { 'Example Bank': 0.25, 'Other issuers': 0.75 }, asOf: '2026-08-31' },
   { id: 'gilt', name: 'Sample Government Bond Fund', type: 'Mutual fund', asset: 'Debt', value: 150000, amc: 'Sample Bond House', exposure: null, asOf: '2026-09-30' },
   { id: 'gold', name: 'Sample Gold Fund', type: 'Mutual fund', asset: 'Gold', value: 80000, amc: 'Sample Bond House', exposure: null, asOf: '2026-09-30' },
   { id: 'bank-stock', name: 'Example Bank', type: 'Stock', asset: 'Equity', value: 70000, exposure: { 'Example Bank': 1 }, asOf: '2026-09-30' },
@@ -180,7 +180,10 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       basis: `${rupees(largestIssuer[1])} visible exposure ÷ ${rupees(total)} entered portfolio = ${(largestIssuer[1] / total * 100).toFixed(1)}%. Direct stock rows with the same supplied ISIN are grouped; any supplied fund constituent weights are added by issuer name.`,
       limitation: `Only ${(classifiedValue / total * 100).toFixed(1)}% of entered value has named-company coverage. ISINs and fund issuer names are not registry-verified; unknown or differently named fund holdings may add exposure.` });
   }
-  const equityFunds = valid.filter(h => h.asset === 'Equity' && h.type === 'Mutual fund').length;
+  const identifiedEquityFunds = new Set(valid.filter(holding => holding.asset === 'Equity' &&
+    holding.type === 'Mutual fund' && holding.granularity !== 'fund_house' &&
+    typeof holding.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin))
+    .map(holding => holding.isin));
   if (fundPlans.Regular > 0) {
     findings.push({ key: 'plan', tone: 'blue', label: 'Fund costs', title: 'Check fund plan and ongoing cost',
       detail: `${rupees(fundPlans.Regular)} of entered fund value has an explicit Regular Plan label. Check each scheme's current expense ratio and what service you receive before deciding whether its plan still fits.`,
@@ -188,12 +191,12 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       basis: `Added ${rupees(fundPlans.Regular)} from mutual-fund names explicitly labelled Regular Plan; ${rupees(fundPlans.Direct)} is labelled Direct Plan and ${rupees(fundPlans.Unclear)} has no clear plan label.`,
       limitation: 'Labels are read from entered names and are not registry-verified. No current expense ratios, exit loads, tax lots or switching costs were supplied, so savings and a switch decision cannot be calculated.' });
   }
-  if (equityFunds >= 3) {
+  if (identifiedEquityFunds.size >= 3) {
     findings.push({ key: 'funds', tone: 'blue', label: 'Fund roles', title: 'Check what each equity fund adds',
-      detail: 'Several equity funds may own similar companies. Review their underlying holdings and the job each fund plays.',
+      detail: 'Several identified equity funds may own similar companies. Review their underlying holdings and the job each fund plays.',
       question: 'What distinct exposure does each fund add, according to its latest disclosed holdings?',
-      basis: `Counted ${equityFunds} entered mutual-fund rows labelled Equity.`,
-      limitation: 'A fund count does not prove overlap; current scheme holdings are needed to compare companies.' });
+      basis: `Counted ${identifiedEquityFunds.size} distinct format-valid fund ISINs labelled Equity, excluding fund-house summaries and repeated folios.`,
+      limitation: 'An imported ISIN is not registry-verified, and a fund count does not prove overlap; current scheme holdings are needed to compare companies.' });
   }
   if (findings.length === 0 && total > 0) {
     findings.push({ key: 'review', tone: 'blue', label: 'Next review', title: 'Check the missing details',
