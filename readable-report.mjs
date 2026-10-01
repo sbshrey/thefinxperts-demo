@@ -58,12 +58,18 @@ export function buildReadableReport(state, preparedAt = new Date()) {
   }
 
   const mix = goal.targetMix ? compareMixPlan(result.goalAssets, result.goalTotal, goal.targetMix) : null;
-  if (mix) {
+  if (goal.targetMix) {
     lines.push('', 'YOUR CHOSEN MIX FOR THIS GOAL');
-    for (const row of mix) {
-      lines.push(`${row.asset}: current ${row.currentPct.toFixed(1)}% | chosen ${row.plannedPct.toFixed(1)}% | ${row.differencePct >= 0 ? '+' : ''}${row.differencePct.toFixed(1)} percentage points`);
+    if (result.goalAssets.Other > 0) {
+      lines.push(`Comparison paused: ${rupees(result.goalAssets.Other)} of linked holdings is labelled Other. Check its asset category against a detailed statement or scheme information before interpreting debt or gold gaps.`);
+    } else if (!mix) {
+      lines.push('Assign valid holdings to this goal before comparing your chosen mix.');
+    } else {
+      for (const row of mix) {
+        lines.push(`${row.asset}: current ${row.currentPct.toFixed(1)}% | chosen ${row.plannedPct.toFixed(1)}% | ${row.differencePct >= 0 ? '+' : ''}${row.differencePct.toFixed(1)} percentage points`);
+      }
+      lines.push('These are comparisons with your chosen mix, not amounts to buy or sell.');
     }
-    lines.push('These are comparisons with your chosen mix, not amounts to buy or sell.');
   }
 
   lines.push('', 'REVIEW QUESTIONS');

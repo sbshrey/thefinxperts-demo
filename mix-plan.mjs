@@ -11,7 +11,9 @@ export function validMixPlan(plan) {
 /** Difference in percentage points between linked holdings and the investor's own plan. */
 export function compareMixPlan(goalAssets, goalTotal, plan) {
   if (!validMixPlan(plan) || !Number.isFinite(goalTotal) || goalTotal <= 0 ||
-      !MIX_ASSETS.every(asset => Number.isFinite(goalAssets?.[asset]) && goalAssets[asset] >= 0)) return null;
+      !MIX_ASSETS.every(asset => Number.isFinite(goalAssets?.[asset]) && goalAssets[asset] >= 0) ||
+      goalAssets.Other > 0 ||
+      Math.abs(MIX_ASSETS.reduce((sum, asset) => sum + goalAssets[asset], 0) - goalTotal) > 0.01) return null;
   return MIX_ASSETS.map(asset => ({
     asset,
     currentPct: goalAssets[asset] / goalTotal * 100,

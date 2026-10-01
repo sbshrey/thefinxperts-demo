@@ -65,11 +65,19 @@ function fillMixForm(goal) {
   $('#mix-plan-error').textContent = '';
 }
 
-function renderMixPlan(result) {
+function renderMixPlan(result, pauseGoalFigures) {
   const container = $('#mix-plan-result');
   container.replaceChildren();
   if (!state.goal.targetMix) {
     container.textContent = 'No mix saved for this goal.';
+    return;
+  }
+  if (pauseGoalFigures) {
+    container.textContent = 'Confirm this goal and clear any fictional holdings before comparing your chosen mix.';
+    return;
+  }
+  if (result.goalAssets.Other > 0) {
+    container.textContent = `${rupees(result.goalAssets.Other)} of holdings linked to this goal is labelled Other. Check those holdings against a detailed statement or scheme information before comparing the chosen mix; debt and gold gaps would be unreliable.`;
     return;
   }
   const rows = compareMixPlan(result.goalAssets, result.goalTotal, state.goal.targetMix);
@@ -121,7 +129,7 @@ function render() {
   const mixedWithExample = state.source === 'mixed';
   const pauseGoalFigures = needsGoalConfirmation || mixedWithExample;
   const result = analyzePortfolio(state.holdings, pauseGoalFigures ? { ...state.goal, years: 0, target: 0 } : state.goal);
-  renderMixPlan(result);
+  renderMixPlan(result, pauseGoalFigures);
   $('#portfolio-value').textContent = rupees(result.total);
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
   $('#goal-years-value').textContent = mixedWithExample ? 'Mixed example and personal holdings' : needsGoalConfirmation ? 'Goal details needed' : `${state.goal.years} years`;
