@@ -17,5 +17,6 @@ export function compareMixPlan(goalAssets, goalTotal, plan) {
     currentPct: goalAssets[asset] / goalTotal * 100,
     plannedPct: plan[asset],
     differencePct: goalAssets[asset] / goalTotal * 100 - plan[asset],
+    differenceValue: goalAssets[asset] - goalTotal * plan[asset] / 100,
   }));
 }

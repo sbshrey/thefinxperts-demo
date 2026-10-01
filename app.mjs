@@ -74,6 +74,14 @@ function renderMixPlan(result) {
     }
     container.append(line);
   }
+  const largest = rows.reduce((previous, row) =>
+    Math.abs(row.differenceValue) > Math.abs(previous.differenceValue) ? row : previous);
+  const summary = document.createElement('p');
+  summary.className = 'mix-plan-summary';
+  summary.textContent = Math.abs(largest.differenceValue) < 0.5
+    ? 'Your entered holdings match this chosen mix to the nearest rupee.'
+    : `${largest.asset} is ${rupees(Math.abs(largest.differenceValue))} ${largest.differenceValue > 0 ? 'above' : 'below'} your chosen share of the current ${rupees(result.goalTotal)} linked to this goal. This is a snapshot difference, not a suggested transaction.`;
+  container.append(summary);
 }
 
 function syncGoalSelector() {
