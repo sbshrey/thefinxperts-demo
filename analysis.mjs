@@ -86,10 +86,17 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const shock = calculateEquityShockScenario(goalTotal, goalEquityValue, target, Number(goal.equityDropPct ?? 20));
   const equityPct = total ? (assets.Equity / total) * 100 : 0;
   const findings = [];
+  const fundHouseSummaries = new Set(valid.filter(holding => holding.granularity === 'fund_house')
+    .map(holding => holding.amc?.toLocaleLowerCase('en-IN')).filter(Boolean));
   const conflictingIsins = [...isinClassifications.values()].filter(classifications => classifications.size > 1).length;
   if (conflictingIsins) {
     findings.push({ key: 'identity', tone: 'amber', label: 'Data quality', title: 'Check conflicting labels',
       detail: `${conflictingIsins} ISIN ${conflictingIsins === 1 ? 'appears' : 'appear'} with different holding types or asset categories. Recheck those rows before interpreting concentration or goal mix.` });
+  }
+
+  if (fundHouseSummaries.size) {
+    findings.push({ key: 'summary', tone: 'amber', label: 'Statement detail', title: 'Only fund-house totals are visible',
+      detail: `${fundHouseSummaries.size} fund ${fundHouseSummaries.size === 1 ? 'house is' : 'houses are'} represented by summary amounts, not individual schemes. Check a detailed CAS before judging scheme overlap, plan type or costs.` });
   }
 
   if (valid.length && (missingDates || staleDates || futureDates)) {
@@ -140,10 +147,13 @@ function largestPositionByIsin(holdings) {
   const positions = new Map();
   holdings.forEach((holding, index) => {
     const identified = typeof holding.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin);
-    const key = identified ? `isin:${holding.isin}|${holding.type}|${holding.asset}` : `row:${index}`;
+    const summarized = holding.granularity === 'fund_house' && typeof holding.amc === 'string' && holding.amc.trim();
+    const key = summarized ? `amc:${holding.amc.toLocaleLowerCase('en-IN')}` :
+      identified ? `isin:${holding.isin}|${holding.type}|${holding.asset}` : `row:${index}`;
     const previous = positions.get(key);
     positions.set(key, previous ? { ...previous, value: previous.value + Number(holding.value), entries: previous.entries + 1 } :
-      { name: holding.name || 'Unnamed holding', value: Number(holding.value), entries: 1 });
+      { name: summarized ? holding.amc : holding.name || 'Unnamed holding', value: Number(holding.value),
+        entries: 1, ...(summarized ? { granularity: 'fund_house' } : {}) });
   });
   return [...positions.values()].reduce((largest, position) =>
     !largest || position.value > largest.value ? position : largest, null);

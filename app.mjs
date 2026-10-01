@@ -113,8 +113,12 @@ function render() {
     `${result.goalHoldingCount} of ${state.holdings.length} holdings are linked to this goal.`;
   $('#goal-largest-value').textContent = result.largestGoalPosition ?
     `${(result.largestGoalPosition.value / result.goalTotal * 100).toFixed(1)}%` : 'Unknown';
+  $('#goal-largest-label').textContent = result.largestGoalPosition?.granularity === 'fund_house' ?
+    'Largest fund-house group in this goal' : 'Largest position in this goal';
   $('#goal-largest-note').textContent = result.largestGoalPosition ?
-    `${result.largestGoalPosition.name} · ${result.largestGoalPosition.entries > 1 ? `${result.largestGoalPosition.entries} entries matched by ISIN` : 'one entered holding'}; no fund look-through` :
+    result.largestGoalPosition.granularity === 'fund_house' ?
+      `${result.largestGoalPosition.name} · fund-house total, not one scheme; no fund look-through` :
+      `${result.largestGoalPosition.name} · ${result.largestGoalPosition.entries > 1 ? `${result.largestGoalPosition.entries} entries matched by ISIN` : 'one entered holding'}; no fund look-through` :
     'Assign holdings to this goal to see this share';
   $('#coverage').textContent = `${result.classifiedPct.toFixed(0)}%`;
   $('#mix-summary').textContent = `Equity ${result.equityPct.toFixed(0)}% · Debt ${pct(result.assets.Debt, result.total)} · Gold ${pct(result.assets.Gold, result.total)}`;
@@ -200,7 +204,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const goalLink = document.createElement('label');
     goalLink.className = 'holding-goal-link';
     const goalCheckbox = document.createElement('input');
@@ -457,6 +461,7 @@ function renderImportRows() {
       if (holding.amc) parts.push(`Fund house: ${holding.amc}`);
       if (holding.isin) parts.push(`ISIN as supplied: ${holding.isin}`);
       if (holding.amfi) parts.push(`AMFI code: ${holding.amfi}`);
+      if (holding.granularity === 'fund_house') parts.push('Fund-house summary, not an individual scheme');
       metadata.textContent = parts.length ? parts.join(' · ') : 'No fund-house or instrument identifier supplied.';
     };
     refreshMetadata();
@@ -474,6 +479,7 @@ function renderImportRows() {
     };
     const name = document.createElement('input');
     name.type = 'text'; name.maxLength = 200; name.value = holding.name;
+    name.disabled = holding.granularity === 'fund_house';
     name.addEventListener('input', () => {
       if (name.value !== holding.name) { holding.name = name.value; holding.isin = null; holding.amfi = null; refreshMetadata(); }
       rowSummary(); refreshImportSummary();

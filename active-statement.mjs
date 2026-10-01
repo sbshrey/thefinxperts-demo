@@ -46,7 +46,8 @@ export function parseActiveStatementHtml(html) {
     for (const [asset, paise] of [['Equity', values.equity], ['Other', values.other]]) {
       if (!paise) continue;
       holdings.push({ id: `active-${holdings.length + 1}`, name: `${amc} · ${asset === 'Equity' ? 'equity' : 'non-equity'} portion`,
-        type: 'Mutual fund', asset, value: paise / 100, asOf, amc, isin: null, amfi: null, exposure: null });
+        type: 'Mutual fund', asset, value: paise / 100, asOf, amc, isin: null, amfi: null,
+        granularity: 'fund_house', exposure: null });
     }
   }
   if (!holdings.length) errors.push('The statement contains no current fund-house value.');

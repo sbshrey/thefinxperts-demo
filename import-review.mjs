@@ -23,6 +23,9 @@ export function validateImportReview(holdings) {
     if (holding.amfi != null && (typeof holding.amfi !== 'string' || !/^\d{5,8}$/.test(holding.amfi)))
       errors.push(`Holding ${row}: check the AMFI code.`);
     if (holding.type === 'Stock' && (holding.amc || holding.amfi)) errors.push(`Holding ${row}: stock rows cannot carry fund-house or AMFI fields.`);
+    if (holding.granularity != null &&
+        (holding.granularity !== 'fund_house' || holding.type !== 'Mutual fund' || !holding.amc || holding.isin || holding.amfi))
+      errors.push(`Holding ${row}: check the fund-house summary label.`);
     if (errors.length >= 5) return errors.slice(0, 5);
   }
   if (total > 1_000_000_000_000) errors.push('The combined portfolio value is too large.');
