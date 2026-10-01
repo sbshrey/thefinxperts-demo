@@ -41,6 +41,9 @@ export function parseHoldingsCsv(text) {
     const rawValue = get('value');
     const value = Number(rawValue.replaceAll(',', ''));
     const asOf = index.asof === undefined ? '' : get('asof');
+    const amc = get('amc');
+    const isin = get('isin').toUpperCase();
+    const amfi = get('amfi');
 
     if (!name || name.length > 80) errors.push(`Row ${line}: name must be 1–80 characters.`);
     if (!type) errors.push(`Row ${line}: type must be Mutual fund or Stock.`);
@@ -50,11 +53,15 @@ export function parseHoldingsCsv(text) {
       errors.push(`Row ${line}: value must be a positive rupee amount up to ₹10,00,00,00,000.`);
     }
     if (asOf && !isRealIsoDate(asOf)) errors.push(`Row ${line}: asOf must be a real date in YYYY-MM-DD format.`);
-    const key = `${name.toLocaleLowerCase('en-IN')}|${type}|${asset}|${asOf}`;
+    if (amc.length > 200) errors.push(`Row ${line}: AMC name must be at most 200 characters.`);
+    if (isin && !/^[A-Z]{2}[A-Z0-9]{10}$/.test(isin)) errors.push(`Row ${line}: ISIN must have 12 letters and digits in a valid format.`);
+    if (amfi && !/^\d{5,8}$/.test(amfi)) errors.push(`Row ${line}: AMFI code must be 5–8 digits.`);
+    if (type === 'Stock' && (amc || amfi)) errors.push(`Row ${line}: a directly held stock cannot have AMC or AMFI fund fields.`);
+    const key = `${name.toLocaleLowerCase('en-IN')}|${type}|${asset}|${asOf}|${isin}`;
     if (seen.has(key)) errors.push(`Row ${line}: duplicate holding. Aggregate same-name entries before import.`);
     seen.add(key);
     if (errors.length > 20) break;
-    holdings.push({ name, type, asset, value, asOf: asOf || null,
+    holdings.push({ name, type, asset, value, asOf: asOf || null, amc: amc || null, isin: isin || null, amfi: amfi || null,
       exposure: type === 'Stock' && name ? { [name]: 1 } : null });
   }
   if (!holdings.length && !errors.length) errors.push('The CSV has no holdings.');

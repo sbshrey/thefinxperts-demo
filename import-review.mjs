@@ -16,6 +16,13 @@ export function validateImportReview(holdings) {
       errors.push(`Holding ${row}: enter a positive value up to ₹10,00,00,00,000.`);
     } else total += value;
     if (holding.asOf && !isRealIsoDate(holding.asOf)) errors.push(`Holding ${row}: check the valuation date.`);
+    if (holding.amc != null && (typeof holding.amc !== 'string' || !holding.amc.trim() || holding.amc.length > 200))
+      errors.push(`Holding ${row}: check the fund-house name.`);
+    if (holding.isin != null && (typeof holding.isin !== 'string' || !/^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin)))
+      errors.push(`Holding ${row}: check the ISIN.`);
+    if (holding.amfi != null && (typeof holding.amfi !== 'string' || !/^\d{5,8}$/.test(holding.amfi)))
+      errors.push(`Holding ${row}: check the AMFI code.`);
+    if (holding.type === 'Stock' && (holding.amc || holding.amfi)) errors.push(`Holding ${row}: stock rows cannot carry fund-house or AMFI fields.`);
     if (errors.length >= 5) return errors.slice(0, 5);
   }
   if (total > 1_000_000_000_000) errors.push('The combined portfolio value is too large.');

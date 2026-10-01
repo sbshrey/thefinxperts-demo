@@ -450,6 +450,16 @@ function renderImportRows() {
     item.className = 'import-row';
     const details = document.createElement('details');
     const summary = document.createElement('summary');
+    const metadata = document.createElement('p');
+    metadata.className = 'import-row-meta';
+    const refreshMetadata = () => {
+      const parts = [];
+      if (holding.amc) parts.push(`Fund house: ${holding.amc}`);
+      if (holding.isin) parts.push(`ISIN as supplied: ${holding.isin}`);
+      if (holding.amfi) parts.push(`AMFI code: ${holding.amfi}`);
+      metadata.textContent = parts.length ? parts.join(' · ') : 'No fund-house or instrument identifier supplied.';
+    };
+    refreshMetadata();
     const rowSummary = () => {
       summary.textContent = `${holding.name || 'Unnamed holding'} — ${holding.type}, ${holding.asset}, ${Number.isFinite(Number(holding.value)) ? rupees(holding.value) : 'check value'}${holding.asOf ? ` as of ${holding.asOf}` : ''}`;
     };
@@ -465,7 +475,7 @@ function renderImportRows() {
     const name = document.createElement('input');
     name.type = 'text'; name.maxLength = 200; name.value = holding.name;
     name.addEventListener('input', () => {
-      if (name.value !== holding.name) { holding.name = name.value; holding.isin = null; holding.amfi = null; }
+      if (name.value !== holding.name) { holding.name = name.value; holding.isin = null; holding.amfi = null; refreshMetadata(); }
       rowSummary(); refreshImportSummary();
     });
     field('Fund or stock name', name);
@@ -479,7 +489,7 @@ function renderImportRows() {
     }
     asset.value = holding.asset;
     asset.disabled = holding.type === 'Stock';
-    asset.addEventListener('change', () => { holding.asset = asset.value; holding.isin = null; holding.amfi = null; rowSummary(); refreshImportSummary(); });
+    asset.addEventListener('change', () => { holding.asset = asset.value; holding.isin = null; holding.amfi = null; refreshMetadata(); rowSummary(); refreshImportSummary(); });
     field('Asset category', asset);
     const date = document.createElement('input');
     date.type = 'date'; date.value = holding.asOf || '';
@@ -489,7 +499,7 @@ function renderImportRows() {
     remove.type = 'button'; remove.className = 'text-button muted'; remove.textContent = 'Leave out this holding';
     remove.addEventListener('click', () => { pendingImport.splice(index, 1); renderImportRows(); });
     fields.append(remove);
-    details.append(summary, fields);
+    details.append(summary, metadata, fields);
     item.append(details);
     list.append(item);
   });
