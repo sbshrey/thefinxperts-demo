@@ -7,7 +7,7 @@ const TYPES = new Set(['Mutual fund', 'Stock']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId'];
 const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity'];
-const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'linkedIds', 'targetMix', 'confirmed'];
+const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'linkedIds', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
 export function buildReviewBackup(state) {
@@ -68,6 +68,8 @@ export function parseReviewBackup(text) {
         !boundedNumber(goal.monthlyContribution, 0, 100_000_000) ||
         !boundedNumber(goal.returnPct, -20, 13) || !boundedNumber(goal.inflationPct, -5, 15) ||
         (goal.equityDropPct !== undefined && !boundedNumber(goal.equityDropPct, 0, 60)) ||
+        (goal.affordableLoss !== undefined && !boundedNumber(goal.affordableLoss, 0, 10_000_000_000)) ||
+        (goal.tolerableLoss !== undefined && !boundedNumber(goal.tolerableLoss, 0, 10_000_000_000)) ||
         (goal.confirmed !== undefined && typeof goal.confirmed !== 'boolean') ||
         (goal.targetMix !== undefined && !validMixPlan(goal.targetMix)) ||
         !Array.isArray(goal.linkedIds) || goal.linkedIds.length > 500) {

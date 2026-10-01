@@ -33,3 +33,12 @@ export function calculateEquityShockScenario(currentValue, equityValue, targetTo
   const gapAfterLoss = Math.max(0, targetToday - valueAfterLoss);
   return { dropPct, loss, valueAfterLoss, gapToday, gapAfterLoss, addedGap: gapAfterLoss - gapToday };
 }
+
+/** Compare a hypothetical loss with optional user-entered limits; no suitability conclusion. */
+export function compareEnteredLossLimits(loss, goal) {
+  if (!Number.isFinite(loss) || loss < 0 || !goal || typeof goal !== 'object') return null;
+  const check = value => value === undefined ? null :
+    typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1e10
+      ? { limit: value, excess: Math.max(0, loss - value) } : null;
+  return { affordable: check(goal.affordableLoss), tolerable: check(goal.tolerableLoss) };
+}

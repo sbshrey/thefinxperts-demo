@@ -37,6 +37,7 @@ function selectGoal(id) {
   state.goal = selected;
   creatingGoal = false;
   $('#mix-plan-details').hidden = false;
+  $('#loss-limits-details').hidden = false;
   $('#cancel-new-goal').hidden = true;
   $('#goal-form button[type="submit"]').textContent = 'Update my view →';
   fillGoalForm(selected);
@@ -52,6 +53,9 @@ function fillGoalForm(goal) {
   ]) $(selector).value = value;
   $('#form-error').textContent = '';
   fillMixForm(goal);
+  $('#affordable-loss').value = goal.affordableLoss ?? '';
+  $('#tolerable-loss').value = goal.tolerableLoss ?? '';
+  $('#loss-limits-error').textContent = '';
 }
 
 function fillMixForm(goal) {
@@ -175,6 +179,13 @@ function render() {
   $('#shock-note').textContent = mixedWithExample ? 'Clear the fictional example before using a personal goal illustration.' : needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : shock
     ? `This subtracts ${shock.dropPct}% once from only the holdings marked Equity and linked to this goal. It uses today's entered values and goal cost; it excludes future growth, contributions, inflation, taxes and changes in other assets. It is a what-if loss, not a prediction or a target allocation.`
     : 'Enter a valid equity-loss percentage to see this illustration.';
+  const limits = result.lossLimits;
+  const limitText = (label, check) => check ?
+    `${label}: ${rupees(check.limit)}. The illustrated loss ${check.excess > 0 ? `exceeds it by ${rupees(check.excess)}` : 'does not exceed it'}.` : '';
+  $('#loss-context').textContent = pauseGoalFigures ? 'Goal figures are paused until the personal holdings and goal details are ready.' :
+    !result.goalTotal ? 'Link holdings to this goal before comparing a loss.' :
+    !limits?.affordable && !limits?.tolerable ? 'Add your own optional loss limits below to put this illustration in context.' :
+      `${limitText('Amount you could cover', limits.affordable)} ${limitText('Amount you could tolerate', limits.tolerable)} This is your own comparison, not a formal risk profile; real losses may be larger.`.trim();
   $('#scenario-note').textContent = mixedWithExample ? 'Clear the fictional example before using a personal goal illustration.' : needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : scenario
     ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. This is arithmetic, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
     : 'Enter valid goal assumptions to see an illustrative scenario.';
@@ -384,6 +395,25 @@ $('#clear-mix').addEventListener('click', () => {
   fillMixForm(state.goal);
   render();
 });
+$('#loss-limits-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const read = selector => $(selector).value.trim() === '' ? undefined : Number($(selector).value);
+  const affordableLoss = read('#affordable-loss');
+  const tolerableLoss = read('#tolerable-loss');
+  if ([affordableLoss, tolerableLoss].some(value => value !== undefined &&
+      (!Number.isFinite(value) || value < 0 || value > 1e10))) {
+    $('#loss-limits-error').textContent = 'Enter whole-rupee amounts from ₹0 to ₹10,00,00,00,000, or leave either blank.';
+    return;
+  }
+  $('#loss-limits-error').textContent = '';
+  state.goal = { ...state.goal };
+  delete state.goal.affordableLoss;
+  delete state.goal.tolerableLoss;
+  if (affordableLoss !== undefined) state.goal.affordableLoss = affordableLoss;
+  if (tolerableLoss !== undefined) state.goal.tolerableLoss = tolerableLoss;
+  state.goals = state.goals.map(goal => goal.id === state.activeGoalId ? state.goal : goal);
+  render();
+});
 
 $('#goal-form').addEventListener('submit', event => {
   event.preventDefault();
@@ -412,6 +442,7 @@ $('#goal-form').addEventListener('submit', event => {
     $('#cancel-new-goal').hidden = true;
     $('#goal-form button[type="submit"]').textContent = 'Update my view →';
     $('#mix-plan-details').hidden = false;
+    $('#loss-limits-details').hidden = false;
     fillMixForm(added);
   } else {
     state.goal = { ...state.goal, ...details };
@@ -426,6 +457,7 @@ $('#add-goal').addEventListener('click', () => {
   if (state.goals.length >= 10) return;
   creatingGoal = true;
   $('#mix-plan-details').hidden = true;
+  $('#loss-limits-details').hidden = true;
   $('#goal-confirm-note').hidden = true;
   $('#goal-name').value = '';
   $('#goal-years').value = '10';
@@ -435,6 +467,9 @@ $('#add-goal').addEventListener('click', () => {
   $('#return-assumption').value = '0';
   $('#inflation-assumption').value = '0';
   $('#equity-drop-assumption').value = '20';
+  $('#affordable-loss').value = '';
+  $('#tolerable-loss').value = '';
+  $('#loss-limits-error').textContent = '';
   $('#form-error').textContent = '';
   $('#cancel-new-goal').hidden = false;
   $('#goal-form button[type="submit"]').textContent = 'Create goal →';

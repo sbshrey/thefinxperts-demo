@@ -1,4 +1,4 @@
-import { calculateGoalScenario, calculateEquityShockScenario } from './goal-scenario.mjs';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -104,6 +104,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const validGoal = Number.isFinite(years) && years > 0 && Number.isFinite(target) && target > 0;
   const scenario = calculateGoalScenario(goalTotal, goal);
   const shock = calculateEquityShockScenario(goalTotal, goalEquityValue, target, Number(goal.equityDropPct ?? 20));
+  const lossLimits = shock ? compareEnteredLossLimits(shock.loss, goal) : null;
   const equityPct = total ? (assets.Equity / total) * 100 : 0;
   const findings = [];
   const fundHouseSummaries = new Set(valid.filter(holding => holding.granularity === 'fund_house')
@@ -188,7 +189,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, amcCoveredValue, asOfSummary,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,
-    scenario, shock,
+    scenario, shock, lossLimits,
     findings: findings.slice(0, 3),
   };
 }

@@ -38,6 +38,12 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Linked value needing a valuation-date check: ${rupees(result.goalDateCheck.value)} across ${result.goalDateCheck.count} holdings (missing, future or over 90 days old; entered values remain unverified)`,
     `Current gap before growth, inflation or tax: ${rupees(result.goalGap ?? 0)}`,
   ];
+  if (result.lossLimits?.affordable || result.lossLimits?.tolerable) {
+    lines.push(`Illustrative linked-equity loss: ${rupees(result.shock.loss)} under the entered ${result.shock.dropPct}% one-time fall.`);
+    if (result.lossLimits.affordable) lines.push(`Your entered amount coverable from other resources: ${rupees(result.lossLimits.affordable.limit)}; illustration ${result.lossLimits.affordable.excess ? `exceeds it by ${rupees(result.lossLimits.affordable.excess)}` : 'does not exceed it'}.`);
+    if (result.lossLimits.tolerable) lines.push(`Your entered tolerable temporary fall: ${rupees(result.lossLimits.tolerable.limit)}; illustration ${result.lossLimits.tolerable.excess ? `exceeds it by ${rupees(result.lossLimits.tolerable.excess)}` : 'does not exceed it'}.`);
+    lines.push('This comparison is not a formal risk profile or a suitability assessment; actual losses may differ.');
+  }
 
   const mix = goal.targetMix ? compareMixPlan(result.goalAssets, result.goalTotal, goal.targetMix) : null;
   if (mix) {
