@@ -22,3 +22,4 @@
 .import-row-meta{font-size:10px;line-height:1.5;color:#607267;overflow-wrap:anywhere;margin:8px 0 0}
 .broker-map{grid-column:1/-1;border-top:1px solid #e3ece1;padding-top:18px}.broker-map[hidden]{display:none}.broker-map p{margin:0 0 14px;color:#526a5b;font-size:12px;line-height:1.5}.broker-map-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;margin-bottom:16px}.broker-map-fields label{font-size:11px;font-weight:800;color:#4b6354}.broker-map-fields select{display:block;width:100%;height:42px;margin-top:5px;border:1px solid #cfdbcf;border-radius:7px;background:#fff;padding:0 9px;color:#243e2b}.broker-map .button{font-size:12px;padding:11px 16px}@media(max-width:760px){.broker-map-fields{grid-template-columns:1fr}}
 #merge-import[hidden],#merge-validation[hidden]{display:none}
+.finding .finding-next{margin-top:10px;padding:9px 11px;border-left:2px solid #a6c9ad;background:#f4f8f2;color:#3d6450}.finding-next strong{color:#24503b}

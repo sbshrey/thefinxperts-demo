@@ -91,12 +91,14 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const conflictingIsins = [...isinClassifications.values()].filter(classifications => classifications.size > 1).length;
   if (conflictingIsins) {
     findings.push({ key: 'identity', tone: 'amber', label: 'Data quality', title: 'Check conflicting labels',
-      detail: `${conflictingIsins} ISIN ${conflictingIsins === 1 ? 'appears' : 'appear'} with different holding types or asset categories. Recheck those rows before interpreting concentration or goal mix.` });
+      detail: `${conflictingIsins} ISIN ${conflictingIsins === 1 ? 'appears' : 'appear'} with different holding types or asset categories. Recheck those rows before interpreting concentration or goal mix.`,
+      question: 'Which type and asset category does the original statement show for each conflicting ISIN?' });
   }
 
   if (fundHouseSummaries.size) {
     findings.push({ key: 'summary', tone: 'amber', label: 'Statement detail', title: 'Only fund-house totals are visible',
-      detail: `${fundHouseSummaries.size} fund ${fundHouseSummaries.size === 1 ? 'house is' : 'houses are'} represented by summary amounts, not individual schemes. Check a detailed CAS before judging scheme overlap, plan type or costs.` });
+      detail: `${fundHouseSummaries.size} fund ${fundHouseSummaries.size === 1 ? 'house is' : 'houses are'} represented by summary amounts, not individual schemes. Check a detailed CAS before judging scheme overlap, plan type or costs.`,
+      question: 'Can you get a detailed CAS that lists each scheme and its current value?' });
   }
 
   if (valid.length && (missingDates || staleDates || futureDates)) {
@@ -106,12 +108,14 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       futureDates ? `${futureDates} dated after today` : null,
     ].filter(Boolean).join('; ');
     findings.push({ key: 'valuation', tone: 'amber', label: 'Data quality', title: 'Check when these values were measured',
-      detail: `${issues}. Refresh or verify those values before relying on the goal figures.` });
+      detail: `${issues}. Refresh or verify those values before relying on the goal figures.`,
+      question: 'Can you confirm the value and valuation date of each flagged holding?' });
   }
 
   if (validGoal && goalTotal > 0 && years <= 5 && goalEquityPct >= 60) {
     findings.push({ key: 'horizon', tone: 'amber', label: 'Goal timing', title: 'The linked goal is relatively near',
-      detail: `${goalEquityPct.toFixed(0)}% of the holdings assigned to this goal is equity, while the goal is ${years} ${years === 1 ? 'year' : 'years'} away. Consider how much loss the goal can absorb.` });
+      detail: `${goalEquityPct.toFixed(0)}% of the holdings assigned to this goal is equity, while the goal is ${years} ${years === 1 ? 'year' : 'years'} away. Consider how much loss the goal can absorb.`,
+      question: 'If equity falls before this goal date, how much of the goal cost can you still meet?' });
   }
   if (largestIssuer && total && largestIssuer[1] / total >= 0.10) {
     const sources = largestIssuerSources;
@@ -120,15 +124,18 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       sources.funds ? 'visible fund holdings' : 'a direct stock';
     findings.push({ key: 'issuer', tone: 'rose', label: 'Visible concentration',
       title: positions > 1 ? 'One company appears in several places' : 'One company is a large holding',
-      detail: `${largestIssuer[0]} accounts for at least ${(largestIssuer[1] / total * 100).toFixed(1)}% through ${route}.${fundValue ? ' Unnamed fund holdings could add more.' : ''}` });
+      detail: `${largestIssuer[0]} accounts for at least ${(largestIssuer[1] / total * 100).toFixed(1)}% through ${route}.${fundValue ? ' Unnamed fund holdings could add more.' : ''}`,
+      question: 'Would a large fall in this one company materially change your goal, and is fund exposure still unknown?' });
   }
   if (valid.filter(h => h.asset === 'Equity' && h.type === 'Mutual fund').length >= 3) {
     findings.push({ key: 'funds', tone: 'blue', label: 'Fund roles', title: 'Check what each equity fund adds',
-      detail: 'Several equity funds may own similar companies. Review their underlying holdings and the job each fund plays.' });
+      detail: 'Several equity funds may own similar companies. Review their underlying holdings and the job each fund plays.',
+      question: 'What distinct exposure does each fund add, according to its latest disclosed holdings?' });
   }
   if (findings.length === 0 && total > 0) {
     findings.push({ key: 'review', tone: 'blue', label: 'Next review', title: 'Check the missing details',
-      detail: 'A holdings snapshot shows composition, but transactions and current fund disclosures are needed for performance and precise overlap.' });
+      detail: 'A holdings snapshot shows composition, but transactions and current fund disclosures are needed for performance and precise overlap.',
+      question: 'Which missing statement or fund disclosure would answer your next portfolio question?' });
   }
 
   return {

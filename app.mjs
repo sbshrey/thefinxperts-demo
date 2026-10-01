@@ -191,7 +191,12 @@ function render() {
     title.textContent = finding.title;
     const detail = document.createElement('p');
     detail.textContent = finding.detail;
-    content.append(dot, label, title, detail);
+    const next = document.createElement('p');
+    next.className = 'finding-next';
+    const nextLabel = document.createElement('strong');
+    nextLabel.textContent = 'Check next: ';
+    next.append(nextLabel, document.createTextNode(finding.question));
+    content.append(dot, label, title, detail, next);
     article.append(number, content);
     findings.append(article);
   });
