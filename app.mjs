@@ -1,8 +1,8 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs';
 import { parseHoldingsCsv } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
-import { validateImportReview } from './import-review.mjs';
-import { setGoalHolding, relinkAfterReplacingHoldings } from './goals.mjs';
+import { validateImportReview, validateImportMerge } from './import-review.mjs';
+import { setGoalHolding, relinkAfterReplacingHoldings, linkAddedHoldings } from './goals.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { MIX_ASSETS, compareMixPlan, validMixPlan } from './mix-plan.mjs';
 
@@ -521,6 +521,14 @@ function refreshImportSummary() {
   const errors = validateImportReview(pendingImport);
   $('#import-validation').textContent = errors.join(' ');
   $('#confirm-import').disabled = errors.length > 0;
+  const canAdd = state.source === 'user' && state.holdings.length > 0;
+  const mergeButton = $('#merge-import');
+  const mergeValidation = $('#merge-validation');
+  mergeButton.hidden = !canAdd;
+  const mergeErrors = canAdd && !errors.length ? validateImportMerge(state.holdings, pendingImport) : [];
+  mergeButton.disabled = errors.length > 0 || mergeErrors.length > 0;
+  mergeValidation.hidden = !canAdd || mergeErrors.length === 0;
+  mergeValidation.textContent = mergeErrors.join(' ');
 }
 
 function renderImportRows() {
@@ -693,13 +701,17 @@ $('#preview-cas').addEventListener('click', async () => {
     button.textContent = 'Preview CAS holdings';
   }
 });
-$('#confirm-import').addEventListener('click', () => {
+function applyImport(mode) {
   if (!pendingImport || validateImportReview(pendingImport).length) return;
-  state.holdings = pendingImport.map(holding => {
+  if (mode === 'add' && (state.source !== 'user' || !state.holdings.length || validateImportMerge(state.holdings, pendingImport).length)) return;
+  const imported = pendingImport.map(holding => {
     const name = holding.name.trim();
     return { ...holding, name, id: crypto.randomUUID(), exposure: holding.type === 'Stock' ? { [name]: 1 } : null };
   });
-  state.goals = relinkAfterReplacingHoldings(state.goals, state.activeGoalId, state.holdings);
+  state.goals = mode === 'add'
+    ? linkAddedHoldings(state.goals, state.activeGoalId, imported)
+    : relinkAfterReplacingHoldings(state.goals, state.activeGoalId, imported);
+  state.holdings = mode === 'add' ? [...state.holdings, ...imported] : imported;
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   state.source = 'user';
   pendingImport = null;
@@ -710,7 +722,9 @@ $('#confirm-import').addEventListener('click', () => {
   $('#import-preview').hidden = true;
   render();
   $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
+}
+$('#confirm-import').addEventListener('click', () => applyImport('replace'));
+$('#merge-import').addEventListener('click', () => applyImport('add'));
 $('#cancel-import').addEventListener('click', () => {
   pendingImport = null;
   $('#csv-file').value = '';

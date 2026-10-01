@@ -32,6 +32,32 @@ export function validateImportReview(holdings) {
   return errors.slice(0, 5);
 }
 
+/** Check a second source before adding it to an existing personal review. */
+export function validateImportMerge(existing, incoming) {
+  const errors = validateImportReview(incoming);
+  if (errors.length) return errors;
+  if (!Array.isArray(existing) || existing.length + incoming.length > 500)
+    return ['A combined review can contain at most 500 holdings.'];
+  const total = [...existing, ...incoming].reduce((sum, holding) => sum + Number(holding.value), 0);
+  if (!Number.isFinite(total) || total > 1_000_000_000_000)
+    return ['The combined portfolio value is too large.'];
+  for (const [index, added] of incoming.entries()) {
+    for (const current of existing) {
+      if (added.isin && current.isin && added.isin === current.isin)
+        return [`Holding ${index + 1}: this ISIN already appears in your review. Check the two sources before adding it.`];
+      const sameName = typeof added.name === 'string' && typeof current.name === 'string' &&
+        added.name.trim().toLocaleLowerCase('en-IN') === current.name.trim().toLocaleLowerCase('en-IN');
+      if (sameName && added.type === current.type)
+        return [`Holding ${index + 1}: a holding with this name already appears in your review. Check for duplicate positions.`];
+      if (added.type === 'Mutual fund' && current.type === 'Mutual fund' &&
+          (added.granularity === 'fund_house' || current.granularity === 'fund_house') &&
+          (!added.amc || !current.amc || added.amc.trim().toLocaleLowerCase('en-IN') === current.amc.trim().toLocaleLowerCase('en-IN')))
+        return [`Holding ${index + 1}: a fund-house summary could already include this fund. Add direct stocks separately or replace the review.`];
+    }
+  }
+  return [];
+}
+
 function isRealIsoDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
