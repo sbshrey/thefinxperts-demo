@@ -25,6 +25,7 @@ function validEnteredDate(value) {
 let pendingImport = null;
 let brokerRows = null;
 let accountAuthenticated = false;
+let accountPortfolioAccess = false;
 let hasSavedPortfolio = false;
 let creatingGoal = false;
 let inputMode = 'manual';
@@ -920,7 +921,7 @@ $('#cancel-import').addEventListener('click', () => {
 });
 
 function updateAccountActions() {
-  if (!accountAuthenticated) return;
+  if (!accountAuthenticated || !accountPortfolioAccess) return;
   const unconfirmedGoals = state.goals.some(goal => goal.confirmed === false);
   $('#account-save').disabled = state.source !== 'user' || state.holdings.length === 0 || unconfirmedGoals;
   $('#account-description').textContent = unconfirmedGoals && state.source === 'user'
@@ -1037,19 +1038,25 @@ async function initAccount() {
     const info = await response.json();
     if (typeof info.authenticated !== 'boolean') return;
     accountAuthenticated = info.authenticated;
+    accountPortfolioAccess = info.portfolioAccess === true;
     $('#account-card').hidden = false;
     $('#account-login').hidden = accountAuthenticated;
-    $('#account-save').hidden = !accountAuthenticated;
+    $('#account-save').hidden = !accountPortfolioAccess;
     $('#account-logout').hidden = !accountAuthenticated;
-    $('#account-title').textContent = accountAuthenticated ? 'Your private saved review' : 'Save your review';
-    if (accountAuthenticated) await readSavedPortfolio(false);
+    $('#account-title').textContent = accountPortfolioAccess ? 'Your private saved review' : accountAuthenticated
+      ? 'Account access pending' : 'Save your review';
+    if (accountPortfolioAccess) await readSavedPortfolio(false);
+    else if (accountAuthenticated) {
+      $('#account-description').textContent = 'Your account is signed in. Private portfolio saving is available after beta access is enabled. You can still review holdings here and download a local backup.';
+      $('#account-status').textContent = 'Private beta access is not yet enabled for this account.';
+    }
     else $('#account-status').textContent = 'The example and local entries work without signing in.';
     updateAccountActions();
   } catch { /* Anonymous static preview works without an account server. */ }
 }
 
 $('#account-save').addEventListener('click', async () => {
-  if (!accountAuthenticated || state.source !== 'user' || !state.holdings.length) return;
+  if (!accountPortfolioAccess || state.source !== 'user' || !state.holdings.length) return;
   const payload = buildReviewBackup(state);
   try {
     const response = await fetch('/api/portfolio', {
