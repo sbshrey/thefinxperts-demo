@@ -23,6 +23,7 @@ function validEnteredDate(value) {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 let pendingImport = null;
+let pendingPerformance = new Map();
 let brokerRows = null;
 let accountAuthenticated = false;
 let accountPortfolioAccess = false;
@@ -139,7 +140,7 @@ function render() {
   $('#goal-setup-note').hidden = !pauseGoalFigures;
   $('#goal-setup-note').textContent = mixedWithExample ? 'Your entries are mixed with the example. Start fresh before using goal figures.' : 'These goal values came from the example. Check and confirm them before using goal figures.';
   $('#goal-confirm-note').hidden = !needsGoalConfirmation;
-  $('#goal-edit-link').href = mixedWithExample ? '#holdings' : '#goal-editor';
+  $('#goal-edit-link').href = mixedWithExample ? '#holdings' : '#goal-form';
   $('#goal-edit-link').textContent = mixedWithExample ? 'Clear example ↗' : needsGoalConfirmation ? 'Confirm goal details ↗' : 'Change goal details ↗';
   if (!creatingGoal) $('#goal-form button[type="submit"]').textContent = needsGoalConfirmation ? 'Confirm goal details →' : 'Update my view →';
   $('#goal-assigned').textContent = `${rupees(result.goalTotal)} assigned from ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}`;
@@ -243,6 +244,13 @@ function render() {
   $('#more-findings-label').textContent = `Show ${result.additionalFindings.length} more ${result.additionalFindings.length === 1 ? 'check' : 'checks'}`;
   $('#findings-title').textContent = result.findings.length === 3 ? 'Three things worth a closer look' : result.findings.length === 0 ? 'Add holdings to start your review' : `${result.findings.length} ${result.findings.length === 1 ? 'thing' : 'things'} worth a closer look`;
   $('#panel-counter').textContent = result.findings.length ? `${String(result.findings.length).padStart(2, '0')} REVIEW ${result.findings.length === 1 ? 'ITEM' : 'ITEMS'}` : 'NO HOLDINGS';
+  const reviewDestinations = {
+    identity: ['#holdings', 'Review holding labels'], summary: ['#input-choice', 'See import choices'],
+    valuation: ['#holdings', 'Check entered values'], emergency: ['#goal-form', 'Review goal context'],
+    horizon: ['#goal-form', 'Explore goal timing'], position: ['#holdings', 'Review linked holdings'],
+    issuer: ['#holdings', 'Review holdings'], plan: ['#holdings', 'Review fund names'],
+    funds: ['#holdings', 'Review fund list'], review: ['#holdings', 'Review holdings'],
+  };
   const renderFinding = (finding, index, target) => {
     const article = document.createElement('article');
     article.className = 'finding';
@@ -264,6 +272,11 @@ function render() {
     const nextLabel = document.createElement('strong');
     nextLabel.textContent = 'Check next: ';
     next.append(nextLabel, document.createTextNode(finding.question));
+    const [destination, linkText] = reviewDestinations[finding.key] || ['#holdings', 'Review holdings'];
+    const reviewLink = document.createElement('a');
+    reviewLink.className = 'finding-review-link';
+    reviewLink.href = destination;
+    reviewLink.textContent = `${linkText} →`;
     const explanation = document.createElement('details');
     explanation.className = 'finding-basis';
     const explanationTitle = document.createElement('summary');
@@ -273,7 +286,7 @@ function render() {
     const limitation = document.createElement('p');
     limitation.textContent = finding.limitation;
     explanation.append(explanationTitle, basis, limitation);
-    content.append(dot, label, title, detail, next, explanation);
+    content.append(dot, label, title, detail, next, reviewLink, explanation);
     article.append(number, content);
     target.append(article);
   };
@@ -541,6 +554,7 @@ $('#holding-type').addEventListener('change', () => {
 
 function clearCurrentReview() {
   pendingImport = null;
+  pendingPerformance.clear();
   $('#import-preview').hidden = true;
   state.holdings = [];
   state.goals = state.goals.map(goal => ({ ...goal, linkedIds: [] }));
@@ -577,6 +591,7 @@ document.querySelectorAll('#input-choice [data-input]').forEach(button => button
   if (mode !== inputMode && pendingImport) {
     if (!window.confirm('Discard the current import preview and choose another source?')) return;
     pendingImport = null;
+    pendingPerformance.clear();
     $('#import-preview').hidden = true;
   }
   showInputMode(mode);
@@ -597,6 +612,7 @@ $('#reset-demo').addEventListener('click', () => {
   if (state.source !== 'demo' && state.holdings.length &&
       !window.confirm('Replace your current holdings and goals with the fictional example? Download a review file first if you want to keep them.')) return;
   pendingImport = null;
+  pendingPerformance.clear();
   $('#import-preview').hidden = true;
   state.holdings = structuredClone(sampleHoldings);
   state.goals = [demoGoal()];
@@ -612,6 +628,7 @@ $('#clear-all').addEventListener('click', () => {
 });
 $('#csv-file').addEventListener('change', async event => {
   pendingImport = null;
+  pendingPerformance.clear();
   $('#import-preview').hidden = true;
   $('#import-error').textContent = '';
   const file = event.target.files?.[0];
@@ -658,6 +675,7 @@ function fillBrokerColumns(index) {
 $('#broker-header').addEventListener('change', event => fillBrokerColumns(Number(event.target.value)));
 $('#broker-read').addEventListener('click', async () => {
   pendingImport = null;
+  pendingPerformance.clear();
   brokerRows = null;
   $('#import-preview').hidden = true;
   $('#broker-map').hidden = true;
@@ -704,8 +722,10 @@ $('#broker-preview').addEventListener('click', () => {
   showImportPreview(result.holdings, 'Broker XLSX', result.notices);
 });
 
-function showImportPreview(holdings, label, notices) {
+function showImportPreview(holdings, label, notices, performance = []) {
   pendingImport = holdings.map(holding => ({ ...holding }));
+  pendingPerformance = new Map(performance.map(item => [item.id, item.annualPercent]));
+  $('#cas-performance-note').hidden = label !== 'CAS';
   if (label !== 'Broker XLSX') $('#broker-map').hidden = true;
   $('#import-preview').dataset.source = label;
   renderImportRows();
@@ -742,6 +762,7 @@ function renderImportRows() {
   const list = $('#import-rows');
   list.replaceChildren();
   const broker = $('#import-preview').dataset.source === 'Broker XLSX';
+  const demat = $('#import-preview').dataset.source === 'Demat CAS';
   pendingImport.forEach((holding, index) => {
     const item = document.createElement('li');
     item.className = 'import-row';
@@ -755,6 +776,7 @@ function renderImportRows() {
       if (holding.isin) parts.push(`ISIN as supplied: ${holding.isin}`);
       if (holding.amfi) parts.push(`AMFI code: ${holding.amfi}`);
       if (holding.units) parts.push(`Statement units: ${holding.units}`);
+      if (pendingPerformance.has(holding.id)) parts.push(`Indicative statement-period XIRR: ${pendingPerformance.get(holding.id).toFixed(2)}% a year`);
       if (holding.granularity === 'fund_house') parts.push('Fund-house summary, not an individual scheme');
       metadata.textContent = parts.length ? parts.join(' · ') : 'No fund-house or instrument identifier supplied.';
     };
@@ -775,15 +797,15 @@ function renderImportRows() {
     name.type = 'text'; name.maxLength = 200; name.value = holding.name;
     name.disabled = holding.granularity === 'fund_house';
     name.addEventListener('input', () => {
-      if (name.value !== holding.name) { holding.name = name.value; holding.isin = null; holding.amfi = null; refreshMetadata(); }
+      if (name.value !== holding.name) { holding.name = name.value; holding.isin = null; holding.amfi = null; pendingPerformance.delete(holding.id); refreshMetadata(); }
       rowSummary(); refreshImportSummary();
     });
     field('Fund or stock name', name);
     const value = document.createElement('input');
     value.type = 'number'; value.min = '0.01'; value.max = '10000000000'; value.step = '0.01'; value.value = holding.value;
-    value.addEventListener('input', () => { holding.value = value.value === '' ? NaN : Number(value.value); rowSummary(); refreshImportSummary(); });
+    value.addEventListener('input', () => { holding.value = value.value === '' ? NaN : Number(value.value); pendingPerformance.delete(holding.id); refreshMetadata(); rowSummary(); refreshImportSummary(); });
     field('Current value (₹)', value);
-    if (broker) {
+    if (broker || demat) {
       const type = document.createElement('select');
       for (const label of ['Choose type', 'Stock', 'Mutual fund']) {
         const option = document.createElement('option');
@@ -792,6 +814,7 @@ function renderImportRows() {
         type.append(option);
       }
       type.value = holding.type || '';
+      type.disabled = demat && holding.type === 'Mutual fund';
       type.addEventListener('change', () => {
         holding.type = type.value || null;
         holding.asset = type.value === 'Stock' ? 'Equity' : null;
@@ -802,24 +825,24 @@ function renderImportRows() {
       field('Holding type', type);
     }
     const asset = document.createElement('select');
-    if (broker) {
+    if (broker || demat && !holding.type) {
       const blank = document.createElement('option'); blank.value = ''; blank.textContent = 'Choose asset'; asset.append(blank);
     }
     for (const optionText of ['Equity', 'Debt', 'Gold', 'Other']) {
       const option = document.createElement('option'); option.value = optionText; option.textContent = optionText; asset.append(option);
     }
     asset.value = holding.asset || '';
-    asset.disabled = holding.type === 'Stock' || (broker && !holding.type);
+    asset.disabled = holding.type === 'Stock' || ((broker || demat) && !holding.type);
     asset.addEventListener('change', () => {
       const previous = holding.asset;
       holding.asset = asset.value || null;
-      if (previous && previous !== holding.asset) { holding.isin = null; holding.amfi = null; }
+      if (previous && previous !== holding.asset) { holding.isin = null; holding.amfi = null; pendingPerformance.delete(holding.id); }
       refreshMetadata(); rowSummary(); refreshImportSummary();
     });
     field('Asset category', asset);
     const date = document.createElement('input');
     date.type = 'date'; date.value = holding.asOf || '';
-    date.addEventListener('input', () => { holding.asOf = date.value || null; rowSummary(); refreshImportSummary(); });
+    date.addEventListener('input', () => { holding.asOf = date.value || null; pendingPerformance.delete(holding.id); refreshMetadata(); rowSummary(); refreshImportSummary(); });
     field('Valuation date', date);
     const remove = document.createElement('button');
     remove.type = 'button'; remove.className = 'text-button muted'; remove.textContent = 'Leave out this holding';
@@ -834,6 +857,7 @@ function renderImportRows() {
 
 $('#preview-active').addEventListener('click', async () => {
   pendingImport = null;
+  pendingPerformance.clear();
   $('#import-preview').hidden = true;
   $('#active-error').textContent = '';
   const file = $('#active-file').files?.[0];
@@ -873,12 +897,13 @@ fetch('/api/cas/status', { cache: 'no-store' }).then(response => response.ok ? r
       showInputMode(inputMode);
       $('#cas-eyebrow').textContent = 'PRIVATE CAS PREVIEW';
       $('#cas-description').textContent = 'Your signed-in server processes the PDF and password for this request. It returns a holdings preview and does not save the original PDF or password. Review every row before replacing your entries.';
-      $('#cas-help').textContent = 'Up to 15 MB. Only original CAMS or KFintech statements supported. No Gmail connection is used. Preview attempts are limited.';
+      $('#cas-help').textContent = 'Up to 15 MB. Original CAMS, KFintech, NSDL or CDSL statements only. Demat statements with bonds or NPS cannot be imported yet. No Gmail connection is used. Preview attempts are limited.';
     }
   }).catch(() => {});
 
 $('#preview-cas').addEventListener('click', async () => {
   pendingImport = null;
+  pendingPerformance.clear();
   $('#import-preview').hidden = true;
   $('#cas-error').textContent = '';
   const file = $('#cas-file').files?.[0];
@@ -903,7 +928,7 @@ $('#preview-cas').addEventListener('click', async () => {
       $('#cas-error').textContent = result.errors?.slice(0, 5).join(' ') || result.error || 'The CAS could not be read.';
       return;
     }
-    showImportPreview(result.holdings, 'CAS', result.notices || []);
+    showImportPreview(result.holdings, result.source || 'CAS', result.notices || [], result.performance || []);
   } catch {
     $('#cas-error').textContent = 'The CAS preview failed. Try again later.';
   } finally {
@@ -927,6 +952,7 @@ function applyImport(mode) {
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   state.source = 'user';
   pendingImport = null;
+  pendingPerformance.clear();
   $('#csv-file').value = '';
   $('#broker-file').value = '';
   brokerRows = null;
@@ -939,6 +965,7 @@ $('#confirm-import').addEventListener('click', () => applyImport('replace'));
 $('#merge-import').addEventListener('click', () => applyImport('add'));
 $('#cancel-import').addEventListener('click', () => {
   pendingImport = null;
+  pendingPerformance.clear();
   $('#csv-file').value = '';
   $('#broker-file').value = '';
   brokerRows = null;
