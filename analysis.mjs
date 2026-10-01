@@ -30,6 +30,12 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const issuerSources = new Map();
   const amcs = new Map();
   const isinClassifications = new Map();
+  const stockLabelByIsin = new Map();
+  for (const holding of valid) {
+    if (holding.type === 'Stock' && typeof holding.isin === 'string' &&
+        /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin) && typeof holding.name === 'string' &&
+        !stockLabelByIsin.has(holding.isin)) stockLabelByIsin.set(holding.isin, holding.name);
+  }
   let classifiedValue = 0;
   let fundValue = 0;
   let amcCoveredValue = 0;
@@ -58,11 +64,13 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       classifiedValue += value * coveredWeight;
       for (const [issuer, weight] of weights) {
         if (issuer === 'Other issuers') continue;
-        issuers.set(issuer, (issuers.get(issuer) || 0) + value * weight);
-        const sources = issuerSources.get(issuer) || { funds: 0, stocks: 0 };
+        const identity = holding.type === 'Stock' && weight === 1 && issuer === holding.name &&
+          stockLabelByIsin.has(holding.isin) ? stockLabelByIsin.get(holding.isin) : issuer;
+        issuers.set(identity, (issuers.get(identity) || 0) + value * weight);
+        const sources = issuerSources.get(identity) || { funds: 0, stocks: 0 };
         if (holding.type === 'Mutual fund') sources.funds++;
         if (holding.type === 'Stock') sources.stocks++;
-        issuerSources.set(issuer, sources);
+        issuerSources.set(identity, sources);
       }
     }
   }
@@ -130,14 +138,15 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   if (largestIssuer && total && largestIssuer[1] / total >= 0.10) {
     const sources = largestIssuerSources;
     const positions = sources.funds + sources.stocks;
-    const route = sources.funds && sources.stocks ? 'visible fund holdings and a direct stock' :
-      sources.funds ? 'visible fund holdings' : 'a direct stock';
+    const stockRoute = sources.stocks > 1 ? 'multiple direct stock entries' : 'a direct stock';
+    const route = sources.funds && sources.stocks ? `visible fund holdings and ${stockRoute}` :
+      sources.funds ? 'visible fund holdings' : stockRoute;
     findings.push({ key: 'issuer', tone: 'rose', label: 'Visible concentration',
       title: positions > 1 ? 'One company appears in several places' : 'One company is a large holding',
       detail: `${largestIssuer[0]} accounts for at least ${(largestIssuer[1] / total * 100).toFixed(1)}% through ${route}.${fundValue ? ' Unnamed fund holdings could add more.' : ''}`,
       question: 'Would a large fall in this one company materially change your goal, and is fund exposure still unknown?',
-      basis: `${rupees(largestIssuer[1])} visible exposure ÷ ${rupees(total)} entered portfolio = ${(largestIssuer[1] / total * 100).toFixed(1)}%. Direct stock value and any supplied fund constituent weights are added.`,
-      limitation: `Only ${(classifiedValue / total * 100).toFixed(1)}% of entered value has named-company coverage; unknown fund holdings may add exposure.` });
+      basis: `${rupees(largestIssuer[1])} visible exposure ÷ ${rupees(total)} entered portfolio = ${(largestIssuer[1] / total * 100).toFixed(1)}%. Direct stock rows with the same supplied ISIN are grouped; any supplied fund constituent weights are added by issuer name.`,
+      limitation: `Only ${(classifiedValue / total * 100).toFixed(1)}% of entered value has named-company coverage. ISINs and fund issuer names are not registry-verified; unknown or differently named fund holdings may add exposure.` });
   }
   const equityFunds = valid.filter(h => h.asset === 'Equity' && h.type === 'Mutual fund').length;
   if (equityFunds >= 3) {

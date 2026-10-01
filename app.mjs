@@ -323,8 +323,9 @@ function render() {
   $('#overlap-note').textContent = overlap === null ? 'Verified constituent data is needed for your fund pairs' : `${fundA.name} + ${fundB.name}`;
   $('#issuer-value').textContent = result.largestIssuer ? `${(result.largestIssuer[1] / result.total * 100).toFixed(1)}%+` : 'Unknown';
   const issuerSources = result.largestIssuerSources;
-  const issuerRoute = issuerSources?.funds && issuerSources?.stocks ? 'direct + visible fund holdings' :
-    issuerSources?.funds ? 'visible fund holdings' : 'direct stock';
+  const directRoute = issuerSources?.stocks > 1 ? 'multiple direct stock entries' : 'direct stock';
+  const issuerRoute = issuerSources?.funds && issuerSources?.stocks ? `${directRoute} + visible fund holdings` :
+    issuerSources?.funds ? 'visible fund holdings' : directRoute;
   $('#issuer-note').textContent = result.largestIssuer ? `${result.largestIssuer[0]} · ${issuerRoute}` : 'Fund constituent data is missing';
   $('#amc-value').textContent = result.largestAmc && result.fundValue ? `${(result.largestAmc.value / result.fundValue * 100).toFixed(0)}%+` : 'Unknown';
   $('#amc-note').textContent = result.largestAmc ? `${result.largestAmc.name} · ${pct(result.amcCoveredValue, result.fundValue)} of fund value has known fund houses` : 'Fund-house names are missing';
