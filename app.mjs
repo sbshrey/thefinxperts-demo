@@ -30,6 +30,7 @@ let accountAuthenticated = false;
 let accountPortfolioAccess = false;
 let accountEnrollment = null;
 let hasSavedPortfolio = false;
+let accountRevision = null;
 let creatingGoal = false;
 let inputMode = 'manual';
 let casAvailable = false;
@@ -986,7 +987,7 @@ $('#cancel-import').addEventListener('click', () => {
 function updateAccountActions() {
   if (!accountAuthenticated || !accountPortfolioAccess) return;
   const unconfirmedGoals = state.goals.some(goal => goal.confirmed === false);
-  $('#account-save').disabled = state.source !== 'user' || state.holdings.length === 0 || unconfirmedGoals;
+  $('#account-save').disabled = accountRevision === null || state.source !== 'user' || state.holdings.length === 0 || unconfirmedGoals;
   $('#account-description').textContent = unconfirmedGoals && state.source === 'user'
     ? 'Confirm each goal’s details before saving. Original CAS PDFs and passwords are not saved.' : state.source === 'user'
     ? 'Save normalized holdings and goal inputs for later. Original CAS PDFs and passwords are not saved.'
@@ -1075,11 +1076,15 @@ $('#restore-review').addEventListener('change', async event => {
 });
 
 async function readSavedPortfolio(apply) {
+  if (apply && state.source !== 'demo' && state.holdings.length &&
+      !window.confirm('Replace the holdings and goals in this tab with your saved version? Download a local backup first if you want to keep these entries.')) return;
   try {
     const response = await fetch('/api/portfolio', { cache: 'no-store' });
     if (!response.ok) throw new Error('Read failed');
-    const { portfolio } = await response.json();
+    const { portfolio, revision } = await response.json();
+    if (!Number.isSafeInteger(revision) || revision < 0 || Boolean(portfolio) !== (revision > 0)) throw new Error('Invalid revision');
     hasSavedPortfolio = Boolean(portfolio);
+    accountRevision = revision;
     updateAccountActions();
     if (!portfolio) {
       $('#account-status').textContent = 'No saved portfolio yet.';
@@ -1090,6 +1095,8 @@ async function readSavedPortfolio(apply) {
       $('#account-status').textContent = 'Saved portfolio loaded into this tab.';
     } else $('#account-status').textContent = 'A saved portfolio is available. Load it when ready.';
   } catch {
+    accountRevision = null;
+    updateAccountActions();
     $('#account-status').textContent = 'Could not read your saved portfolio. Try again later.';
   }
 }
@@ -1157,18 +1164,27 @@ $('#account-enroll').addEventListener('submit', async event => {
 });
 
 $('#account-save').addEventListener('click', async () => {
-  if (!accountPortfolioAccess || state.source !== 'user' || !state.holdings.length) return;
+  if (!accountPortfolioAccess || accountRevision === null || state.source !== 'user' || !state.holdings.length) return;
   const payload = buildReviewBackup(state);
+  $('#account-save').disabled = true;
   try {
     const response = await fetch('/api/portfolio', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Intent': 'portfolio-write' },
+      method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Intent': 'portfolio-write',
+        'X-Thefinxperts-Revision': String(accountRevision) },
       body: JSON.stringify(payload),
     });
+    if (response.status === 409) {
+      $('#account-status').textContent = 'The saved version changed in another tab. Download this tab’s restorable JSON before loading the latest saved version.';
+      return;
+    }
     if (!response.ok) throw new Error('Save failed');
+    const result = await response.json();
+    if (!Number.isSafeInteger(result.revision) || result.revision <= accountRevision) throw new Error('Invalid revision');
+    accountRevision = result.revision;
     hasSavedPortfolio = true;
-    updateAccountActions();
     $('#account-status').textContent = 'Saved. Only normalized holdings and goal inputs were stored.';
   } catch { $('#account-status').textContent = 'Could not save. Your entries remain in this tab.'; }
+  finally { updateAccountActions(); }
 });
 $('#account-load').addEventListener('click', () => readSavedPortfolio(true));
 $('#account-export').addEventListener('click', async () => {
@@ -1183,14 +1199,23 @@ $('#account-export').addEventListener('click', async () => {
   } catch { $('#account-status').textContent = 'Could not export the saved portfolio. Try again later.'; }
 });
 $('#account-delete').addEventListener('click', async () => {
-  if (!accountAuthenticated || !hasSavedPortfolio || !window.confirm('Delete your saved portfolio and goals? This cannot be undone.')) return;
+  if (!accountAuthenticated || !hasSavedPortfolio || accountRevision === null ||
+      !window.confirm('Delete your saved portfolio and goals? This cannot be undone.')) return;
+  $('#account-delete').disabled = true;
   try {
-    const response = await fetch('/api/portfolio', { method: 'DELETE', headers: { 'X-Thefinxperts-Intent': 'portfolio-write' } });
+    const response = await fetch('/api/portfolio', { method: 'DELETE', headers: {
+      'X-Thefinxperts-Intent': 'portfolio-write', 'X-Thefinxperts-Revision': String(accountRevision) } });
+    if (response.status === 409) {
+      $('#account-status').textContent = 'The saved version changed in another tab. Load the latest saved version before deleting.';
+      return;
+    }
     if (!response.ok) throw new Error('Delete failed');
     hasSavedPortfolio = false;
+    accountRevision = 0;
     updateAccountActions();
     $('#account-status').textContent = 'Saved portfolio deleted. Entries still visible in this tab will disappear when it closes.';
   } catch { $('#account-status').textContent = 'Could not delete the saved portfolio. Try again later.'; }
+  finally { $('#account-delete').disabled = false; }
 });
 render();
 showInputMode('manual');
