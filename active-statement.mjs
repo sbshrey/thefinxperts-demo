@@ -19,6 +19,9 @@ export function parseActiveStatementHtml(html) {
   if (!asOf) errors.push('The statement valuation date is missing or invalid.');
 
   const rows = new Map();
+  // A format change in one row must not turn a full statement into a partial portfolio.
+  const summaryCandidates = html.split('document.writeln').filter(part =>
+    part.startsWith("(' <td onclick=\"blocking(") && (part.match(/class="amount"/g) || []).length >= 4).length;
   const summaryRow = /document\.writeln\(' <td onclick="blocking\([^\r\n]*?repApos\("([^"\r\n]+)"\) \+'<\/td><td onclick="blocking\([^>\r\n]+>([^<\r\n]+)<\/td><td class="amount">([^<\r\n]+)<\/td><td class="amount">([^<\r\n]+)<\/td><td class="amount">([^<\r\n]+)<\/td><td class="amount">([^<\r\n]+)<\/td>'\);/g;
   let matched = 0;
   for (const match of html.matchAll(summaryRow)) {
@@ -38,6 +41,7 @@ export function parseActiveStatementHtml(html) {
     current.other += other;
     rows.set(amc, current);
   }
+  if (summaryCandidates > matched) errors.push('Some fund-house summary rows could not be read. Import stopped to avoid a partial portfolio.');
   if (!matched) errors.push('No fund-house summary rows were found in the statement.');
   if (errors.length) return { holdings: [], errors: errors.slice(0, 5), notices: [] };
 
