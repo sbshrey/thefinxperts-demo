@@ -89,6 +89,14 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const missingDates = valid.length - dated.length;
   const staleDates = dated.filter(date => parseValuationDate(date) < staleCutoff).length;
   const futureDates = dated.filter(date => parseValuationDate(date) > todayDate).length;
+  const goalDateCheck = goalHoldings.reduce((check, holding) => {
+    const date = parseValuationDate(holding.asOf);
+    if (!date || date < staleCutoff || date > todayDate) {
+      check.value += Number(holding.value);
+      check.count++;
+    }
+    return check;
+  }, { value: 0, count: 0 });
   const years = Number(goal.years);
   const target = Number(goal.target);
   const validGoal = Number.isFinite(years) && years > 0 && Number.isFinite(target) && target > 0;
@@ -166,6 +174,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
 
   return {
     total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
+    goalDateCheck,
     largestGoalPosition,
     largestIssuer, largestIssuerSources, largestAmc, fundValue, amcCoveredValue, asOfSummary,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,

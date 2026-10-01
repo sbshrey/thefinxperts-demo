@@ -34,6 +34,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Goal cost in today's rupees: ${rupees(goal.target)}`,
     `Value linked to this goal: ${rupees(result.goalTotal)} across ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}`,
     `Linked asset mix: ${result.goalTotal ? MIX_ASSETS.map(asset => `${asset} ${(result.goalAssets[asset] / result.goalTotal * 100).toFixed(1)}%`).join(' | ') : 'No holdings linked'}`,
+    `Linked value needing a valuation-date check: ${rupees(result.goalDateCheck.value)} across ${result.goalDateCheck.count} holdings (missing, future or over 90 days old; entered values remain unverified)`,
     `Current gap before growth, inflation or tax: ${rupees(result.goalGap ?? 0)}`,
   ];
 

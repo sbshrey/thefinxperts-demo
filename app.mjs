@@ -137,6 +137,10 @@ function render() {
     !result.goalTotal ? 'Link holdings below to see their mix for this goal.' :
     result.goalAssets.Other ? 'Other may include unclassified holdings. Verify their asset labels.' :
       'Based only on holdings linked to this goal.';
+  $('#goal-date-check').textContent = pauseGoalFigures ? 'Date check paused with the goal figures.' :
+    !result.goalTotal ? 'Link holdings to check their valuation dates.' :
+    result.goalDateCheck.count ? `${rupees(result.goalDateCheck.value)} of ${rupees(result.goalTotal)} linked value needs a date check (${result.goalDateCheck.count} ${result.goalDateCheck.count === 1 ? 'holding' : 'holdings'}). Missing, future or over 90 days old.` :
+      'No linked values have missing, future or over-90-day dates; values are still unverified.';
   $('#goal-coverage-note').textContent = result.goalHoldingCount === 0 ? 'Choose holdings below to link them to this goal.' :
     result.goalHoldingCount === state.holdings.length ? 'All entered holdings are linked to this goal.' :
     `${result.goalHoldingCount} of ${state.holdings.length} holdings are linked to this goal.`;
@@ -174,8 +178,8 @@ function render() {
   $('#scenario-note').textContent = mixedWithExample ? 'Clear the fictional example before using a personal goal illustration.' : needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : scenario
     ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. This is arithmetic, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
     : 'Enter valid goal assumptions to see an illustrative scenario.';
-  if (scenario && result.findings.some(finding => finding.key === 'valuation')) {
-    $('#scenario-note').textContent += ' Check the valuation dates flagged in your review before relying on these figures.';
+  if (scenario && result.goalDateCheck.count) {
+    $('#scenario-note').textContent += ' Check the linked valuation dates flagged in your goal view before relying on these figures.';
   }
   $('#workspace-note').textContent = state.source === 'demo' ? 'Illustrative portfolio · values are entered, not live' :
     state.source === 'mixed' ? 'Example and your entries · values are entered, not live' : 'Your entries · values are entered, not live';
