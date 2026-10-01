@@ -403,6 +403,17 @@ function render() {
     holdings.append(row);
   });
   $('#empty-message').hidden = state.holdings.length !== 0;
+  const pendingGoals = state.goals.filter(goal => goal.confirmed !== true);
+  const showNextStep = state.source === 'user' && state.holdings.length > 0 && pendingGoals.length > 0;
+  $('#goal-next-step').hidden = !showNextStep;
+  if (showNextStep) {
+    const selectedPending = state.goal.confirmed !== true;
+    $('#goal-next-step-text').textContent = selectedPending ?
+      'Your holdings are entered. Check the goal name, then enter your age, goal cost and time horizon to see goal figures and download your review.' :
+      `${pendingGoals.length} ${pendingGoals.length === 1 ? 'other goal needs' : 'other goals need'} details before you can download a review. Choose a goal above, then enter its details.`;
+    $('#goal-next-step-link').href = selectedPending ? '#goal-form' : '#goals';
+    $('#goal-next-step-link').textContent = selectedPending ? 'Enter my goal details →' : 'Choose a goal →';
+  }
 
   const fundA = state.holdings.find(h => h.id === 'broad');
   const fundB = state.holdings.find(h => h.id === 'growth');
