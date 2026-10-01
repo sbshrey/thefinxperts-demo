@@ -2,6 +2,7 @@ import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs
 import { parseHoldingsCsv } from './csv.mjs';
 import { validateImportReview } from './import-review.mjs';
 import { setGoalHolding, relinkAfterReplacingHoldings } from './goals.mjs';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -190,6 +191,7 @@ function render() {
   $('#amc-note').textContent = result.largestAmc ? `${result.largestAmc.name} · ${pct(result.amcCoveredValue, result.fundValue)} of fund value has known fund houses` : 'Fund-house names are missing';
   $('#coverage-note').textContent = result.classifiedPct < 100 ? 'Unknown fund constituents are excluded from this measure' : 'All entered value has named issuer coverage';
   $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length} review items.`;
+  $('#download-review').disabled = state.source !== 'user' || state.holdings.length === 0;
   updateAccountActions();
 }
 
@@ -472,6 +474,73 @@ function updateAccountActions() {
   $('#account-delete').hidden = !hasSavedPortfolio;
 }
 
+function applyPortfolio(portfolio) {
+  let candidate = portfolio;
+  if (portfolio?.version === 1 && Array.isArray(portfolio.holdings) && portfolio.goal) {
+    const holdings = portfolio.holdings.map(holding => ({ ...holding, id: holding.id || crypto.randomUUID() }));
+    const goal = { ...portfolio.goal, id: crypto.randomUUID(),
+      linkedIds: Array.isArray(portfolio.goal.linkedIds) ? portfolio.goal.linkedIds : holdings.map(holding => holding.id) };
+    candidate = { version: 2, holdings, goals: [goal], activeGoalId: goal.id };
+  }
+  const parsed = parseReviewBackup(JSON.stringify(candidate));
+  if (parsed.errors.length) throw new Error('Invalid portfolio');
+  const saved = parsed.portfolio;
+  state.holdings = saved.holdings.map(holding => ({ ...holding,
+    exposure: holding.type === 'Stock' ? { [holding.name]: 1 } : null }));
+  state.goals = saved.goals;
+  state.activeGoalId = saved.activeGoalId;
+  state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
+  state.source = 'user';
+  creatingGoal = false;
+  $('#cancel-new-goal').hidden = true;
+  $('#goal-form button[type="submit"]').textContent = 'Update my view →';
+  fillGoalForm(state.goal);
+  render();
+}
+
+function downloadJson(payload, filename) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+$('#download-review').addEventListener('click', () => {
+  if (state.source !== 'user' || !state.holdings.length) return;
+  const backup = buildReviewBackup(state);
+  const checked = parseReviewBackup(JSON.stringify(backup));
+  if (checked.errors.length) {
+    $('#backup-status').textContent = 'This review could not be downloaded. Check the holdings and goals.';
+    return;
+  }
+  downloadJson(checked.portfolio, 'thefinxperts-review.json');
+  $('#backup-status').textContent = 'Review file downloaded. Keep it private; no copy was saved by this page.';
+});
+
+$('#restore-review').addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    if (file.size > 2_000_000 || !file.name.toLowerCase().endsWith('.json')) throw new Error('Invalid file');
+    const parsed = parseReviewBackup(await file.text());
+    if (parsed.errors.length) {
+      $('#backup-status').textContent = parsed.errors[0];
+      return;
+    }
+    if (!window.confirm('Replace the holdings and goals currently in this tab with this review file?')) return;
+    applyPortfolio(parsed.portfolio);
+    $('#backup-status').textContent = 'Review restored in this tab. Download a new file after making changes.';
+    $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch {
+    $('#backup-status').textContent = 'The review file could not be read. Your current view is unchanged.';
+  } finally {
+    event.target.value = '';
+  }
+});
+
 async function readSavedPortfolio(apply) {
   try {
     const response = await fetch('/api/portfolio', { cache: 'no-store' });
@@ -484,29 +553,7 @@ async function readSavedPortfolio(apply) {
       return;
     }
     if (apply) {
-      if (![1, 2].includes(portfolio.version) || !Array.isArray(portfolio.holdings) ||
-          (portfolio.version === 1 && !portfolio.goal) || (portfolio.version === 2 && !Array.isArray(portfolio.goals))) {
-        throw new Error('Invalid saved data');
-      }
-      state.holdings = portfolio.holdings.map(holding => ({ ...holding, id: holding.id || crypto.randomUUID(),
-        exposure: holding.type === 'Stock' ? { [holding.name]: 1 } : null }));
-      if (portfolio.version === 1) {
-        const oldGoal = { ...portfolio.goal, id: crypto.randomUUID(),
-          linkedIds: Array.isArray(portfolio.goal.linkedIds) ? portfolio.goal.linkedIds : state.holdings.map(holding => holding.id) };
-        state.goals = [oldGoal];
-        state.activeGoalId = oldGoal.id;
-      } else {
-        if (!portfolio.goals.length || !portfolio.goals.some(goal => goal.id === portfolio.activeGoalId)) throw new Error('Invalid goals');
-        state.goals = portfolio.goals;
-        state.activeGoalId = portfolio.activeGoalId;
-      }
-      state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
-      state.source = 'user';
-      creatingGoal = false;
-      $('#cancel-new-goal').hidden = true;
-      $('#goal-form button[type="submit"]').textContent = 'Update my view →';
-      fillGoalForm(state.goal);
-      render();
+      applyPortfolio(portfolio);
       $('#account-status').textContent = 'Saved portfolio loaded into this tab.';
     } else $('#account-status').textContent = 'A saved portfolio is available. Load it when ready.';
   } catch {
@@ -534,10 +581,7 @@ async function initAccount() {
 
 $('#account-save').addEventListener('click', async () => {
   if (!accountAuthenticated || state.source !== 'user' || !state.holdings.length) return;
-  const payload = { version: 2, holdings: state.holdings.map(holding => ({
-    id: holding.id, name: holding.name, type: holding.type, asset: holding.asset, value: holding.value,
-    asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
-  })), goals: state.goals.map(goal => ({ ...goal })), activeGoalId: state.activeGoalId };
+  const payload = buildReviewBackup(state);
   try {
     const response = await fetch('/api/portfolio', {
       method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Intent': 'portfolio-write' },
@@ -557,13 +601,7 @@ $('#account-export').addEventListener('click', async () => {
     if (!response.ok) throw new Error('Export failed');
     const { portfolio } = await response.json();
     if (!portfolio || ![1, 2].includes(portfolio.version)) throw new Error('No saved portfolio');
-    const blob = new Blob([JSON.stringify(portfolio, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'thefinxperts-portfolio.json';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    downloadJson(portfolio, 'thefinxperts-portfolio.json');
     $('#account-status').textContent = 'Saved portfolio exported. Keep the downloaded file private.';
   } catch { $('#account-status').textContent = 'Could not export the saved portfolio. Try again later.'; }
 });

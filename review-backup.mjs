@@ -1,0 +1,95 @@
+const MAX_BYTES = 2_000_000;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
+const AMFI = /^\d{5,8}$/;
+const TYPES = new Set(['Mutual fund', 'Stock']);
+const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
+const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId'];
+const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi'];
+const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'linkedIds'];
+
+/** The same normalized portfolio shape accepted by the account API, without derived exposures. */
+export function buildReviewBackup(state) {
+  return {
+    version: 2,
+    holdings: state.holdings.map(holding => ({
+      id: holding.id, name: holding.name, type: holding.type, asset: holding.asset, value: holding.value,
+      asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
+    })),
+    goals: state.goals.map(goal => ({ ...goal })),
+    activeGoalId: state.activeGoalId,
+  };
+}
+
+/** Parse an explicitly selected local file; never trust its fields or retain unknown private data. */
+export function parseReviewBackup(text) {
+  if (typeof text !== 'string' || new TextEncoder().encode(text).length > MAX_BYTES) {
+    return invalid('Choose a review JSON file smaller than 2 MB.');
+  }
+  let document;
+  try { document = JSON.parse(text); }
+  catch { return invalid('The review file is not valid JSON.'); }
+  if (!exactKeys(document, TOP_KEYS) || document.version !== 2 ||
+      !Array.isArray(document.holdings) || document.holdings.length > 500 ||
+      !Array.isArray(document.goals) || document.goals.length < 1 || document.goals.length > 10 ||
+      !isUuid(document.activeGoalId)) return invalid('This is not a supported TheFinxperts review file.');
+
+  const holdingIds = new Set();
+  let total = 0;
+  const holdings = [];
+  for (const holding of document.holdings) {
+    if (!exactKeys(holding, HOLDING_KEYS) || !isUuid(holding.id) || holdingIds.has(holding.id) ||
+        !isName(holding.name, 200) || !TYPES.has(holding.type) || !ASSETS.has(holding.asset) ||
+        !boundedNumber(holding.value, Number.MIN_VALUE, 10_000_000_000) ||
+        (holding.asOf != null && !isRealIsoDate(holding.asOf)) ||
+        (holding.amc != null && !isName(holding.amc, 200)) ||
+        (holding.isin != null && (typeof holding.isin !== 'string' || !ISIN.test(holding.isin))) ||
+        (holding.amfi != null && (typeof holding.amfi !== 'string' || !AMFI.test(holding.amfi))) ||
+        (holding.type === 'Stock' && (holding.asset !== 'Equity' || holding.amc || holding.amfi))) {
+      return invalid('A holding in the review file is invalid or contains unsupported fields.');
+    }
+    holdingIds.add(holding.id);
+    total += holding.value;
+    holdings.push({ ...holding, name: holding.name.trim(), amc: holding.amc?.trim() || null });
+  }
+  if (total > 1_000_000_000_000) return invalid('The combined portfolio value is too large.');
+
+  const goalIds = new Set();
+  const assigned = new Set();
+  const goals = [];
+  for (const goal of document.goals) {
+    if (!exactKeys(goal, GOAL_KEYS) || !isUuid(goal.id) || goalIds.has(goal.id) || !isName(goal.name, 60) ||
+        !boundedNumber(goal.age, 18, 100, true) || !boundedNumber(goal.years, 1, 50, true) ||
+        !boundedNumber(goal.target, 1_000, 1_000_000_000_000) ||
+        !boundedNumber(goal.monthlyContribution, 0, 100_000_000) ||
+        !boundedNumber(goal.returnPct, -20, 13) || !boundedNumber(goal.inflationPct, -5, 15) ||
+        (goal.equityDropPct !== undefined && !boundedNumber(goal.equityDropPct, 0, 60)) ||
+        !Array.isArray(goal.linkedIds) || goal.linkedIds.length > 500) {
+      return invalid('A goal in the review file is invalid or contains unsupported fields.');
+    }
+    for (const id of goal.linkedIds) {
+      if (!isUuid(id) || !holdingIds.has(id) || assigned.has(id)) {
+        return invalid('Goal links are invalid or count a holding more than once.');
+      }
+      assigned.add(id);
+    }
+    goalIds.add(goal.id);
+    goals.push({ ...goal, name: goal.name.trim(), linkedIds: [...goal.linkedIds] });
+  }
+  if (!goalIds.has(document.activeGoalId)) return invalid('The selected goal is missing from the review file.');
+  return { portfolio: { version: 2, holdings, goals, activeGoalId: document.activeGoalId }, errors: [] };
+}
+
+function invalid(message) { return { portfolio: null, errors: [message] }; }
+function record(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
+function exactKeys(value, allowed) { return record(value) && Object.keys(value).every(key => allowed.includes(key)); }
+function isUuid(value) { return typeof value === 'string' && UUID.test(value); }
+function isName(value, max) { return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max; }
+function boundedNumber(value, min, max, integer = false) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max && (!integer || Number.isInteger(value));
+}
+function isRealIsoDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
