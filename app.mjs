@@ -1143,6 +1143,7 @@ $('#download-review').addEventListener('click', () => {
   $('#backup-status').textContent = 'Review file downloaded. Keep it private; no copy was saved by this page.';
 });
 
+$('#restore-shortcut').addEventListener('click', () => $('#restore-review').click());
 $('#restore-review').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
