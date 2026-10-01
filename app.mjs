@@ -320,7 +320,7 @@ function render() {
     const update = document.createElement('details');
     update.className = 'holding-update';
     const updateTitle = document.createElement('summary');
-    updateTitle.textContent = 'Update value, date or asset';
+    updateTitle.textContent = holding.granularity === 'fund_house' ? 'Update value or date' : 'Update value, date, asset or ISIN';
     const updateForm = document.createElement('form');
     const valueLabel = document.createElement('label');
     valueLabel.textContent = 'Current value (₹)';
@@ -356,6 +356,23 @@ function render() {
     assetHint.textContent = holding.type === 'Stock' ? 'Direct stocks stay in Equity.' :
       holding.granularity === 'fund_house' ? 'A fund-house total may contain several asset categories. Use a detailed scheme statement before classifying it.' :
         'Check the scheme objective or original statement before changing its category.';
+    let isinInput = null;
+    let isinLabel = null;
+    let isinHint = null;
+    if (holding.granularity !== 'fund_house') {
+      isinLabel = document.createElement('label');
+      isinLabel.textContent = 'ISIN from your statement (optional)';
+      isinInput = document.createElement('input');
+      isinInput.type = 'text';
+      isinInput.maxLength = 12;
+      isinInput.spellcheck = false;
+      isinInput.autocapitalize = 'characters';
+      isinInput.value = holding.isin || '';
+      isinLabel.append(isinInput);
+      isinHint = document.createElement('p');
+      isinHint.className = 'form-hint';
+      isinHint.textContent = 'Format checked only. Changing this code removes any linked AMFI code and fund constituent estimate.';
+    }
     const updateError = document.createElement('p');
     updateError.className = 'form-error';
     updateError.setAttribute('role', 'alert');
@@ -363,12 +380,15 @@ function render() {
     updateButton.type = 'submit';
     updateButton.className = 'text-button';
     updateButton.textContent = 'Save holding changes';
-    updateForm.append(valueLabel, dateLabel, assetLabel, assetHint, updateError, updateButton);
+    updateForm.append(valueLabel, dateLabel, assetLabel, assetHint);
+    if (isinLabel) updateForm.append(isinLabel, isinHint);
+    updateForm.append(updateError, updateButton);
     updateForm.addEventListener('submit', event => {
       event.preventDefault();
       const value = Number(valueInput.value);
       const asOf = dateInput.value;
       const asset = assetInput.value;
+      const isin = isinInput?.value.trim().toUpperCase() || '';
       if (!Number.isFinite(value) || value <= 0 || value > 1e10 || !validEnteredDate(asOf)) {
         updateError.textContent = 'Enter a positive value and a valid date no later than today.';
         return;
@@ -378,9 +398,22 @@ function render() {
         updateError.textContent = 'Check the asset category against the source before saving.';
         return;
       }
-      state.holdings = state.holdings.map(item => item.id === holding.id ?
-        { ...item, value, asOf: asOf || null, asset,
-          ...(asset !== item.asset ? { exposure: null } : {}) } : item);
+      if (isin && !/^[A-Z]{2}[A-Z0-9]{10}$/.test(isin)) {
+        updateError.textContent = 'Check the 12-character ISIN against your statement, or leave it blank.';
+        return;
+      }
+      state.holdings = state.holdings.map(item => {
+        if (item.id !== holding.id) return item;
+        const identifierChanged = isinInput && isin !== (item.isin || '');
+        const updated = { ...item, value, asOf: asOf || null, asset,
+          ...((asset !== item.asset || (identifierChanged && item.type === 'Mutual fund')) ? { exposure: null } : {}) };
+        if (isinInput) {
+          if (isin) updated.isin = isin;
+          else delete updated.isin;
+          if (identifierChanged) delete updated.amfi;
+        }
+        return updated;
+      });
       render();
     });
     update.append(updateTitle, updateForm);
