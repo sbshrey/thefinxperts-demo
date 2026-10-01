@@ -16,6 +16,8 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const linkedIds = Array.isArray(goal.linkedIds) ? new Set(goal.linkedIds) : null;
   const goalHoldings = linkedIds ? valid.filter(holding => linkedIds.has(holding.id)) : valid;
   const goalTotal = goalHoldings.reduce((sum, holding) => sum + Number(holding.value), 0);
+  const largestGoalHolding = goalHoldings.reduce((largest, holding) =>
+    !largest || Number(holding.value) > Number(largest.value) ? holding : largest, null);
   const goalEquityValue = goalHoldings.filter(holding => holding.asset === 'Equity')
     .reduce((sum, holding) => sum + Number(holding.value), 0);
   const goalEquityPct = goalTotal ? goalEquityValue / goalTotal * 100 : 0;
@@ -114,6 +116,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
 
   return {
     total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
+    largestGoalHolding,
     largestIssuer, largestIssuerSources, largestAmc, fundValue, amcCoveredValue, asOfSummary,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,

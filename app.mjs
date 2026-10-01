@@ -102,6 +102,11 @@ function render() {
   $('#goal-coverage-note').textContent = result.goalHoldingCount === 0 ? 'Choose holdings below to link them to this goal.' :
     result.goalHoldingCount === state.holdings.length ? 'All entered holdings are linked to this goal.' :
     `${result.goalHoldingCount} of ${state.holdings.length} holdings are linked to this goal.`;
+  $('#goal-largest-value').textContent = result.largestGoalHolding ?
+    `${(Number(result.largestGoalHolding.value) / result.goalTotal * 100).toFixed(1)}%` : 'Unknown';
+  $('#goal-largest-note').textContent = result.largestGoalHolding ?
+    `${result.largestGoalHolding.name || 'Unnamed holding'} · one entered holding, not look-through exposure` :
+    'Assign holdings to this goal to see this share';
   $('#coverage').textContent = `${result.classifiedPct.toFixed(0)}%`;
   $('#mix-summary').textContent = `Equity ${result.equityPct.toFixed(0)}% · Debt ${pct(result.assets.Debt, result.total)} · Gold ${pct(result.assets.Gold, result.total)}`;
   $('#summary-asof').textContent = result.asOfSummary;
