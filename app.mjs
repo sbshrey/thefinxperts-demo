@@ -325,7 +325,7 @@ function render() {
     const update = document.createElement('details');
     update.className = 'holding-update';
     const updateTitle = document.createElement('summary');
-    updateTitle.textContent = 'Update value or date';
+    updateTitle.textContent = 'Update value, date or asset';
     const updateForm = document.createElement('form');
     const valueLabel = document.createElement('label');
     valueLabel.textContent = 'Current value (₹)';
@@ -344,23 +344,48 @@ function render() {
     dateInput.max = indiaToday();
     dateInput.value = holding.asOf || '';
     dateLabel.append(dateInput);
+    const assetLabel = document.createElement('label');
+    assetLabel.textContent = 'Asset category';
+    const assetInput = document.createElement('select');
+    for (const asset of ['Equity', 'Debt', 'Gold', 'Other']) {
+      const option = document.createElement('option');
+      option.value = asset;
+      option.textContent = asset;
+      assetInput.append(option);
+    }
+    assetInput.value = holding.asset;
+    assetInput.disabled = holding.type === 'Stock' || holding.granularity === 'fund_house';
+    assetLabel.append(assetInput);
+    const assetHint = document.createElement('p');
+    assetHint.className = 'form-hint';
+    assetHint.textContent = holding.type === 'Stock' ? 'Direct stocks stay in Equity.' :
+      holding.granularity === 'fund_house' ? 'A fund-house total may contain several asset categories. Use a detailed scheme statement before classifying it.' :
+        'Check the scheme objective or original statement before changing its category.';
     const updateError = document.createElement('p');
     updateError.className = 'form-error';
     updateError.setAttribute('role', 'alert');
     const updateButton = document.createElement('button');
     updateButton.type = 'submit';
     updateButton.className = 'text-button';
-    updateButton.textContent = 'Save value and date';
-    updateForm.append(valueLabel, dateLabel, updateError, updateButton);
+    updateButton.textContent = 'Save holding changes';
+    updateForm.append(valueLabel, dateLabel, assetLabel, assetHint, updateError, updateButton);
     updateForm.addEventListener('submit', event => {
       event.preventDefault();
       const value = Number(valueInput.value);
       const asOf = dateInput.value;
+      const asset = assetInput.value;
       if (!Number.isFinite(value) || value <= 0 || value > 1e10 || !validEnteredDate(asOf)) {
         updateError.textContent = 'Enter a positive value and a valid date no later than today.';
         return;
       }
-      state.holdings = state.holdings.map(item => item.id === holding.id ? { ...item, value, asOf: asOf || null } : item);
+      if (!['Equity', 'Debt', 'Gold', 'Other'].includes(asset) ||
+          ((holding.type === 'Stock' || holding.granularity === 'fund_house') && asset !== holding.asset)) {
+        updateError.textContent = 'Check the asset category against the source before saving.';
+        return;
+      }
+      state.holdings = state.holdings.map(item => item.id === holding.id ?
+        { ...item, value, asOf: asOf || null, asset,
+          ...(asset !== item.asset ? { exposure: null } : {}) } : item);
       if (state.source === 'demo') state.source = 'mixed';
       render();
     });
