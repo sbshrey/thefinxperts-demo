@@ -146,6 +146,15 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       basis: `${rupees(goalEquityValue)} labelled Equity ÷ ${rupees(goalTotal)} linked to this goal = ${goalEquityPct.toFixed(1)}%; entered horizon ${years} ${years === 1 ? 'year' : 'years'}.`,
       limitation: 'Asset labels and values are as entered; this does not assess your cash reserve, liabilities or capacity for loss.' });
   }
+  if (validGoal && largestGoalPosition && largestGoalPosition.granularity !== 'fund_house' && goalTotal > 0 &&
+      largestGoalPosition.value / goalTotal >= 0.5) {
+    const share = largestGoalPosition.value / goalTotal * 100;
+    findings.push({ key: 'position', tone: 'blue', label: 'Goal concentration', title: 'One position carries much of this goal',
+      detail: `${String(largestGoalPosition.name).replace(/\s+/g, ' ').trim()} is ${share.toFixed(1)}% of the entered value linked to this goal. Check what this holding contains and the role you expect it to play.`,
+      question: 'What is inside this position, and how would a setback affect this goal?',
+      basis: `${rupees(largestGoalPosition.value)} in ${largestGoalPosition.entries} ${largestGoalPosition.entries === 1 ? 'entry' : 'entries'} ÷ ${rupees(goalTotal)} linked to this goal = ${share.toFixed(1)}%. Entries are combined only when their supplied ISIN and classification agree.`,
+      limitation: 'The 50% trigger is a review prompt, not a target allocation. One fund may hold many securities, and unlinked holdings are outside this calculation; this share alone does not prove a need to trade.' });
+  }
   if (largestIssuer && total && largestIssuer[1] / total >= 0.10) {
     const sources = largestIssuerSources;
     const positions = sources.funds + sources.stocks;
