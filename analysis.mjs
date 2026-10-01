@@ -16,8 +16,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const linkedIds = Array.isArray(goal.linkedIds) ? new Set(goal.linkedIds) : null;
   const goalHoldings = linkedIds ? valid.filter(holding => linkedIds.has(holding.id)) : valid;
   const goalTotal = goalHoldings.reduce((sum, holding) => sum + Number(holding.value), 0);
-  const largestGoalHolding = goalHoldings.reduce((largest, holding) =>
-    !largest || Number(holding.value) > Number(largest.value) ? holding : largest, null);
+  const largestGoalPosition = largestPositionByIsin(goalHoldings);
   const goalEquityValue = goalHoldings.filter(holding => holding.asset === 'Equity')
     .reduce((sum, holding) => sum + Number(holding.value), 0);
   const goalEquityPct = goalTotal ? goalEquityValue / goalTotal * 100 : 0;
@@ -29,12 +28,18 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const issuers = new Map();
   const issuerSources = new Map();
   const amcs = new Map();
+  const isinClassifications = new Map();
   let classifiedValue = 0;
   let fundValue = 0;
   let amcCoveredValue = 0;
 
   for (const holding of valid) {
     const value = Number(holding.value);
+    if (typeof holding.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin)) {
+      const classifications = isinClassifications.get(holding.isin) || new Set();
+      classifications.add(`${holding.type}|${holding.asset}`);
+      isinClassifications.set(holding.isin, classifications);
+    }
     assets[Object.hasOwn(assets, holding.asset) ? holding.asset : 'Other'] += value;
     if (holding.type === 'Mutual fund') {
       fundValue += value;
@@ -81,6 +86,11 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const shock = calculateEquityShockScenario(goalTotal, goalEquityValue, target, Number(goal.equityDropPct ?? 20));
   const equityPct = total ? (assets.Equity / total) * 100 : 0;
   const findings = [];
+  const conflictingIsins = [...isinClassifications.values()].filter(classifications => classifications.size > 1).length;
+  if (conflictingIsins) {
+    findings.push({ key: 'identity', tone: 'amber', label: 'Data quality', title: 'Check conflicting labels',
+      detail: `${conflictingIsins} ISIN ${conflictingIsins === 1 ? 'appears' : 'appear'} with different holding types or asset categories. Recheck those rows before interpreting concentration or goal mix.` });
+  }
 
   if (valid.length && (missingDates || staleDates || futureDates)) {
     const issues = [
@@ -116,13 +126,27 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
 
   return {
     total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
-    largestGoalHolding,
+    largestGoalPosition,
     largestIssuer, largestIssuerSources, largestAmc, fundValue, amcCoveredValue, asOfSummary,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,
     scenario, shock,
     findings: findings.slice(0, 3),
   };
+}
+
+/** Combine only entries with the same valid-format ISIN and classification. */
+function largestPositionByIsin(holdings) {
+  const positions = new Map();
+  holdings.forEach((holding, index) => {
+    const identified = typeof holding.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin);
+    const key = identified ? `isin:${holding.isin}|${holding.type}|${holding.asset}` : `row:${index}`;
+    const previous = positions.get(key);
+    positions.set(key, previous ? { ...previous, value: previous.value + Number(holding.value), entries: previous.entries + 1 } :
+      { name: holding.name || 'Unnamed holding', value: Number(holding.value), entries: 1 });
+  });
+  return [...positions.values()].reduce((largest, position) =>
+    !largest || position.value > largest.value ? position : largest, null);
 }
 
 function parseValuationDate(value) {
