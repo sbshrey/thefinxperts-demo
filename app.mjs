@@ -27,6 +27,8 @@ let brokerRows = null;
 let accountAuthenticated = false;
 let hasSavedPortfolio = false;
 let creatingGoal = false;
+let inputMode = 'manual';
+let casAvailable = false;
 
 function selectGoal(id) {
   const selected = state.goals.find(goal => goal.id === id);
@@ -460,6 +462,8 @@ $('#holding-type').addEventListener('change', () => {
 });
 
 function clearCurrentReview() {
+  pendingImport = null;
+  $('#import-preview').hidden = true;
   state.holdings = [];
   state.goals = state.goals.map(goal => ({ ...goal, linkedIds: [] }));
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
@@ -467,11 +471,46 @@ function clearCurrentReview() {
   render();
 }
 
+function showInputMode(mode) {
+  if (!['manual', 'active', 'broker', 'csv', 'cas'].includes(mode) || (mode === 'cas' && !casAvailable)) return;
+  if (mode !== inputMode) {
+    $('#active-file').value = '';
+    $('#active-password').value = '';
+    $('#cas-file').value = '';
+    $('#cas-password').value = '';
+    $('#broker-file').value = '';
+    $('#csv-file').value = '';
+    brokerRows = null;
+    $('#broker-map').hidden = true;
+    for (const selector of ['#active-error', '#broker-error', '#cas-error', '#import-error']) $(selector).textContent = '';
+  }
+  inputMode = mode;
+  $('#holding-form').hidden = mode !== 'manual';
+  $('#holding-form').parentElement.classList.toggle('single-column', mode !== 'manual');
+  for (const [name, selector] of [['active', '#active-import'], ['broker', '#broker-import'],
+    ['csv', '#csv-import'], ['cas', '#cas-local']]) $(selector).hidden = mode !== name || (name === 'cas' && !casAvailable);
+  for (const button of document.querySelectorAll('#input-choice [data-input]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.input === mode));
+  }
+}
+
+document.querySelectorAll('#input-choice [data-input]').forEach(button => button.addEventListener('click', () => {
+  const mode = button.dataset.input;
+  if (mode !== inputMode && pendingImport) {
+    if (!window.confirm('Discard the current import preview and choose another source?')) return;
+    pendingImport = null;
+    $('#import-preview').hidden = true;
+  }
+  showInputMode(mode);
+  if (mode === 'manual') $('#holding-name').focus();
+}));
+
 function startOwnReview() {
   if (state.source === 'mixed' && !window.confirm('Clear the fictional example and your unsaved entries to start fresh?')) return;
   if (state.source !== 'user') clearCurrentReview();
-  $('#holding-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  $('#holding-name').focus({ preventScroll: true });
+  showInputMode('manual');
+  $('#input-choice').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#choose-manual').focus({ preventScroll: true });
 }
 
 $('#start-own-review').addEventListener('click', startOwnReview);
@@ -479,15 +518,19 @@ $('#start-own-review-inline').addEventListener('click', startOwnReview);
 $('#reset-demo').addEventListener('click', () => {
   if (state.source !== 'demo' && state.holdings.length &&
       !window.confirm('Replace your current holdings and goals with the fictional example? Download a review file first if you want to keep them.')) return;
+  pendingImport = null;
+  $('#import-preview').hidden = true;
   state.holdings = structuredClone(sampleHoldings);
   state.goals = [demoGoal()];
   state.source = 'demo';
   selectGoal(state.goals[0].id);
+  showInputMode('manual');
 });
 $('#clear-all').addEventListener('click', () => {
   if (state.source !== 'demo' && state.holdings.length &&
       !window.confirm('Clear all holdings and goal links in this tab? Download a review file first if you want to keep them.')) return;
   clearCurrentReview();
+  showInputMode('manual');
 });
 $('#csv-file').addEventListener('change', async event => {
   pendingImport = null;
@@ -740,11 +783,15 @@ $('#preview-active').addEventListener('click', async () => {
 fetch('/api/cas/status', { cache: 'no-store' }).then(response => response.ok ? response.json() : null)
   .then(info => {
     if (info?.local === true) {
-      $('#cas-local').hidden = false;
+      casAvailable = true;
+      $('#choose-cas').hidden = false;
+      showInputMode(inputMode);
       $('#cas-eyebrow').textContent = 'LOCAL CAS PREVIEW';
       $('#cas-description').textContent = 'The PDF and password go only to the preview server on this computer. They are not saved in project files or sent to the hosted service. Review the extracted holdings before replacing the example.';
     } else if (info?.available === true) {
-      $('#cas-local').hidden = false;
+      casAvailable = true;
+      $('#choose-cas').hidden = false;
+      showInputMode(inputMode);
       $('#cas-eyebrow').textContent = 'PRIVATE CAS PREVIEW';
       $('#cas-description').textContent = 'Your signed-in server processes the PDF and password for this request. It returns a holdings preview and does not save the original PDF or password. Review every row before replacing your entries.';
       $('#cas-help').textContent = 'Up to 15 MB. Only original CAMS or KFintech statements supported. No Gmail connection is used. Preview attempts are limited.';
@@ -986,4 +1033,5 @@ $('#account-delete').addEventListener('click', async () => {
   } catch { $('#account-status').textContent = 'Could not delete the saved portfolio. Try again later.'; }
 });
 render();
+showInputMode('manual');
 initAccount();
