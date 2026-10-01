@@ -15,6 +15,13 @@ const firstGoal = demoGoal();
 const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals: [firstGoal], activeGoalId: firstGoal.id, goal: firstGoal };
 const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
 const $ = selector => document.querySelector(selector);
+const indiaToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+function validEnteredDate(value) {
+  if (!value) return true;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > indiaToday()) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 let pendingImport = null;
 let brokerRows = null;
 let accountAuthenticated = false;
@@ -100,6 +107,7 @@ function syncGoalSelector() {
 }
 
 function render() {
+  $('#holding-date').max = indiaToday();
   syncGoalSelector();
   const needsGoalConfirmation = state.source !== 'demo' && state.goal.confirmed === false;
   const mixedWithExample = state.source === 'mixed';
@@ -245,7 +253,50 @@ function render() {
     const otherGoal = state.goals.find(goal => goal.id !== state.activeGoalId && goal.linkedIds.includes(holding.id));
     goalLinkText.textContent = otherGoal ? `Assigned to ${otherGoal.name}` : 'For this goal';
     goalLink.append(goalCheckbox, goalLinkText);
-    info.append(name, meta, goalLink);
+    const update = document.createElement('details');
+    update.className = 'holding-update';
+    const updateTitle = document.createElement('summary');
+    updateTitle.textContent = 'Update value or date';
+    const updateForm = document.createElement('form');
+    const valueLabel = document.createElement('label');
+    valueLabel.textContent = 'Current value (₹)';
+    const valueInput = document.createElement('input');
+    valueInput.type = 'number';
+    valueInput.inputMode = 'decimal';
+    valueInput.min = '1';
+    valueInput.max = '10000000000';
+    valueInput.required = true;
+    valueInput.value = holding.value;
+    valueLabel.append(valueInput);
+    const dateLabel = document.createElement('label');
+    dateLabel.textContent = 'Date value was checked';
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.max = indiaToday();
+    dateInput.value = holding.asOf || '';
+    dateLabel.append(dateInput);
+    const updateError = document.createElement('p');
+    updateError.className = 'form-error';
+    updateError.setAttribute('role', 'alert');
+    const updateButton = document.createElement('button');
+    updateButton.type = 'submit';
+    updateButton.className = 'text-button';
+    updateButton.textContent = 'Save value and date';
+    updateForm.append(valueLabel, dateLabel, updateError, updateButton);
+    updateForm.addEventListener('submit', event => {
+      event.preventDefault();
+      const value = Number(valueInput.value);
+      const asOf = dateInput.value;
+      if (!Number.isFinite(value) || value <= 0 || value > 1e10 || !validEnteredDate(asOf)) {
+        updateError.textContent = 'Enter a positive value and a valid date no later than today.';
+        return;
+      }
+      state.holdings = state.holdings.map(item => item.id === holding.id ? { ...item, value, asOf: asOf || null } : item);
+      if (state.source === 'demo') state.source = 'mixed';
+      render();
+    });
+    update.append(updateTitle, updateForm);
+    info.append(name, meta, goalLink, update);
     const amount = document.createElement('strong');
     amount.className = 'holding-amount';
     amount.textContent = rupees(holding.value);
@@ -375,14 +426,17 @@ $('#holding-form').addEventListener('submit', event => {
   event.preventDefault();
   const name = $('#holding-name').value.trim();
   const value = Number($('#holding-value').value);
+  const asOf = $('#holding-date').value;
   const asset = $('#holding-asset').value;
   const type = $('#holding-type').value;
-  if (!name || name.length > 80 || !Number.isFinite(value) || value <= 0 || value > 1e10 || (type === 'Stock' && asset !== 'Equity')) {
-    $('#holding-error').textContent = 'Enter a name (up to 80 characters) and a positive value.';
+  if (!name || name.length > 80 || !Number.isFinite(value) || value <= 0 || value > 1e10 ||
+      (type === 'Stock' && asset !== 'Equity') || !validEnteredDate(asOf)) {
+    $('#holding-error').textContent = 'Enter a name, a positive value, and a date no later than today if supplied.';
     return;
   }
   $('#holding-error').textContent = '';
-  const added = { id: crypto.randomUUID(), name, type, asset, value, exposure: type === 'Stock' ? { [name]: 1 } : null };
+  const added = { id: crypto.randomUUID(), name, type, asset, value, asOf: asOf || null,
+    exposure: type === 'Stock' ? { [name]: 1 } : null };
   state.holdings.push(added);
   state.goals = setGoalHolding(state.goals, state.activeGoalId, added.id, true);
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
