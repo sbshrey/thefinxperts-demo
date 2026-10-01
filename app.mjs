@@ -2,7 +2,7 @@ import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { validateImportReview, validateImportMerge } from './import-review.mjs';
-import { setGoalHolding, relinkAfterReplacingHoldings, linkAddedHoldings } from './goals.mjs';
+import { setGoalHolding, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, compareMixPlan, validMixPlan } from './mix-plan.mjs';
@@ -159,9 +159,10 @@ function render() {
     !result.goalTotal ? 'Link holdings to check their valuation dates.' :
     result.goalDateCheck.count ? `${rupees(result.goalDateCheck.value)} of ${rupees(result.goalTotal)} linked value needs a date check (${result.goalDateCheck.count} ${result.goalDateCheck.count === 1 ? 'holding' : 'holdings'}). Missing, future or over 90 days old.` :
       'No linked values have missing, future or over-90-day dates; values are still unverified.';
-  $('#goal-coverage-note').textContent = result.goalHoldingCount === 0 ? 'Choose holdings below to link them to this goal.' :
+  const goalCoverage = summarizeGoalCoverage(state.goals, state.activeGoalId, state.holdings);
+  $('#goal-coverage-note').textContent = !state.holdings.length ? 'Add holdings below to link them to this goal.' :
     result.goalHoldingCount === state.holdings.length ? 'All entered holdings are linked to this goal.' :
-    `${result.goalHoldingCount} of ${state.holdings.length} holdings are linked to this goal.`;
+    `${result.goalHoldingCount} of ${state.holdings.length} holdings are linked here. ${rupees(goalCoverage.elsewhereValue)} is assigned to other goals; ${rupees(goalCoverage.unassignedValue)} is unassigned. Neither amount is included in this goal's figures.`;
   $('#goal-largest-value').textContent = result.largestGoalPosition ?
     `${(result.largestGoalPosition.value / result.goalTotal * 100).toFixed(1)}%` : 'Unknown';
   $('#goal-largest-label').textContent = result.largestGoalPosition?.granularity === 'fund_house' ?

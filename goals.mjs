@@ -23,3 +23,18 @@ export function linkAddedHoldings(goals, activeGoalId, holdings) {
     { ...goal, linkedIds: [...new Set([...(goal.linkedIds || []), ...newIds])] } :
     { ...goal, linkedIds: [...(goal.linkedIds || [])] });
 }
+
+/** Show which entered value is outside the selected goal's figures. */
+export function summarizeGoalCoverage(goals, activeGoalId, holdings) {
+  const selected = new Set(goals.find(goal => goal.id === activeGoalId)?.linkedIds || []);
+  const elsewhere = new Set(goals.filter(goal => goal.id !== activeGoalId)
+    .flatMap(goal => goal.linkedIds || []));
+  const summary = { elsewhereValue: 0, elsewhereCount: 0, unassignedValue: 0, unassignedCount: 0 };
+  for (const holding of holdings) {
+    if (selected.has(holding.id)) continue;
+    const bucket = elsewhere.has(holding.id) ? 'elsewhere' : 'unassigned';
+    summary[`${bucket}Value`] += Number(holding.value);
+    summary[`${bucket}Count`]++;
+  }
+  return summary;
+}
