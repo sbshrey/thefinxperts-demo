@@ -1,0 +1,478 @@
+import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs';
+import { parseHoldingsCsv } from './csv.mjs';
+import { validateImportReview } from './import-review.mjs';
+
+const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goal: { years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0, returnPct: 0, inflationPct: 0, equityDropPct: 20 } };
+const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
+const $ = selector => document.querySelector(selector);
+let pendingImport = null;
+let accountAuthenticated = false;
+let hasSavedPortfolio = false;
+
+function render() {
+  const result = analyzePortfolio(state.holdings, state.goal);
+  $('#portfolio-value').textContent = rupees(result.total);
+  $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
+  $('#goal-years-value').textContent = `${state.goal.years} years`;
+  $('#age-at-goal').textContent = `Age ${Number(state.goal.age) + Number(state.goal.years)} at the goal date`;
+  $('#goal-gap').textContent = result.goalGap === null ? '—' : rupees(result.goalGap);
+  $('#goal-gap-note').textContent = 'Simple arithmetic before growth, inflation or tax';
+  $('#goal-assigned').textContent = `${rupees(result.goalTotal)} assigned from ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}`;
+  $('#goal-coverage-note').textContent = result.goalHoldingCount === 0 ? 'Choose holdings below to link them to this goal.' :
+    result.goalHoldingCount === state.holdings.length ? 'All entered holdings are linked to this goal.' :
+    `${result.goalHoldingCount} of ${state.holdings.length} holdings are linked to this goal.`;
+  $('#coverage').textContent = `${result.classifiedPct.toFixed(0)}%`;
+  $('#mix-summary').textContent = `Equity ${result.equityPct.toFixed(0)}% · Debt ${pct(result.assets.Debt, result.total)} · Gold ${pct(result.assets.Gold, result.total)}`;
+  $('#summary-asof').textContent = result.asOfSummary;
+  $('#goal-title').textContent = state.goal.name;
+  const scenario = result.scenario;
+  $('#scenario-cost').textContent = scenario ? rupees(scenario.futureCost) : '—';
+  $('#scenario-value').textContent = scenario ? rupees(scenario.projectedValue) : '—';
+  $('#scenario-gap').textContent = scenario ? rupees(scenario.futureGap) : '—';
+  $('#scenario-monthly').textContent = scenario ? rupees(Math.ceil(scenario.monthlyTotalNeeded)) : '—';
+  const shock = result.shock;
+  $('#shock-drop').textContent = shock ? `${shock.dropPct}%` : '—';
+  $('#shock-loss').textContent = shock ? rupees(shock.loss) : '—';
+  $('#shock-value').textContent = shock ? rupees(shock.valueAfterLoss) : '—';
+  $('#shock-gap').textContent = shock ? rupees(shock.gapAfterLoss) : '—';
+  $('#shock-note').textContent = shock
+    ? `This subtracts ${shock.dropPct}% once from only the holdings marked Equity and linked to this goal. It uses today's entered values and goal cost; it excludes future growth, contributions, inflation, taxes and changes in other assets. It is a what-if loss, not a prediction or a target allocation.`
+    : 'Enter a valid equity-loss percentage to see this illustration.';
+  $('#scenario-note').textContent = scenario
+    ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. This is arithmetic, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
+    : 'Enter valid goal assumptions to see an illustrative scenario.';
+  if (result.findings.some(finding => finding.key === 'valuation')) {
+    $('#scenario-note').textContent += ' Check the valuation dates flagged in your review before relying on these figures.';
+  }
+  $('#workspace-note').textContent = state.source === 'demo' ? 'Illustrative portfolio · values are entered, not live' :
+    state.source === 'mixed' ? 'Example and your entries · values are entered, not live' : 'Your entries · values are entered, not live';
+  $('#panel-foot').textContent = 'These are educational review prompts, not instructions to buy or sell. ' +
+    (state.source === 'demo' ? 'The starting example is fictional.' : 'Your values are used as entered; fund constituent data is not verified here.');
+
+  const mix = $('#mix-bar');
+  mix.replaceChildren();
+  for (const [asset, color] of [['Equity', 'equity'], ['Debt', 'debt'], ['Gold', 'gold'], ['Other', 'other']]) {
+    const share = result.total ? result.assets[asset] / result.total * 100 : 0;
+    if (!share) continue;
+    const part = document.createElement('span');
+    part.className = `mix-part ${color}`;
+    part.style.width = `${share}%`;
+    part.setAttribute('aria-label', `${asset}: ${share.toFixed(1)}%`);
+    mix.append(part);
+  }
+
+  const findings = $('#finding-list');
+  findings.replaceChildren();
+  $('#findings-title').textContent = result.findings.length === 3 ? 'Three things worth a closer look' : result.findings.length === 0 ? 'Add holdings to start your review' : `${result.findings.length} ${result.findings.length === 1 ? 'thing' : 'things'} worth a closer look`;
+  $('#panel-counter').textContent = result.findings.length ? `${String(result.findings.length).padStart(2, '0')} REVIEW ${result.findings.length === 1 ? 'ITEM' : 'ITEMS'}` : 'NO HOLDINGS';
+  result.findings.forEach((finding, index) => {
+    const article = document.createElement('article');
+    article.className = 'finding';
+    const number = document.createElement('div');
+    number.className = 'finding-number';
+    number.textContent = `0${index + 1}`;
+    const content = document.createElement('div');
+    const dot = document.createElement('span');
+    dot.className = `finding-label ${finding.tone}`;
+    const label = document.createElement('span');
+    label.className = 'eyebrow';
+    label.textContent = finding.label;
+    const title = document.createElement('h3');
+    title.textContent = finding.title;
+    const detail = document.createElement('p');
+    detail.textContent = finding.detail;
+    content.append(dot, label, title, detail);
+    article.append(number, content);
+    findings.append(article);
+  });
+
+  const holdings = $('#holdings-list');
+  holdings.replaceChildren();
+  state.holdings.forEach(holding => {
+    const row = document.createElement('div');
+    row.className = 'holding-row';
+    const info = document.createElement('div');
+    info.className = 'holding-info';
+    const name = document.createElement('strong');
+    name.textContent = holding.name;
+    const meta = document.createElement('small');
+    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    const goalLink = document.createElement('label');
+    goalLink.className = 'holding-goal-link';
+    const goalCheckbox = document.createElement('input');
+    goalCheckbox.type = 'checkbox';
+    goalCheckbox.checked = !Array.isArray(state.goal.linkedIds) || state.goal.linkedIds.includes(holding.id);
+    goalCheckbox.setAttribute('aria-label', `Count ${holding.name} toward ${state.goal.name}`);
+    goalCheckbox.addEventListener('change', () => {
+      const selected = new Set(state.goal.linkedIds || state.holdings.map(item => item.id));
+      if (goalCheckbox.checked) selected.add(holding.id);
+      else selected.delete(holding.id);
+      state.goal.linkedIds = [...selected];
+      render();
+    });
+    const goalLinkText = document.createElement('span');
+    goalLinkText.textContent = 'For this goal';
+    goalLink.append(goalCheckbox, goalLinkText);
+    info.append(name, meta, goalLink);
+    const amount = document.createElement('strong');
+    amount.className = 'holding-amount';
+    amount.textContent = rupees(holding.value);
+    const remove = document.createElement('button');
+    remove.className = 'remove-button';
+    remove.type = 'button';
+    remove.setAttribute('aria-label', `Remove ${holding.name}`);
+    remove.textContent = '×';
+    remove.addEventListener('click', () => {
+      state.holdings = state.holdings.filter(h => h.id !== holding.id);
+      if (Array.isArray(state.goal.linkedIds)) state.goal.linkedIds = state.goal.linkedIds.filter(id => id !== holding.id);
+      render();
+    });
+    row.append(info, amount, remove);
+    holdings.append(row);
+  });
+  $('#empty-message').hidden = state.holdings.length !== 0;
+
+  const fundA = state.holdings.find(h => h.id === 'broad');
+  const fundB = state.holdings.find(h => h.id === 'growth');
+  const overlap = fundA && fundB ? overlapPercent(fundA.exposure, fundB.exposure) : null;
+  $('#overlap-value').textContent = overlap === null ? 'Unknown' : `At least ${overlap.toFixed(0)}%`;
+  $('#overlap-note').textContent = overlap === null ? 'Verified constituent data is needed for your fund pairs' : `${fundA.name} + ${fundB.name}`;
+  $('#issuer-value').textContent = result.largestIssuer ? `${(result.largestIssuer[1] / result.total * 100).toFixed(1)}%+` : 'Unknown';
+  const issuerSources = result.largestIssuerSources;
+  const issuerRoute = issuerSources?.funds && issuerSources?.stocks ? 'direct + visible fund holdings' :
+    issuerSources?.funds ? 'visible fund holdings' : 'direct stock';
+  $('#issuer-note').textContent = result.largestIssuer ? `${result.largestIssuer[0]} · ${issuerRoute}` : 'Fund constituent data is missing';
+  $('#amc-value').textContent = result.largestAmc && result.fundValue ? `${(result.largestAmc.value / result.fundValue * 100).toFixed(0)}%+` : 'Unknown';
+  $('#amc-note').textContent = result.largestAmc ? `${result.largestAmc.name} · ${pct(result.amcCoveredValue, result.fundValue)} of fund value has known fund houses` : 'Fund-house names are missing';
+  $('#coverage-note').textContent = result.classifiedPct < 100 ? 'Unknown fund constituents are excluded from this measure' : 'All entered value has named issuer coverage';
+  $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length} review items.`;
+  updateAccountActions();
+}
+
+function pct(value, total) { return total ? `${(value / total * 100).toFixed(0)}%` : '0%'; }
+
+$('#goal-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const years = Number($('#goal-years').value);
+  const target = Number($('#goal-target').value);
+  const age = Number($('#age').value);
+  const monthlyContribution = Number($('#monthly-contribution').value);
+  const returnPct = Number($('#return-assumption').value);
+  const inflationPct = Number($('#inflation-assumption').value);
+  const equityDropPct = Number($('#equity-drop-assumption').value);
+  if (!Number.isInteger(years) || years < 1 || years > 50 || !Number.isFinite(target) || target < 1000 || target > 1e12 ||
+      !Number.isFinite(age) || age < 18 || age > 100 || !Number.isFinite(monthlyContribution) || monthlyContribution < 0 || monthlyContribution > 1e8 ||
+      !Number.isFinite(returnPct) || returnPct < -20 || returnPct > 13 || !Number.isFinite(inflationPct) || inflationPct < -5 || inflationPct > 15 ||
+      !Number.isFinite(equityDropPct) || equityDropPct < 0 || equityDropPct > 60) {
+    $('#form-error').textContent = 'Check the age, goal, monthly amount and assumption ranges shown beside the fields.';
+    return;
+  }
+  $('#form-error').textContent = '';
+  state.goal = { name: $('#goal-name').value.trim() || 'My goal', years, target, age, monthlyContribution, returnPct, inflationPct, equityDropPct,
+    ...(Array.isArray(state.goal.linkedIds) ? { linkedIds: state.goal.linkedIds } : {}) };
+  render();
+  $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+$('#holding-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const name = $('#holding-name').value.trim();
+  const value = Number($('#holding-value').value);
+  const asset = $('#holding-asset').value;
+  const type = $('#holding-type').value;
+  if (!name || name.length > 80 || !Number.isFinite(value) || value <= 0 || value > 1e10 || (type === 'Stock' && asset !== 'Equity')) {
+    $('#holding-error').textContent = 'Enter a name (up to 80 characters) and a positive value.';
+    return;
+  }
+  $('#holding-error').textContent = '';
+  state.holdings.push({ id: crypto.randomUUID(), name, type, asset, value, exposure: type === 'Stock' ? { [name]: 1 } : null });
+  if (state.source === 'demo') state.source = 'mixed';
+  event.target.reset();
+  $('#holding-asset').disabled = false;
+  render();
+});
+
+$('#holding-type').addEventListener('change', () => {
+  const stock = $('#holding-type').value === 'Stock';
+  if (stock) $('#holding-asset').value = 'Equity';
+  $('#holding-asset').disabled = stock;
+});
+
+$('#reset-demo').addEventListener('click', () => { state.holdings = structuredClone(sampleHoldings); delete state.goal.linkedIds; state.source = 'demo'; render(); });
+$('#clear-all').addEventListener('click', () => { state.holdings = []; delete state.goal.linkedIds; state.source = 'user'; render(); });
+$('#csv-file').addEventListener('change', async event => {
+  pendingImport = null;
+  $('#import-preview').hidden = true;
+  $('#import-error').textContent = '';
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (file.size > 1_000_000 || !file.name.toLowerCase().endsWith('.csv')) {
+    $('#import-error').textContent = 'Choose a .csv file smaller than 1 MB.';
+    return;
+  }
+  let result;
+  try { result = parseHoldingsCsv(await file.text()); }
+  catch { $('#import-error').textContent = 'The file could not be read in this browser.'; return; }
+  if (result.errors.length) {
+    $('#import-error').textContent = result.errors.slice(0, 5).join(' ');
+    return;
+  }
+  showImportPreview(result.holdings, 'CSV', []);
+});
+
+function showImportPreview(holdings, label, notices) {
+  pendingImport = holdings.map(holding => ({ ...holding }));
+  $('#import-preview').dataset.source = label;
+  renderImportRows();
+  $('#import-preview').hidden = false;
+  $('#live-status').textContent = `${label} ready to review: ${holdings.length} holdings.`;
+  const noticeList = $('#import-notices');
+  noticeList.replaceChildren();
+  notices.forEach(message => {
+    const item = document.createElement('li');
+    item.textContent = message;
+    noticeList.append(item);
+  });
+}
+
+function refreshImportSummary() {
+  const count = pendingImport?.length || 0;
+  const total = pendingImport?.reduce((sum, holding) => sum + Number(holding.value), 0) ?? 0;
+  const label = $('#import-preview').dataset.source || 'imported';
+  $('#import-summary').textContent = `${count} ${label} ${count === 1 ? 'holding' : 'holdings'} · ${Number.isFinite(total) ? rupees(total) : 'value needs correction'}`;
+  const errors = validateImportReview(pendingImport);
+  $('#import-validation').textContent = errors.join(' ');
+  $('#confirm-import').disabled = errors.length > 0;
+}
+
+function renderImportRows() {
+  const list = $('#import-rows');
+  list.replaceChildren();
+  pendingImport.forEach((holding, index) => {
+    const item = document.createElement('li');
+    item.className = 'import-row';
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    const rowSummary = () => {
+      summary.textContent = `${holding.name || 'Unnamed holding'} — ${holding.type}, ${holding.asset}, ${Number.isFinite(Number(holding.value)) ? rupees(holding.value) : 'check value'}${holding.asOf ? ` as of ${holding.asOf}` : ''}`;
+    };
+    rowSummary();
+    const fields = document.createElement('div');
+    fields.className = 'import-row-fields';
+    const field = (labelText, control) => {
+      const label = document.createElement('label');
+      label.textContent = labelText;
+      label.append(control);
+      fields.append(label);
+    };
+    const name = document.createElement('input');
+    name.type = 'text'; name.maxLength = 200; name.value = holding.name;
+    name.addEventListener('input', () => {
+      if (name.value !== holding.name) { holding.name = name.value; holding.isin = null; holding.amfi = null; }
+      rowSummary(); refreshImportSummary();
+    });
+    field('Fund or stock name', name);
+    const value = document.createElement('input');
+    value.type = 'number'; value.min = '0.01'; value.max = '10000000000'; value.step = '0.01'; value.value = holding.value;
+    value.addEventListener('input', () => { holding.value = value.value === '' ? NaN : Number(value.value); rowSummary(); refreshImportSummary(); });
+    field('Current value (₹)', value);
+    const asset = document.createElement('select');
+    for (const optionText of ['Equity', 'Debt', 'Gold', 'Other']) {
+      const option = document.createElement('option'); option.value = optionText; option.textContent = optionText; asset.append(option);
+    }
+    asset.value = holding.asset;
+    asset.disabled = holding.type === 'Stock';
+    asset.addEventListener('change', () => { holding.asset = asset.value; holding.isin = null; holding.amfi = null; rowSummary(); refreshImportSummary(); });
+    field('Asset category', asset);
+    const date = document.createElement('input');
+    date.type = 'date'; date.value = holding.asOf || '';
+    date.addEventListener('input', () => { holding.asOf = date.value || null; rowSummary(); refreshImportSummary(); });
+    field('Valuation date', date);
+    const remove = document.createElement('button');
+    remove.type = 'button'; remove.className = 'text-button muted'; remove.textContent = 'Leave out this holding';
+    remove.addEventListener('click', () => { pendingImport.splice(index, 1); renderImportRows(); });
+    fields.append(remove);
+    details.append(summary, fields);
+    item.append(details);
+    list.append(item);
+  });
+  refreshImportSummary();
+}
+
+fetch('/api/cas/status', { cache: 'no-store' }).then(response => response.ok ? response.json() : null)
+  .then(info => {
+    if (info?.local === true) {
+      $('#cas-local').hidden = false;
+      $('#cas-eyebrow').textContent = 'LOCAL CAS PREVIEW';
+      $('#cas-description').textContent = 'The PDF and password go only to the preview server on this computer. They are not saved in project files or sent to the hosted service. Review the extracted holdings before replacing the example.';
+    } else if (info?.available === true) {
+      $('#cas-local').hidden = false;
+      $('#cas-eyebrow').textContent = 'PRIVATE CAS PREVIEW';
+      $('#cas-description').textContent = 'Your signed-in server processes the PDF and password for this request. It returns a holdings preview and does not save the original PDF or password. Review every row before replacing your entries.';
+      $('#cas-help').textContent = 'Up to 15 MB. Only original CAMS or KFintech statements supported. No Gmail connection is used. Preview attempts are limited.';
+    }
+  }).catch(() => {});
+
+$('#preview-cas').addEventListener('click', async () => {
+  pendingImport = null;
+  $('#import-preview').hidden = true;
+  $('#cas-error').textContent = '';
+  const file = $('#cas-file').files?.[0];
+  const password = $('#cas-password').value;
+  if (!file || !file.name.toLowerCase().endsWith('.pdf') || file.size > 15_000_000 || !password) {
+    $('#cas-error').textContent = 'Choose an original PDF smaller than 15 MB and enter its password.';
+    return;
+  }
+  const button = $('#preview-cas');
+  button.disabled = true;
+  button.textContent = 'Reading locally…';
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+    const response = await fetch('/api/cas/preview', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Local': '1', 'X-Thefinxperts-Intent': 'cas-preview' },
+      body: JSON.stringify({ pdf: btoa(binary), password }),
+    });
+    const result = await response.json();
+    if (!response.ok || result.errors?.length || !Array.isArray(result.holdings)) {
+      $('#cas-error').textContent = result.errors?.slice(0, 5).join(' ') || result.error || 'The CAS could not be read.';
+      return;
+    }
+    showImportPreview(result.holdings, 'CAS', result.notices || []);
+  } catch {
+    $('#cas-error').textContent = 'The CAS preview failed. Try again later.';
+  } finally {
+    $('#cas-password').value = '';
+    $('#cas-file').value = '';
+    button.disabled = false;
+    button.textContent = 'Preview CAS holdings';
+  }
+});
+$('#confirm-import').addEventListener('click', () => {
+  if (!pendingImport || validateImportReview(pendingImport).length) return;
+  state.holdings = pendingImport.map(holding => {
+    const name = holding.name.trim();
+    return { ...holding, name, id: crypto.randomUUID(), exposure: holding.type === 'Stock' ? { [name]: 1 } : null };
+  });
+  delete state.goal.linkedIds;
+  state.source = 'user';
+  pendingImport = null;
+  $('#csv-file').value = '';
+  $('#import-preview').hidden = true;
+  render();
+  $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('#cancel-import').addEventListener('click', () => {
+  pendingImport = null;
+  $('#csv-file').value = '';
+  $('#import-preview').hidden = true;
+});
+
+function updateAccountActions() {
+  if (!accountAuthenticated) return;
+  $('#account-save').disabled = state.source !== 'user' || state.holdings.length === 0;
+  $('#account-description').textContent = state.source === 'user'
+    ? 'Save normalized holdings and goal inputs for later. Original CAS PDFs and passwords are not saved.'
+    : 'Clear the fictional example or import your own holdings before saving. Original CAS PDFs and passwords are not saved.';
+  $('#account-load').hidden = !hasSavedPortfolio;
+  $('#account-export').hidden = !hasSavedPortfolio;
+  $('#account-delete').hidden = !hasSavedPortfolio;
+}
+
+async function readSavedPortfolio(apply) {
+  try {
+    const response = await fetch('/api/portfolio', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Read failed');
+    const { portfolio } = await response.json();
+    hasSavedPortfolio = Boolean(portfolio);
+    updateAccountActions();
+    if (!portfolio) {
+      $('#account-status').textContent = 'No saved portfolio yet.';
+      return;
+    }
+    if (apply) {
+      if (portfolio.version !== 1 || !Array.isArray(portfolio.holdings) || !portfolio.goal) throw new Error('Invalid saved data');
+      state.holdings = portfolio.holdings.map(holding => ({ ...holding, id: holding.id || crypto.randomUUID(),
+        exposure: holding.type === 'Stock' ? { [holding.name]: 1 } : null }));
+      state.goal = portfolio.goal;
+      state.source = 'user';
+      for (const [selector, value] of [
+        ['#age', state.goal.age], ['#goal-years', state.goal.years], ['#goal-name', state.goal.name],
+        ['#goal-target', state.goal.target], ['#monthly-contribution', state.goal.monthlyContribution],
+        ['#return-assumption', state.goal.returnPct], ['#inflation-assumption', state.goal.inflationPct],
+        ['#equity-drop-assumption', state.goal.equityDropPct ?? 20],
+      ]) $(selector).value = value;
+      render();
+      $('#account-status').textContent = 'Saved portfolio loaded into this tab.';
+    } else $('#account-status').textContent = 'A saved portfolio is available. Load it when ready.';
+  } catch {
+    $('#account-status').textContent = 'Could not read your saved portfolio. Try again later.';
+  }
+}
+
+async function initAccount() {
+  try {
+    const response = await fetch('/api/me', { cache: 'no-store' });
+    if (!response.ok) return;
+    const info = await response.json();
+    if (typeof info.authenticated !== 'boolean') return;
+    accountAuthenticated = info.authenticated;
+    $('#account-card').hidden = false;
+    $('#account-login').hidden = accountAuthenticated;
+    $('#account-save').hidden = !accountAuthenticated;
+    $('#account-logout').hidden = !accountAuthenticated;
+    $('#account-title').textContent = accountAuthenticated ? 'Your private saved review' : 'Save your review';
+    if (accountAuthenticated) await readSavedPortfolio(false);
+    else $('#account-status').textContent = 'The example and local entries work without signing in.';
+    updateAccountActions();
+  } catch { /* Anonymous static preview works without an account server. */ }
+}
+
+$('#account-save').addEventListener('click', async () => {
+  if (!accountAuthenticated || state.source !== 'user' || !state.holdings.length) return;
+  const payload = { version: 1, holdings: state.holdings.map(holding => ({
+    id: holding.id, name: holding.name, type: holding.type, asset: holding.asset, value: holding.value,
+    asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
+  })), goal: { ...state.goal } };
+  try {
+    const response = await fetch('/api/portfolio', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Intent': 'portfolio-write' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Save failed');
+    hasSavedPortfolio = true;
+    updateAccountActions();
+    $('#account-status').textContent = 'Saved. Only normalized holdings and goal inputs were stored.';
+  } catch { $('#account-status').textContent = 'Could not save. Your entries remain in this tab.'; }
+});
+$('#account-load').addEventListener('click', () => readSavedPortfolio(true));
+$('#account-export').addEventListener('click', async () => {
+  if (!accountAuthenticated || !hasSavedPortfolio) return;
+  try {
+    const response = await fetch('/api/portfolio', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Export failed');
+    const { portfolio } = await response.json();
+    if (!portfolio || portfolio.version !== 1) throw new Error('No saved portfolio');
+    const blob = new Blob([JSON.stringify(portfolio, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'thefinxperts-portfolio.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    $('#account-status').textContent = 'Saved portfolio exported. Keep the downloaded file private.';
+  } catch { $('#account-status').textContent = 'Could not export the saved portfolio. Try again later.'; }
+});
+$('#account-delete').addEventListener('click', async () => {
+  if (!accountAuthenticated || !hasSavedPortfolio || !window.confirm('Delete your saved portfolio and goal? This cannot be undone.')) return;
+  try {
+    const response = await fetch('/api/portfolio', { method: 'DELETE', headers: { 'X-Thefinxperts-Intent': 'portfolio-write' } });
+    if (!response.ok) throw new Error('Delete failed');
+    hasSavedPortfolio = false;
+    updateAccountActions();
+    $('#account-status').textContent = 'Saved portfolio deleted. Entries still visible in this tab will disappear when it closes.';
+  } catch { $('#account-status').textContent = 'Could not delete the saved portfolio. Try again later.'; }
+});
+render();
+initAccount();

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102525">
+  <meta name="description" content="A fictional, interactive preview of a simple Indian portfolio review tool.">
+  <title>Portfolio Clarity — TheFinxperts concept</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="TheFinxperts, back to top"><span class="brand-mark">f<span>.</span></span><span>thefinxperts</span></a>
+      <nav aria-label="Page sections"><a href="#review">Your review</a><a href="#holdings">Holdings</a><a href="#goals">Goal lens</a></nav>
+      <span class="demo-pill"><span></span> Interactive concept</span>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="kicker"><span class="kicker-line"></span> YOUR MONEY, CLEARER</span>
+          <h1 id="hero-title">Know what you own.<br><em>Know what to review.</em></h1>
+          <p>A simpler view of the mutual funds and stocks you already have. See your mix, hidden concentration, and how your portfolio relates to a goal.</p>
+          <div class="hero-actions"><a class="button button-primary" href="#review">Explore the example <span aria-hidden="true">↗</span></a><a class="button button-outline" href="#holdings">Try your own entries</a></div>
+          <div class="hero-caption"><span class="caption-icon" aria-hidden="true">◎</span> Fictional demo data. No account needed to explore; no live market feed.</div>
+        </div>
+        <div class="hero-art" aria-hidden="true"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="art-ring ring-one"></div><div class="art-ring ring-two"></div><div class="art-core">f<span>.</span></div><div class="art-caption">A clearer picture<br>of the whole.</div></div>
+      </section>
+
+      <section class="process" aria-label="How it works">
+        <div><span>01</span><strong>Add what you own</strong><p>Funds and stocks, together.</p></div>
+        <div class="process-arrow" aria-hidden="true">→</div>
+        <div><span>02</span><strong>Name a goal</strong><p>Age, amount and time horizon.</p></div>
+        <div class="process-arrow" aria-hidden="true">→</div>
+        <div><span>03</span><strong>See what matters</strong><p>Three priorities, with reasons.</p></div>
+      </section>
+
+      <section class="workspace" id="review" aria-labelledby="review-title">
+        <div class="section-heading"><div><span class="eyebrow">PORTFOLIO REVIEW</span><h2 id="review-title">Your big picture</h2><p>A useful starting point, without a wall of market numbers.</p></div><div class="workspace-note" id="workspace-note"><span class="dot"></span> Illustrative portfolio · values are entered, not live</div></div>
+        <div class="dashboard-grid">
+          <div class="main-column">
+            <div class="summary-card">
+              <div class="summary-head"><span>Portfolio value</span><span id="holding-count">6 holdings</span></div>
+              <div class="portfolio-value" id="portfolio-value">₹11,20,000</div>
+              <div class="card-divider"></div>
+              <div class="summary-row"><div><span class="mini-label">HOW IT IS SPLIT</span><div id="mix-summary" class="mix-summary">Equity 79% · Debt 13% · Gold 7%</div></div><span class="summary-asof" id="summary-asof">Mixed as-of dates</span></div>
+              <div class="mix-bar" id="mix-bar" role="img" aria-label="Portfolio allocation bar"></div>
+              <div class="mix-legend"><span><i class="equity"></i>Equity</span><span><i class="debt"></i>Debt</span><span><i class="gold"></i>Gold</span><span><i class="other"></i>Other</span></div>
+            </div>
+
+            <div class="findings-panel">
+              <div class="panel-heading"><div><span class="eyebrow">START HERE</span><h3 id="findings-title">Three things worth a closer look</h3></div><span class="panel-counter" id="panel-counter">03 REVIEW ITEMS</span></div>
+              <div id="finding-list"></div>
+              <p class="panel-foot" id="panel-foot">These are educational review prompts, not instructions to buy or sell. The starting example is fictional.</p>
+            </div>
+          </div>
+
+          <aside class="side-column">
+            <div class="goal-card" id="goals"><span class="eyebrow">YOUR GOAL LENS</span><div class="goal-icon" aria-hidden="true">⌂</div><h3 id="goal-title">Home down payment</h3><p id="goal-years-value">3 years</p><small id="age-at-goal">Age 35 at the goal date</small><small id="goal-assigned">₹11,20,000 assigned from 6 holdings</small><div class="goal-rule"></div><span class="mini-label">CURRENT GAP</span><strong id="goal-gap">₹8,80,000</strong><small id="goal-gap-note">Simple arithmetic before growth, inflation or tax</small><small id="goal-coverage-note">All entered holdings are linked to this goal.</small><a href="#goal-editor">Change goal details <span aria-hidden="true">↗</span></a></div>
+            <div class="glance-card"><span class="eyebrow">BEYOND FUND NAMES</span><div class="glance-item"><span>Largest visible company exposure</span><strong id="issuer-value">16.4%+</strong><small id="issuer-note">Example Bank · direct + visible fund holdings</small></div><div class="glance-item"><span>Fund-pair visible overlap</span><strong id="overlap-value">At least 10%</strong><small id="overlap-note">Sample Broad Market + Sample Growth funds</small></div><div class="glance-item"><span>Largest known fund house</span><strong id="amc-value">78%+</strong><small id="amc-note">Example Asset Management · share of fund value</small></div><div class="glance-item"><span>Named-issuer look-through coverage</span><strong id="coverage">16%</strong><small id="coverage-note">Remaining issuers are unknown in this simplified example</small></div></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="editor-section" id="holdings" aria-labelledby="holdings-title"><div class="section-heading compact"><div><span class="eyebrow">MAKE IT YOURS</span><h2 id="holdings-title">Holdings in this review</h2><p>Add a simple entry or import a CSV to see how the picture changes. Tick the holdings you want to count toward the named goal. Without an account save, entries stay in this browser tab and disappear when it closes.</p></div><div class="editor-actions"><button type="button" id="reset-demo" class="text-button">Restore example</button><button type="button" id="clear-all" class="text-button muted">Clear all</button></div></div>
+        <div id="account-card" class="account-card" hidden><div><span class="eyebrow">OPTIONAL ACCOUNT</span><h3 id="account-title">Save your review</h3><p id="account-description">Sign in to save normalized holdings and your goal for later. Original CAS PDFs and passwords are not saved.</p><p id="account-status" role="status"></p></div><div class="account-actions"><a id="account-login" class="button button-dark" href="/login" hidden>Sign in</a><button id="account-save" class="button button-dark" type="button" hidden>Save portfolio</button><button id="account-load" class="text-button" type="button" hidden>Load saved</button><button id="account-export" class="text-button" type="button" hidden>Export saved JSON</button><button id="account-delete" class="text-button muted" type="button" hidden>Delete saved data</button><a id="account-logout" class="text-button muted" href="/logout" hidden>Sign out</a></div></div>
+        <div class="import-card"><div><span class="eyebrow">PRIVATE, BROWSER-ONLY IMPORT</span><h3>Have a holdings list already?</h3><p>Use our simple CSV template. Check every row before replacing the example. The file is read in this tab and is not uploaded.</p><a href="./holdings-template.csv" download>Download CSV template ↓</a></div><div class="import-controls"><label for="csv-file">Choose a holdings CSV</label><input id="csv-file" type="file" accept=".csv,text/csv" aria-describedby="csv-help"><small id="csv-help">Name, type, asset, current value and optional date. Up to 200 rows / 1 MB. This is not a CAS PDF importer.</small></div></div>
+        <div id="cas-local" class="import-card" hidden><div><span id="cas-eyebrow" class="eyebrow">CAS PREVIEW</span><h3>Try an original CAMS or KFintech PDF</h3><p id="cas-description">Review the extracted holdings before replacing the example. The PDF and password are used for this preview and are not saved with your portfolio.</p></div><div class="import-controls"><label for="cas-file">Original CAS PDF</label><input id="cas-file" type="file" accept=".pdf,application/pdf"><label for="cas-password">PDF password</label><input id="cas-password" type="password" autocomplete="off" maxlength="200"><button type="button" id="preview-cas" class="button button-dark full">Preview CAS holdings</button><small id="cas-help">Up to 15 MB. MF Central and re-printed statements are not supported by this parser. No Gmail connection is used.</small></div></div><p id="cas-error" class="import-error" role="alert"></p>
+        <div id="import-preview" class="import-preview" hidden><div><span class="eyebrow">CHECK BEFORE IMPORT</span><h3 id="import-summary"></h3><p>Open a row to correct its name, value, asset category or valuation date, or leave it out. Check the statement before changing an extracted figure.</p><ul id="import-rows"></ul><p id="import-validation" class="import-error" role="alert"></p><ul id="import-notices"></ul><p>Import replaces the current holdings and links all imported holdings to the current goal. Untick any that serve a different goal. Fund look-through remains unknown unless verified constituent data is available.</p></div><div class="import-preview-actions"><button type="button" id="confirm-import" class="button button-dark">Replace holdings</button><button type="button" id="cancel-import" class="text-button muted">Cancel</button></div></div><p id="import-error" class="import-error" role="alert"></p>
+        <div class="editor-grid"><div class="holdings-card"><div class="table-head"><span>HOLDING</span><span>ENTERED VALUE</span></div><div id="holdings-list"></div><p id="empty-message" class="empty-message" hidden>No holdings yet. Add one on the right or restore the example.</p></div>
+        <form id="holding-form" class="entry-card"><span class="eyebrow">ADD A HOLDING</span><h3>Start with what you know</h3><label for="holding-name">Fund or stock name</label><input id="holding-name" name="name" maxlength="80" placeholder="e.g. My index fund" required><div class="form-pair"><div><label for="holding-type">Type</label><select id="holding-type" name="type"><option>Mutual fund</option><option>Stock</option></select></div><div><label for="holding-asset">Asset</label><select id="holding-asset" name="asset"><option>Equity</option><option>Debt</option><option>Gold</option><option>Other</option></select></div></div><label for="holding-value">Approximate current value (₹)</label><input id="holding-value" name="value" type="number" inputmode="decimal" min="1" max="10000000000" placeholder="100000" required><p id="holding-error" class="form-error" role="alert"></p><button class="button button-primary full" type="submit">Add to picture <span aria-hidden="true">+</span></button><p class="form-hint">New mutual funds have unknown underlying exposure until verified holdings data is available.</p></form></div>
+      </section>
+
+      <section class="goal-editor-section" id="goal-editor" aria-labelledby="goal-editor-title">
+        <div><span class="eyebrow">AGE IS ONLY ONE INPUT</span><h2 id="goal-editor-title">Put the portfolio in context.</h2><p>Your goal date and ability to handle losses matter as much as the amount. Age is shown at the goal date, but it is not used to calculate an allocation or advice.</p><div class="principle"><span aria-hidden="true">✳</span><span>A real personal action plan would also need your income, liabilities, emergency reserve, risk capacity, tax position and an appropriate adviser process.</span></div>
+          <div class="scenario-card"><span class="eyebrow">ILLUSTRATIVE GOAL SCENARIO</span><div class="scenario-metrics"><div><small>Goal cost at the goal date</small><strong id="scenario-cost">₹20,00,000</strong></div><div><small>Assigned holdings at the goal date</small><strong id="scenario-value">₹11,20,000</strong></div><div><small>Gap under these assumptions</small><strong id="scenario-gap">₹8,80,000</strong></div><div><small>Whole-rupee monthly amount to cover the gap</small><strong id="scenario-monthly">₹24,445</strong></div></div><p id="scenario-note">Uses 0% annual growth, 0% inflation and ₹0 in month-end contributions for 3 years. This is arithmetic, not a return forecast or an investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.</p></div>
+          <div class="scenario-card"><span class="eyebrow">WHAT IF EQUITY FELL TODAY?</span><div class="scenario-metrics"><div><small>Chosen equity loss</small><strong id="shock-drop">20%</strong></div><div><small>Amount lost from linked equity</small><strong id="shock-loss">₹1,78,000</strong></div><div><small>Assigned value after that loss</small><strong id="shock-value">₹9,42,000</strong></div><div><small>Gap to today's goal cost after loss</small><strong id="shock-gap">₹10,58,000</strong></div></div><p id="shock-note">This subtracts 20% once from only the holdings marked Equity and linked to this goal. It uses today's entered values and goal cost; it excludes future growth, contributions, inflation, taxes and changes in other assets. It is a what-if loss, not a prediction or a target allocation.</p></div>
+        </div>
+        <form id="goal-form" class="goal-form"><div class="form-pair"><div><label for="age">Age</label><input id="age" type="number" min="18" max="100" value="32" required></div><div><label for="goal-years">Years until goal</label><input id="goal-years" type="number" min="1" max="50" value="3" required></div></div><label for="goal-name">Goal name</label><input id="goal-name" value="Home down payment" maxlength="60" required><label for="goal-target">Goal cost in today's rupees (₹)</label><input id="goal-target" type="number" min="1000" max="1000000000000" value="2000000" required><label for="monthly-contribution">Monthly amount you plan to add (₹)</label><input id="monthly-contribution" type="number" min="0" max="100000000" value="0" required><div class="form-pair"><div><label for="return-assumption">Assumed annual growth (%)</label><input id="return-assumption" type="number" min="-20" max="13" step="0.1" value="0" required></div><div><label for="inflation-assumption">Assumed annual inflation (%)</label><input id="inflation-assumption" type="number" min="-5" max="15" step="0.1" value="0" required></div></div><p class="form-hint">Choose assumptions for comparison. Neither number is a prediction.</p><label for="equity-drop-assumption">What if linked equity fell once by (%)</label><input id="equity-drop-assumption" type="number" min="0" max="60" step="1" value="20" required><p class="form-hint">Choose a loss to explore. It is not a forecast, and other assets may also change.</p><p id="form-error" class="form-error" role="alert"></p><button class="button button-dark full" type="submit">Update my view <span aria-hidden="true">→</span></button></form>
+      </section>
+
+      <section class="trust-strip" aria-label="Design principles"><div><span aria-hidden="true">◇</span><strong>Your data, in your control</strong><p>Future account storage will include clear export and deletion.</p></div><div><span aria-hidden="true">◎</span><strong>See the reason</strong><p>Every production finding will show its calculation and data date.</p></div><div><span aria-hidden="true">✳</span><strong>Honest about unknowns</strong><p>Missing fund detail will stay visible rather than become a false zero.</p></div></section>
+    </main>
+    <footer><div class="footer-brand">thefinxperts<span>.</span></div><p>Concept preview with fictional example data and browser-only CSV. Local CAS preview and account saving require their respective servers. No live market feed or investment advice is connected.</p><a href="#top">Back to top ↑</a></footer>
+  </div>
+  <div id="live-status" class="sr-only" aria-live="polite"></div>
+</body>
+</html>
