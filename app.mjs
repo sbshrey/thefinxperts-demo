@@ -132,6 +132,13 @@ function render() {
   }
   $('#workspace-note').textContent = state.source === 'demo' ? 'Illustrative portfolio · values are entered, not live' :
     state.source === 'mixed' ? 'Example and your entries · values are entered, not live' : 'Your entries · values are entered, not live';
+  $('#entry-state').hidden = state.source === 'user';
+  $('#entry-state-note').textContent = state.source === 'mixed'
+    ? 'Your entries are mixed with the fictional example. Start fresh, then check the goal details.'
+    : 'These holdings are fictional. Start blank, then add yours and check the goal details.';
+  $('#start-own-review').textContent = state.source === 'user' ? 'Continue my review' :
+    state.source === 'mixed' ? 'Start fresh' : 'Start with my holdings';
+  $('#start-own-review-inline').textContent = state.source === 'mixed' ? 'Start fresh' : 'Start my review';
   $('#panel-foot').textContent = 'These are educational review prompts, not instructions to buy or sell. ' +
     (state.source === 'demo' ? 'The starting example is fictional.' : 'Your values are used as entered; fund constituent data is not verified here.');
 
@@ -345,18 +352,35 @@ $('#holding-type').addEventListener('change', () => {
   $('#holding-asset').disabled = stock;
 });
 
+function clearCurrentReview() {
+  state.holdings = [];
+  state.goals = state.goals.map(goal => ({ ...goal, linkedIds: [] }));
+  state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
+  state.source = 'user';
+  render();
+}
+
+function startOwnReview() {
+  if (state.source === 'mixed' && !window.confirm('Clear the fictional example and your unsaved entries to start fresh?')) return;
+  if (state.source !== 'user') clearCurrentReview();
+  $('#holding-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#holding-name').focus({ preventScroll: true });
+}
+
+$('#start-own-review').addEventListener('click', startOwnReview);
+$('#start-own-review-inline').addEventListener('click', startOwnReview);
 $('#reset-demo').addEventListener('click', () => {
+  if (state.source !== 'demo' && state.holdings.length &&
+      !window.confirm('Replace your current holdings and goals with the fictional example? Download a review file first if you want to keep them.')) return;
   state.holdings = structuredClone(sampleHoldings);
   state.goals = [demoGoal()];
   state.source = 'demo';
   selectGoal(state.goals[0].id);
 });
 $('#clear-all').addEventListener('click', () => {
-  state.holdings = [];
-  state.goals = state.goals.map(goal => ({ ...goal, linkedIds: [] }));
-  state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
-  state.source = 'user';
-  render();
+  if (state.source !== 'demo' && state.holdings.length &&
+      !window.confirm('Clear all holdings and goal links in this tab? Download a review file first if you want to keep them.')) return;
+  clearCurrentReview();
 });
 $('#csv-file').addEventListener('change', async event => {
   pendingImport = null;
