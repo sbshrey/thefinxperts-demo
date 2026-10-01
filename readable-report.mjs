@@ -43,6 +43,13 @@ export function buildReadableReport(state, preparedAt = new Date()) {
       unsure: 'I am unsure' }[goal.emergencyFunding];
     if (answer) lines.push(`Your answer about unexpected essential expenses: ${answer}. This has not been verified.`);
   }
+  if (result.shockContinuation) {
+    lines.push('', 'HYPOTHETICAL EQUITY FALL AND GOAL DATE',
+      `A ${result.shock.dropPct}% immediate fall in linked equity would remove ${rupees(result.shock.loss)} from the entered goal holdings.`,
+      `With the same growth, inflation and monthly contribution assumptions afterward, the goal-date gap would be ${rupees(result.shockContinuation.futureGap)} versus ${rupees(result.scenario.futureGap)} before the fall.`,
+      `Whole-rupee monthly amount needed under those assumptions: ${rupees(Math.ceil(result.shockContinuation.monthlyTotalNeeded))} after the fall versus ${rupees(Math.ceil(result.scenario.monthlyTotalNeeded))} before it.`,
+      'This is a fixed-assumption illustration, not a forecast or investment recommendation; actual prices, cash flows and costs can differ.');
+  }
   if (result.lossLimits?.affordable || result.lossLimits?.tolerable) {
     lines.push(`Illustrative linked-equity loss: ${rupees(result.shock.loss)} under the entered ${result.shock.dropPct}% one-time fall.`);
     if (result.lossLimits.affordable) lines.push(`Your entered amount coverable from other resources: ${rupees(result.lossLimits.affordable.limit)}; illustration ${result.lossLimits.affordable.excess ? `exceeds it by ${rupees(result.lossLimits.affordable.excess)}` : 'does not exceed it'}.`);

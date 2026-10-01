@@ -104,6 +104,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const validGoal = Number.isFinite(years) && years > 0 && Number.isFinite(target) && target > 0;
   const scenario = calculateGoalScenario(goalTotal, goal);
   const shock = calculateEquityShockScenario(goalTotal, goalEquityValue, target, Number(goal.equityDropPct ?? 20));
+  const shockContinuation = scenario && shock?.loss > 0 ? calculateGoalScenario(shock.valueAfterLoss, goal) : null;
   const lossLimits = shock ? compareEnteredLossLimits(shock.loss, goal) : null;
   const equityPct = total ? (assets.Equity / total) * 100 : 0;
   const findings = [];
@@ -209,7 +210,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, amcCoveredValue, asOfSummary,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,
-    scenario, shock, lossLimits,
+    scenario, shock, shockContinuation, lossLimits,
     findings: findings.slice(0, 3), additionalFindings: findings.slice(3),
   };
 }

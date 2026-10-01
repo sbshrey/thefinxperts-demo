@@ -181,6 +181,11 @@ function render() {
   $('#shock-note').textContent = mixedWithExample ? 'Clear the fictional example before using a personal goal illustration.' : needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : shock
     ? `This subtracts ${shock.dropPct}% once from only the holdings marked Equity and linked to this goal. It uses today's entered values and goal cost; it excludes future growth, contributions, inflation, taxes and changes in other assets. It is a what-if loss, not a prediction or a target allocation.`
     : 'Enter a valid equity-loss percentage to see this illustration.';
+  const shockContinuation = pauseGoalFigures ? null : result.shockContinuation;
+  $('#shock-goal-context').hidden = !shockContinuation;
+  $('#shock-goal-context').textContent = shockContinuation
+    ? `If that fall happened now, then the same ${shockContinuation.returnPct}% growth, ${shockContinuation.inflationPct}% inflation and ${rupees(shockContinuation.monthlyContribution)} monthly contribution assumptions held: the goal-date gap would be ${rupees(shockContinuation.futureGap)} versus ${rupees(scenario.futureGap)} before the fall. The total monthly amount needed would be ${rupees(Math.ceil(shockContinuation.monthlyTotalNeeded))} versus ${rupees(Math.ceil(scenario.monthlyTotalNeeded))}. This is a fixed-assumption illustration, not a forecast; actual prices, cash flows and costs can differ.`
+    : '';
   const limits = result.lossLimits;
   const limitText = (label, check) => check ?
     `${label}: ${rupees(check.limit)}. The illustrated loss ${check.excess > 0 ? `exceeds it by ${rupees(check.excess)}` : 'does not exceed it'}.` : '';
