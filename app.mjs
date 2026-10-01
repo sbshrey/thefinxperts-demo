@@ -140,7 +140,12 @@ function render() {
       `${result.largestGoalPosition.name} · ${result.largestGoalPosition.entries > 1 ? `${result.largestGoalPosition.entries} entries matched by ISIN` : 'one entered holding'}; no fund look-through` :
     'Assign holdings to this goal to see this share';
   $('#coverage').textContent = `${result.classifiedPct.toFixed(0)}%`;
-  $('#mix-summary').textContent = `Equity ${result.equityPct.toFixed(0)}% · Debt ${pct(result.assets.Debt, result.total)} · Gold ${pct(result.assets.Gold, result.total)}`;
+  $('#mix-summary').textContent = `Equity ${result.equityPct.toFixed(0)}% · Debt ${pct(result.assets.Debt, result.total)} · Gold ${pct(result.assets.Gold, result.total)}` +
+    (result.assets.Other ? ` · Other ${pct(result.assets.Other, result.total)}` : '');
+  const otherFromFundHouse = state.holdings.some(holding => holding.granularity === 'fund_house' && holding.asset === 'Other');
+  $('#mix-caveat').hidden = result.assets.Other === 0;
+  $('#mix-caveat').textContent = result.assets.Other ?
+    `${rupees(result.assets.Other)} is labelled Other. ${otherFromFundHouse ? 'CAMS non-equity totals are not classified as debt or gold here. Check a detailed statement before judging this mix.' : 'Check what these holdings contain before judging this mix.'}` : '';
   $('#summary-asof').textContent = result.asOfSummary;
   $('#goal-title').textContent = mixedWithExample ? 'Mixed portfolio' : needsGoalConfirmation ? 'Set your goal' : state.goal.name;
   const scenario = result.scenario;
@@ -177,6 +182,7 @@ function render() {
       'Your values are used as entered; fund constituent data is not verified here.');
 
   const mix = $('#mix-bar');
+  mix.setAttribute('aria-label', `Portfolio allocation: ${['Equity', 'Debt', 'Gold', 'Other'].map(asset => `${asset} ${pct(result.assets[asset], result.total)}`).join(', ')}`);
   mix.replaceChildren();
   for (const [asset, color] of [['Equity', 'equity'], ['Debt', 'debt'], ['Gold', 'gold'], ['Other', 'other']]) {
     const share = result.total ? result.assets[asset] / result.total * 100 : 0;
@@ -184,7 +190,7 @@ function render() {
     const part = document.createElement('span');
     part.className = `mix-part ${color}`;
     part.style.width = `${share}%`;
-    part.setAttribute('aria-label', `${asset}: ${share.toFixed(1)}%`);
+    part.setAttribute('aria-hidden', 'true');
     mix.append(part);
   }
 

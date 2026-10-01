@@ -14,6 +14,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
   if (!goal) return null;
   const result = analyzePortfolio(state.holdings, goal, preparedAt);
   const linked = new Set(goal.linkedIds || []);
+  const fundHouseOther = state.holdings.some(holding => holding.granularity === 'fund_house' && holding.asset === 'Other');
   const lines = [
     'THEFINXPERTS | PRIVATE PORTFOLIO REVIEW',
     `Prepared (India): ${indiaDate(preparedAt)}`,
@@ -23,6 +24,9 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Entered value: ${rupees(result.total)} across ${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`,
     `Valuation dates: ${result.asOfSummary}`,
     `Asset mix: ${MIX_ASSETS.map(asset => `${asset} ${result.total ? (result.assets[asset] / result.total * 100).toFixed(1) : '0.0'}%`).join(' | ')}`,
+    ...(result.assets.Other > 0 ? [`Other category: ${rupees(result.assets.Other)}. ${fundHouseOther ?
+      'CAMS non-equity totals are not classified as debt or gold here; check a detailed statement.' :
+      'Check what these holdings contain before judging the asset mix.'}`] : []),
     '',
     `SELECTED GOAL: ${clean(goal.name)}`,
     `Age at goal date: ${Number(goal.age) + Number(goal.years)}`,
