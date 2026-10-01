@@ -301,7 +301,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const goalLink = document.createElement('label');
     goalLink.className = 'holding-goal-link';
     const goalCheckbox = document.createElement('input');
@@ -563,14 +563,19 @@ $('#holding-form').addEventListener('submit', event => {
   const asOf = $('#holding-date').value;
   const asset = $('#holding-asset').value;
   const type = $('#holding-type').value;
+  const isin = $('#holding-isin').value.trim().toUpperCase();
   if (!name || name.length > 80 || !Number.isFinite(value) || value <= 0 || value > 1e10 ||
       (type === 'Stock' && asset !== 'Equity') || !validEnteredDate(asOf)) {
     $('#holding-error').textContent = 'Enter a name, a positive value, and a date no later than today if supplied.';
     return;
   }
+  if (isin && !/^[A-Z]{2}[A-Z0-9]{10}$/.test(isin)) {
+    $('#holding-error').textContent = 'Check the 12-character ISIN against your statement, or leave it blank.';
+    return;
+  }
   $('#holding-error').textContent = '';
   const added = { id: crypto.randomUUID(), name, type, asset, value, asOf: asOf || null,
-    exposure: type === 'Stock' ? { [name]: 1 } : null };
+    ...(isin ? { isin } : {}), exposure: type === 'Stock' ? { [name]: 1 } : null };
   if (state.source === 'demo') clearCurrentReview();
   state.holdings.push(added);
   state.goals = setGoalHolding(state.goals, state.activeGoalId, added.id, true);

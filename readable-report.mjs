@@ -95,7 +95,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
   for (const holding of state.holdings) {
     const label = linked.has(holding.id) ? 'linked to selected goal' : 'not linked to selected goal';
     const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
-    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | ${label}`);
+    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | ${label}`);
   }
   lines.push('', 'IMPORTANT LIMITS',
     'Values and asset labels are as entered or imported; this is not a live price feed.',
