@@ -1,5 +1,6 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs';
 import { parseHoldingsCsv } from './csv.mjs';
+import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { validateImportReview } from './import-review.mjs';
 import { setGoalHolding, relinkAfterReplacingHoldings } from './goals.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
@@ -14,6 +15,7 @@ const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals
 const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
 const $ = selector => document.querySelector(selector);
 let pendingImport = null;
+let brokerRows = null;
 let accountAuthenticated = false;
 let hasSavedPortfolio = false;
 let creatingGoal = false;
@@ -421,8 +423,83 @@ $('#csv-file').addEventListener('change', async event => {
   showImportPreview(result.holdings, 'CSV', []);
 });
 
+$('#broker-file').addEventListener('change', () => {
+  brokerRows = null;
+  $('#broker-map').hidden = true;
+  $('#broker-error').textContent = '';
+});
+
+function fillBrokerColumns(index) {
+  const headers = brokerRows[index] || [];
+  const guess = suggestBrokerColumns([headers]);
+  for (const [id, selected] of [['broker-name', guess.name], ['broker-value', guess.value], ['broker-isin', guess.isin]]) {
+    const select = $(`#${id}`);
+    select.replaceChildren();
+    const blank = document.createElement('option');
+    blank.value = ''; blank.textContent = id === 'broker-isin' ? 'No ISIN column' : 'Choose a column';
+    select.append(blank);
+    headers.forEach((header, column) => {
+      const option = document.createElement('option');
+      option.value = String(column);
+      option.textContent = `Column ${column + 1}: ${String(header ?? '').trim().slice(0, 70) || '(blank)'}`;
+      select.append(option);
+    });
+    select.value = selected;
+  }
+}
+
+$('#broker-header').addEventListener('change', event => fillBrokerColumns(Number(event.target.value)));
+$('#broker-read').addEventListener('click', async () => {
+  pendingImport = null;
+  brokerRows = null;
+  $('#import-preview').hidden = true;
+  $('#broker-map').hidden = true;
+  $('#broker-error').textContent = '';
+  const file = $('#broker-file').files?.[0];
+  const button = $('#broker-read');
+  button.disabled = true;
+  button.textContent = 'Reading in this tab…';
+  try {
+    const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs');
+    brokerRows = await readBrokerWorkbook(file);
+    const suggested = suggestBrokerColumns(brokerRows);
+    const select = $('#broker-header');
+    select.replaceChildren();
+    for (let index = 0; index < Math.min(brokerRows.length, 15); index++) {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = `Row ${index + 1}`;
+      select.append(option);
+    }
+    select.value = String(suggested.headerIndex);
+    fillBrokerColumns(suggested.headerIndex);
+    $('#broker-map').hidden = false;
+  } catch (error) {
+    $('#broker-error').textContent = error?.message || 'The workbook could not be read in this browser.';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Read workbook in this tab';
+  }
+});
+
+$('#broker-preview').addEventListener('click', () => {
+  $('#broker-error').textContent = '';
+  if (!brokerRows) return;
+  const selected = id => $(id).value === '' ? null : Number($(id).value);
+  const result = parseBrokerHoldingsRows(brokerRows, Number($('#broker-header').value),
+    { name: selected('#broker-name'), value: selected('#broker-value'), isin: selected('#broker-isin') },
+    $('#broker-date').value);
+  if (result.errors.length) {
+    $('#broker-error').textContent = result.errors.join(' ');
+    $('#import-preview').hidden = true;
+    return;
+  }
+  showImportPreview(result.holdings, 'Broker XLSX', result.notices);
+});
+
 function showImportPreview(holdings, label, notices) {
   pendingImport = holdings.map(holding => ({ ...holding }));
+  if (label !== 'Broker XLSX') $('#broker-map').hidden = true;
   $('#import-preview').dataset.source = label;
   renderImportRows();
   $('#import-preview').hidden = false;
@@ -449,6 +526,7 @@ function refreshImportSummary() {
 function renderImportRows() {
   const list = $('#import-rows');
   list.replaceChildren();
+  const broker = $('#import-preview').dataset.source === 'Broker XLSX';
   pendingImport.forEach((holding, index) => {
     const item = document.createElement('li');
     item.className = 'import-row';
@@ -466,7 +544,7 @@ function renderImportRows() {
     };
     refreshMetadata();
     const rowSummary = () => {
-      summary.textContent = `${holding.name || 'Unnamed holding'} — ${holding.type}, ${holding.asset}, ${Number.isFinite(Number(holding.value)) ? rupees(holding.value) : 'check value'}${holding.asOf ? ` as of ${holding.asOf}` : ''}`;
+      summary.textContent = `${holding.name || 'Unnamed holding'} — ${holding.type || 'choose type'}, ${holding.asset || 'choose asset'}, ${Number.isFinite(Number(holding.value)) ? rupees(holding.value) : 'check value'}${holding.asOf ? ` as of ${holding.asOf}` : ''}`;
     };
     rowSummary();
     const fields = document.createElement('div');
@@ -489,13 +567,39 @@ function renderImportRows() {
     value.type = 'number'; value.min = '0.01'; value.max = '10000000000'; value.step = '0.01'; value.value = holding.value;
     value.addEventListener('input', () => { holding.value = value.value === '' ? NaN : Number(value.value); rowSummary(); refreshImportSummary(); });
     field('Current value (₹)', value);
+    if (broker) {
+      const type = document.createElement('select');
+      for (const label of ['Choose type', 'Stock', 'Mutual fund']) {
+        const option = document.createElement('option');
+        option.value = label === 'Choose type' ? '' : label;
+        option.textContent = label;
+        type.append(option);
+      }
+      type.value = holding.type || '';
+      type.addEventListener('change', () => {
+        holding.type = type.value || null;
+        holding.asset = type.value === 'Stock' ? 'Equity' : null;
+        asset.value = holding.asset || '';
+        asset.disabled = !holding.type || holding.type === 'Stock';
+        rowSummary(); refreshImportSummary();
+      });
+      field('Holding type', type);
+    }
     const asset = document.createElement('select');
+    if (broker) {
+      const blank = document.createElement('option'); blank.value = ''; blank.textContent = 'Choose asset'; asset.append(blank);
+    }
     for (const optionText of ['Equity', 'Debt', 'Gold', 'Other']) {
       const option = document.createElement('option'); option.value = optionText; option.textContent = optionText; asset.append(option);
     }
-    asset.value = holding.asset;
-    asset.disabled = holding.type === 'Stock';
-    asset.addEventListener('change', () => { holding.asset = asset.value; holding.isin = null; holding.amfi = null; refreshMetadata(); rowSummary(); refreshImportSummary(); });
+    asset.value = holding.asset || '';
+    asset.disabled = holding.type === 'Stock' || (broker && !holding.type);
+    asset.addEventListener('change', () => {
+      const previous = holding.asset;
+      holding.asset = asset.value || null;
+      if (previous && previous !== holding.asset) { holding.isin = null; holding.amfi = null; }
+      refreshMetadata(); rowSummary(); refreshImportSummary();
+    });
     field('Asset category', asset);
     const date = document.createElement('input');
     date.type = 'date'; date.value = holding.asOf || '';
@@ -600,6 +704,9 @@ $('#confirm-import').addEventListener('click', () => {
   state.source = 'user';
   pendingImport = null;
   $('#csv-file').value = '';
+  $('#broker-file').value = '';
+  brokerRows = null;
+  $('#broker-map').hidden = true;
   $('#import-preview').hidden = true;
   render();
   $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -607,6 +714,9 @@ $('#confirm-import').addEventListener('click', () => {
 $('#cancel-import').addEventListener('click', () => {
   pendingImport = null;
   $('#csv-file').value = '';
+  $('#broker-file').value = '';
+  brokerRows = null;
+  $('#broker-map').hidden = true;
   $('#import-preview').hidden = true;
 });
 

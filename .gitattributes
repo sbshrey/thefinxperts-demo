@@ -1,1 +1,2 @@
 vendor/pdfjs/*.mjs -whitespace
+vendor/read-excel-file/*.js -whitespace
