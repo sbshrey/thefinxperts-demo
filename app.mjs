@@ -223,9 +223,14 @@ function render() {
 
   const findings = $('#finding-list');
   findings.replaceChildren();
+  const moreFindings = $('#more-finding-list');
+  moreFindings.replaceChildren();
+  const morePanel = $('#more-findings');
+  morePanel.hidden = result.additionalFindings.length === 0;
+  $('#more-findings-label').textContent = `Show ${result.additionalFindings.length} more ${result.additionalFindings.length === 1 ? 'check' : 'checks'}`;
   $('#findings-title').textContent = result.findings.length === 3 ? 'Three things worth a closer look' : result.findings.length === 0 ? 'Add holdings to start your review' : `${result.findings.length} ${result.findings.length === 1 ? 'thing' : 'things'} worth a closer look`;
   $('#panel-counter').textContent = result.findings.length ? `${String(result.findings.length).padStart(2, '0')} REVIEW ${result.findings.length === 1 ? 'ITEM' : 'ITEMS'}` : 'NO HOLDINGS';
-  result.findings.forEach((finding, index) => {
+  const renderFinding = (finding, index, target) => {
     const article = document.createElement('article');
     article.className = 'finding';
     const number = document.createElement('div');
@@ -257,8 +262,10 @@ function render() {
     explanation.append(explanationTitle, basis, limitation);
     content.append(dot, label, title, detail, next, explanation);
     article.append(number, content);
-    findings.append(article);
-  });
+    target.append(article);
+  };
+  result.findings.forEach((finding, index) => renderFinding(finding, index, findings));
+  result.additionalFindings.forEach((finding, index) => renderFinding(finding, index + result.findings.length, moreFindings));
 
   const holdings = $('#holdings-list');
   holdings.replaceChildren();
@@ -368,7 +375,7 @@ function render() {
     `${rupees(result.fundPlans.Direct)} labelled Direct · ${rupees(result.fundPlans.Regular)} labelled Regular · ${rupees(result.fundPlans.Unclear)} unclear. Names only; check current expense ratios and services.` :
     'Add a mutual fund to review its plan label.';
   $('#coverage-note').textContent = result.classifiedPct < 100 ? 'Unknown fund constituents are excluded from this measure' : 'All entered value has named issuer coverage';
-  $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length} review items.`;
+  $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length + result.additionalFindings.length} review items.`;
   const canDownload = state.source === 'user' && state.holdings.length > 0 && state.goals.every(goal => goal.confirmed === true);
   $('#download-review').disabled = !canDownload;
   $('#download-readable').disabled = !canDownload;

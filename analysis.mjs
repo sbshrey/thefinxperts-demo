@@ -210,7 +210,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,
     scenario, shock, lossLimits,
-    findings: findings.slice(0, 3),
+    findings: findings.slice(0, 3), additionalFindings: findings.slice(3),
   };
 }
 

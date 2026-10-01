@@ -60,7 +60,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
   }
 
   lines.push('', 'REVIEW QUESTIONS');
-  result.findings.forEach((finding, index) => {
+  [...result.findings, ...result.additionalFindings].forEach((finding, index) => {
     lines.push(`${index + 1}. ${finding.title}`, `   ${clean(finding.detail)}`,
       `   Why this appeared: ${clean(finding.basis)}`,
       `   What remains unknown: ${clean(finding.limitation)}`,
