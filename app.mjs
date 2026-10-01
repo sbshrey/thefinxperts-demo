@@ -55,7 +55,7 @@ function fillGoalForm(goal) {
     ['#goal-target', goal.target], ['#monthly-contribution', goal.monthlyContribution],
     ['#return-assumption', goal.returnPct], ['#inflation-assumption', goal.inflationPct],
     ['#equity-drop-assumption', goal.equityDropPct ?? 20],
-  ]) $(selector).value = value;
+  ]) $(selector).value = value ?? '';
   $('#form-error').textContent = '';
   fillMixForm(goal);
   $('#affordable-loss').value = goal.affordableLoss ?? '';
@@ -140,7 +140,7 @@ function render() {
   $('#goal-gap').textContent = result.goalGap === null ? '—' : rupees(result.goalGap);
   $('#goal-gap-note').textContent = needsGoalConfirmation ? 'Confirm age, cost and time horizon below.' : 'Simple arithmetic before growth, inflation or tax';
   $('#goal-setup-note').hidden = !pauseGoalFigures;
-  $('#goal-setup-note').textContent = 'These goal values came from the example. Check and confirm them before using goal figures.';
+  $('#goal-setup-note').textContent = 'Check the goal name and enter your age, goal cost and time horizon before using goal figures.';
   $('#goal-confirm-note').hidden = !needsGoalConfirmation;
   $('#goal-edit-link').href = '#goal-form';
   $('#goal-edit-link').textContent = needsGoalConfirmation ? 'Confirm goal details ↗' : 'Change goal details ↗';
@@ -482,7 +482,8 @@ $('#goal-form').addEventListener('submit', event => {
   const inflationPct = Number($('#inflation-assumption').value);
   const equityDropPct = Number($('#equity-drop-assumption').value);
   const emergencyFunding = $('#emergency-funding').value;
-  if (!Number.isInteger(years) || years < 1 || years > 50 || !Number.isFinite(target) || target < 1000 || target > 1e12 ||
+  if (['#age', '#goal-years', '#goal-target'].some(selector => !$(selector).value.trim()) ||
+      !Number.isInteger(years) || years < 1 || years > 50 || !Number.isFinite(target) || target < 1000 || target > 1e12 ||
       !Number.isFinite(age) || age < 18 || age > 100 || !Number.isFinite(monthlyContribution) || monthlyContribution < 0 || monthlyContribution > 1e8 ||
       !Number.isFinite(returnPct) || returnPct < -20 || returnPct > 13 || !Number.isFinite(inflationPct) || inflationPct < -5 || inflationPct > 15 ||
       !Number.isFinite(equityDropPct) || equityDropPct < 0 || equityDropPct > 60) {
@@ -522,7 +523,7 @@ $('#add-goal').addEventListener('click', () => {
   $('#goal-name').value = '';
   $('#goal-years').value = '10';
   $('#goal-target').value = '';
-  $('#age').value = state.goal.age;
+  $('#age').value = state.goal.age ?? '';
   $('#monthly-contribution').value = '0';
   $('#return-assumption').value = '0';
   $('#inflation-assumption').value = '0';
@@ -580,9 +581,11 @@ function clearCurrentReview() {
   $('#import-preview').hidden = true;
   state.holdings = [];
   const fromExample = state.source === 'demo';
-  state.goals = state.goals.map(goal => ({ ...goal, linkedIds: [], ...(fromExample ? { confirmed: false } : {}) }));
+  state.goals = state.goals.map(goal => ({ ...goal, linkedIds: [],
+    ...(fromExample ? { age: null, years: null, target: null, confirmed: false } : {}) }));
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   state.source = 'user';
+  if (fromExample) fillGoalForm(state.goal);
   render();
 }
 
@@ -975,15 +978,16 @@ function applyImport(mode) {
     const name = holding.name.trim();
     return { ...holding, name, id: crypto.randomUUID(), exposure: holding.type === 'Stock' ? { [name]: 1 } : null };
   });
-  if (mode === 'replace' && state.source === 'demo') {
-    state.goals = state.goals.map(goal => ({ ...goal, confirmed: false }));
-  }
+  const fromExample = mode === 'replace' && state.source === 'demo';
+  if (fromExample) state.goals = state.goals.map(goal =>
+    ({ ...goal, age: null, years: null, target: null, confirmed: false }));
   state.goals = mode === 'add'
     ? linkAddedHoldings(state.goals, state.activeGoalId, imported)
     : relinkAfterReplacingHoldings(state.goals, state.activeGoalId, imported);
   state.holdings = mode === 'add' ? [...state.holdings, ...imported] : imported;
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   state.source = 'user';
+  if (fromExample) fillGoalForm(state.goal);
   pendingImport = null;
   pendingPerformance.clear();
   $('#csv-file').value = '';
