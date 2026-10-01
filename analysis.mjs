@@ -81,9 +81,13 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const largestIssuerSources = largestIssuer ? issuerSources.get(largestIssuer[0]) : null;
   const largestAmc = [...amcs.values()].sort((a, b) => b.value - a.value)[0] || null;
   const dated = valid.map(h => h.asOf).filter(date => parseValuationDate(date));
+  const orderedDates = [...dated].sort();
+  const dateSpan = orderedDates[0] === orderedDates.at(-1) ? `as of ${orderedDates[0]}` :
+    `from ${orderedDates[0]} to ${orderedDates.at(-1)}`;
   const asOfSummary = dated.length === 0 ? 'Valuation dates not provided' :
-    dated.length !== valid.length ? 'Some valuation dates missing' :
-    new Set(dated).size === 1 ? `As of ${dated[0]}` : 'Mixed as-of dates';
+    dated.length !== valid.length ? `Valuation dates missing for ${valid.length - dated.length} of ${valid.length} holdings; dated values ${dateSpan}` :
+    orderedDates[0] === orderedDates.at(-1) ? `As of ${orderedDates[0]}` :
+      `Mixed as-of dates: ${orderedDates[0]} to ${orderedDates.at(-1)}`;
   const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
   const todayDate = new Date(`${indiaToday}T00:00:00Z`);
   const staleCutoff = new Date(todayDate);
