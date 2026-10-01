@@ -38,4 +38,7 @@
 .finding-review-link{display:inline-block;margin-top:11px;color:#287151;font-size:12px;font-weight:800;text-decoration:underline;text-underline-offset:3px}
 .finding-review-link:focus-visible{outline:2px solid #287151;outline-offset:4px}
 #goal-form{scroll-margin-top:20px}
+.goal-editor-section{grid-template-areas:"intro form" "explorations form";align-items:start;column-gap:75px;row-gap:24px}.goal-editor-intro{grid-area:intro}.goal-explorations{grid-area:explorations;min-width:0}#goal-form{grid-area:form}.goal-assumptions{margin:17px 0 4px;padding:13px 14px;border:1px solid #d5e0d5;border-radius:8px;background:#f8fbf7}.goal-assumptions summary{cursor:pointer;color:#315c47;font-size:12px;font-weight:800}.goal-assumptions[open] summary{margin-bottom:12px}.goal-assumptions .form-hint{margin:0 0 12px;font-size:11px}.goal-assumptions label{margin-top:11px}
+@media(max-width:1020px){.goal-editor-section{column-gap:30px}}
+@media(max-width:760px){.goal-editor-section{grid-template-areas:"intro" "form" "explorations";grid-template-columns:1fr;gap:25px}}
 .holding-optional{margin:16px 0 8px;padding:11px 12px;border:1px solid #d5e0d5;border-radius:7px;background:#fbfcfa}.holding-optional summary{cursor:pointer;color:#315c47;font-size:12px;font-weight:800}.holding-optional label{margin-top:13px}.holding-optional .form-hint{margin-top:9px}

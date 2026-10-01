@@ -52,8 +52,8 @@ function selectGoal(id) {
 function fillGoalForm(goal) {
   for (const [selector, value] of [
     ['#age', goal.age], ['#goal-years', goal.years], ['#goal-name', goal.name],
-    ['#goal-target', goal.target], ['#monthly-contribution', goal.monthlyContribution],
-    ['#return-assumption', goal.returnPct], ['#inflation-assumption', goal.inflationPct],
+    ['#goal-target', goal.target], ['#monthly-contribution', goal.monthlyContribution ?? 0],
+    ['#return-assumption', goal.returnPct ?? 0], ['#inflation-assumption', goal.inflationPct ?? 0],
     ['#equity-drop-assumption', goal.equityDropPct ?? 20],
   ]) $(selector).value = value ?? '';
   $('#form-error').textContent = '';
@@ -522,10 +522,11 @@ $('#goal-form').addEventListener('submit', event => {
   const years = Number($('#goal-years').value);
   const target = Number($('#goal-target').value);
   const age = Number($('#age').value);
-  const monthlyContribution = Number($('#monthly-contribution').value);
-  const returnPct = Number($('#return-assumption').value);
-  const inflationPct = Number($('#inflation-assumption').value);
-  const equityDropPct = Number($('#equity-drop-assumption').value);
+  const optionalNumber = (selector, fallback) => $(selector).value.trim() === '' ? fallback : Number($(selector).value);
+  const monthlyContribution = optionalNumber('#monthly-contribution', 0);
+  const returnPct = optionalNumber('#return-assumption', 0);
+  const inflationPct = optionalNumber('#inflation-assumption', 0);
+  const equityDropPct = optionalNumber('#equity-drop-assumption', 20);
   const emergencyFunding = $('#emergency-funding').value;
   if (['#age', '#goal-years', '#goal-target'].some(selector => !$(selector).value.trim()) ||
       !Number.isInteger(years) || years < 1 || years > 50 || !Number.isFinite(target) || target < 1000 || target > 1e12 ||
