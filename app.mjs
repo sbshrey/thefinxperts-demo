@@ -129,6 +129,14 @@ function render() {
   $('#goal-edit-link').textContent = mixedWithExample ? 'Clear example ↗' : needsGoalConfirmation ? 'Confirm goal details ↗' : 'Change goal details ↗';
   if (!creatingGoal) $('#goal-form button[type="submit"]').textContent = needsGoalConfirmation ? 'Confirm goal details →' : 'Update my view →';
   $('#goal-assigned').textContent = `${rupees(result.goalTotal)} assigned from ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}`;
+  $('#goal-mix-summary').textContent = pauseGoalFigures || !result.goalTotal ? '—' :
+    `Equity ${pct(result.goalAssets.Equity, result.goalTotal)} · Debt ${pct(result.goalAssets.Debt, result.goalTotal)} · Gold ${pct(result.goalAssets.Gold, result.goalTotal)}` +
+    (result.goalAssets.Other ? ` · Other ${pct(result.goalAssets.Other, result.goalTotal)}` : '');
+  $('#goal-mix-note').textContent = mixedWithExample ? 'Clear the fictional example before using this goal view.' :
+    needsGoalConfirmation ? 'Confirm the goal details before using this mix.' :
+    !result.goalTotal ? 'Link holdings below to see their mix for this goal.' :
+    result.goalAssets.Other ? 'Other may include unclassified holdings. Verify their asset labels.' :
+      'Based only on holdings linked to this goal.';
   $('#goal-coverage-note').textContent = result.goalHoldingCount === 0 ? 'Choose holdings below to link them to this goal.' :
     result.goalHoldingCount === state.holdings.length ? 'All entered holdings are linked to this goal.' :
     `${result.goalHoldingCount} of ${state.holdings.length} holdings are linked to this goal.`;

@@ -33,6 +33,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Time until goal: ${goal.years} ${goal.years === 1 ? 'year' : 'years'}`,
     `Goal cost in today's rupees: ${rupees(goal.target)}`,
     `Value linked to this goal: ${rupees(result.goalTotal)} across ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}`,
+    `Linked asset mix: ${result.goalTotal ? MIX_ASSETS.map(asset => `${asset} ${(result.goalAssets[asset] / result.goalTotal * 100).toFixed(1)}%`).join(' | ') : 'No holdings linked'}`,
     `Current gap before growth, inflation or tax: ${rupees(result.goalGap ?? 0)}`,
   ];
 
