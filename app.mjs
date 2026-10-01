@@ -606,6 +606,11 @@ $('#holding-form').addEventListener('submit', event => {
     $('#holding-error').textContent = 'Check the 12-character ISIN against your statement, or leave it blank.';
     return;
   }
+  if (type === 'Mutual fund' && state.source === 'user' &&
+      state.holdings.some(holding => holding.type === 'Mutual fund' && holding.granularity === 'fund_house')) {
+    $('#holding-error').textContent = 'This review already has fund-house totals that could include this fund. Replace those totals with a detailed CAS, or remove them before adding individual funds.';
+    return;
+  }
   $('#holding-error').textContent = '';
   const added = { id: crypto.randomUUID(), name, type, asset, value, asOf: asOf || null,
     ...(isin ? { isin } : {}), exposure: type === 'Stock' ? { [name]: 1 } : null };
