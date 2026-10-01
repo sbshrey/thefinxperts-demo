@@ -506,6 +506,33 @@ function renderImportRows() {
   refreshImportSummary();
 }
 
+$('#preview-active').addEventListener('click', async () => {
+  pendingImport = null;
+  $('#import-preview').hidden = true;
+  $('#active-error').textContent = '';
+  const file = $('#active-file').files?.[0];
+  const password = $('#active-password').value;
+  const button = $('#preview-active');
+  button.disabled = true;
+  button.textContent = 'Reading in this tab…';
+  try {
+    const { previewActiveStatementPdf } = await import('./active-statement-pdf.mjs');
+    const result = await previewActiveStatementPdf(file, password);
+    if (result.errors.length) {
+      $('#active-error').textContent = result.errors.slice(0, 5).join(' ');
+      return;
+    }
+    showImportPreview(result.holdings, 'Active Statement', result.notices);
+  } catch {
+    $('#active-error').textContent = 'The Active Statement preview failed in this browser.';
+  } finally {
+    $('#active-password').value = '';
+    $('#active-file').value = '';
+    button.disabled = false;
+    button.textContent = 'Preview fund-house totals';
+  }
+});
+
 fetch('/api/cas/status', { cache: 'no-store' }).then(response => response.ok ? response.json() : null)
   .then(info => {
     if (info?.local === true) {
