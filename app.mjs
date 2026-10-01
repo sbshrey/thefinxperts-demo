@@ -648,6 +648,7 @@ function showInputMode(mode) {
   if (mode !== inputMode) {
     $('#active-file').value = '';
     $('#active-password').value = '';
+    $('#active-password').disabled = false;
     $('#cas-file').value = '';
     $('#cas-password').value = '';
     $('#broker-file').value = '';
@@ -942,6 +943,12 @@ function renderImportRows() {
   refreshImportSummary();
 }
 
+$('#active-file').addEventListener('change', () => {
+  const html = /\.html?$/i.test($('#active-file').files?.[0]?.name || '');
+  $('#active-password').value = '';
+  $('#active-password').disabled = html;
+});
+
 $('#preview-active').addEventListener('click', async () => {
   pendingImport = null;
   pendingPerformance.clear();
@@ -953,8 +960,8 @@ $('#preview-active').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Reading in this tab…';
   try {
-    const { previewActiveStatementPdf } = await import('./active-statement-pdf.mjs');
-    const result = await previewActiveStatementPdf(file, password);
+    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs');
+    const result = await previewActiveStatementFile(file, password);
     if (result.errors.length) {
       $('#active-error').textContent = result.errors.slice(0, 5).join(' ');
       return;
@@ -964,6 +971,7 @@ $('#preview-active').addEventListener('click', async () => {
     $('#active-error').textContent = 'The Active Statement preview failed in this browser.';
   } finally {
     $('#active-password').value = '';
+    $('#active-password').disabled = false;
     $('#active-file').value = '';
     button.disabled = false;
     button.textContent = 'Preview fund-house totals';

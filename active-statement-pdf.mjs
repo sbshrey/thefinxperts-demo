@@ -1,5 +1,21 @@
 import { parseActiveStatementHtml } from './active-statement.mjs';
 
+/** Accept the extracted HTML attachment or its enclosing PDF without sending either to a server. */
+export async function previewActiveStatementFile(file, password = '') {
+  if (!file) return { holdings: [], errors: ['Choose a CAMS Active Statement PDF or HTML attachment.'], notices: [] };
+  if (/\.html?$/i.test(file.name)) {
+    if (file.size > 10_000_000)
+      return { holdings: [], errors: ['Choose a CAMS Active Statement HTML attachment smaller than 10 MB.'], notices: [] };
+    try {
+      const html = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer()).replace(/^\uFEFF/, '');
+      return parseActiveStatementHtml(html);
+    } catch {
+      return { holdings: [], errors: ['The HTML attachment could not be read as UTF-8.'], notices: [] };
+    }
+  }
+  return previewActiveStatementPdf(file, password);
+}
+
 /** Read a CAMS Active Statement PDF attachment entirely in this browser tab. */
 export async function previewActiveStatementPdf(file, password) {
   if (!file || file.size > 15_000_000 || !file.name.toLowerCase().endsWith('.pdf'))
