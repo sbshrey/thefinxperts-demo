@@ -4,6 +4,7 @@ import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs
 import { validateImportReview, validateImportMerge } from './import-review.mjs';
 import { setGoalHolding, relinkAfterReplacingHoldings, linkAddedHoldings } from './goals.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
+import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, compareMixPlan, validMixPlan } from './mix-plan.mjs';
 
 function demoGoal() {
@@ -269,7 +270,9 @@ function render() {
   $('#amc-note').textContent = result.largestAmc ? `${result.largestAmc.name} · ${pct(result.amcCoveredValue, result.fundValue)} of fund value has known fund houses` : 'Fund-house names are missing';
   $('#coverage-note').textContent = result.classifiedPct < 100 ? 'Unknown fund constituents are excluded from this measure' : 'All entered value has named issuer coverage';
   $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length} review items.`;
-  $('#download-review').disabled = state.source !== 'user' || state.holdings.length === 0 || state.goals.some(goal => goal.confirmed === false);
+  const canDownload = state.source === 'user' && state.holdings.length > 0 && state.goals.every(goal => goal.confirmed === true);
+  $('#download-review').disabled = !canDownload;
+  $('#download-readable').disabled = !canDownload;
   updateAccountActions();
 }
 
@@ -785,8 +788,8 @@ function applyPortfolio(portfolio) {
   render();
 }
 
-function downloadJson(payload, filename) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+function downloadFile(content, mimeType, filename) {
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -794,6 +797,16 @@ function downloadJson(payload, filename) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
+
+$('#download-readable').addEventListener('click', () => {
+  const report = buildReadableReport(state);
+  if (!report) {
+    $('#backup-status').textContent = 'Confirm your personal holdings and every goal before downloading a summary.';
+    return;
+  }
+  downloadFile(report, 'text/plain;charset=utf-8', 'thefinxperts-readable-review.txt');
+  $('#backup-status').textContent = 'Readable summary downloaded. Keep it private; the JSON backup is needed to restore your work.';
+});
 
 $('#download-review').addEventListener('click', () => {
   if (state.source !== 'user' || !state.holdings.length) return;
@@ -803,7 +816,7 @@ $('#download-review').addEventListener('click', () => {
     $('#backup-status').textContent = 'This review could not be downloaded. Check the holdings and goals.';
     return;
   }
-  downloadJson(checked.portfolio, 'thefinxperts-review.json');
+  downloadFile(JSON.stringify(checked.portfolio, null, 2), 'application/json', 'thefinxperts-review.json');
   $('#backup-status').textContent = 'Review file downloaded. Keep it private; no copy was saved by this page.';
 });
 
@@ -888,7 +901,7 @@ $('#account-export').addEventListener('click', async () => {
     if (!response.ok) throw new Error('Export failed');
     const { portfolio } = await response.json();
     if (!portfolio || ![1, 2].includes(portfolio.version)) throw new Error('No saved portfolio');
-    downloadJson(portfolio, 'thefinxperts-portfolio.json');
+    downloadFile(JSON.stringify(portfolio, null, 2), 'application/json', 'thefinxperts-portfolio.json');
     $('#account-status').textContent = 'Saved portfolio exported. Keep the downloaded file private.';
   } catch { $('#account-status').textContent = 'Could not export the saved portfolio. Try again later.'; }
 });
