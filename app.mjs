@@ -270,7 +270,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const goalLink = document.createElement('label');
     goalLink.className = 'holding-goal-link';
     const goalCheckbox = document.createElement('input');
@@ -734,6 +734,7 @@ function renderImportRows() {
       if (holding.amc) parts.push(`Fund house: ${holding.amc}`);
       if (holding.isin) parts.push(`ISIN as supplied: ${holding.isin}`);
       if (holding.amfi) parts.push(`AMFI code: ${holding.amfi}`);
+      if (holding.units) parts.push(`Statement units: ${holding.units}`);
       if (holding.granularity === 'fund_house') parts.push('Fund-house summary, not an individual scheme');
       metadata.textContent = parts.length ? parts.join(' · ') : 'No fund-house or instrument identifier supplied.';
     };

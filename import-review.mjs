@@ -22,6 +22,10 @@ export function validateImportReview(holdings) {
       errors.push(`Holding ${row}: check the ISIN.`);
     if (holding.amfi != null && (typeof holding.amfi !== 'string' || !/^\d{5,8}$/.test(holding.amfi)))
       errors.push(`Holding ${row}: check the AMFI code.`);
+    if (holding.units != null && (typeof holding.units !== 'string' ||
+        !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/.test(holding.units) ||
+        !/[1-9]/.test(holding.units) || holding.type !== 'Mutual fund' || holding.granularity === 'fund_house'))
+      errors.push(`Holding ${row}: check the scheme units.`);
     if (holding.type === 'Stock' && (holding.amc || holding.amfi)) errors.push(`Holding ${row}: stock rows cannot carry fund-house or AMFI fields.`);
     if (holding.granularity != null &&
         (holding.granularity !== 'fund_house' || holding.type !== 'Mutual fund' || !holding.amc || holding.isin || holding.amfi))

@@ -6,7 +6,7 @@ const AMFI = /^\d{5,8}$/;
 const TYPES = new Set(['Mutual fund', 'Stock']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId'];
-const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity'];
+const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
@@ -16,7 +16,7 @@ export function buildReviewBackup(state) {
     holdings: state.holdings.map(holding => ({
       id: holding.id, name: holding.name, type: holding.type, asset: holding.asset, value: holding.value,
       asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
-      granularity: holding.granularity || null,
+      granularity: holding.granularity || null, units: holding.units || null,
     })),
     goals: state.goals.map(goal => ({ ...goal })),
     activeGoalId: state.activeGoalId,
@@ -47,6 +47,9 @@ export function parseReviewBackup(text) {
         (holding.amc != null && !isName(holding.amc, 200)) ||
         (holding.isin != null && (typeof holding.isin !== 'string' || !ISIN.test(holding.isin))) ||
         (holding.amfi != null && (typeof holding.amfi !== 'string' || !AMFI.test(holding.amfi))) ||
+        (holding.units != null && (typeof holding.units !== 'string' ||
+          !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/.test(holding.units) || !/[1-9]/.test(holding.units) ||
+          holding.type !== 'Mutual fund' || holding.granularity === 'fund_house')) ||
         (holding.type === 'Stock' && (holding.asset !== 'Equity' || holding.amc || holding.amfi)) ||
         (holding.granularity != null && (holding.granularity !== 'fund_house' || holding.type !== 'Mutual fund' ||
           !holding.amc || holding.isin || holding.amfi))) {
