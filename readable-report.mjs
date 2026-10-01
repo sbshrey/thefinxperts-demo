@@ -38,6 +38,11 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Linked value needing a valuation-date check: ${rupees(result.goalDateCheck.value)} across ${result.goalDateCheck.count} holdings (missing, future or over 90 days old; entered values remain unverified)`,
     `Current gap before growth, inflation or tax: ${rupees(result.goalGap ?? 0)}`,
   ];
+  if (goal.emergencyFunding) {
+    const answer = { separate: 'I have separate accessible money', goal_holdings: 'I may use holdings linked to this goal',
+      unsure: 'I am unsure' }[goal.emergencyFunding];
+    if (answer) lines.push(`Your answer about unexpected essential expenses: ${answer}. This has not been verified.`);
+  }
   if (result.lossLimits?.affordable || result.lossLimits?.tolerable) {
     lines.push(`Illustrative linked-equity loss: ${rupees(result.shock.loss)} under the entered ${result.shock.dropPct}% one-time fall.`);
     if (result.lossLimits.affordable) lines.push(`Your entered amount coverable from other resources: ${rupees(result.lossLimits.affordable.limit)}; illustration ${result.lossLimits.affordable.excess ? `exceeds it by ${rupees(result.lossLimits.affordable.excess)}` : 'does not exceed it'}.`);

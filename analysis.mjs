@@ -139,6 +139,17 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       limitation: 'Ninety days is a prompt to recheck entered values, not a market-data freshness rule.' });
   }
 
+  if (validGoal && goalTotal > 0 && ['goal_holdings', 'unsure'].includes(goal.emergencyFunding)) {
+    const mayUseGoal = goal.emergencyFunding === 'goal_holdings';
+    findings.push({ key: 'emergency', tone: 'amber', label: 'Money needed sooner',
+      title: 'Check how unexpected expenses affect this goal',
+      detail: mayUseGoal ? 'You said you may need holdings linked to this goal for an unexpected essential expense. Consider how using them early would change the goal plan.' :
+        'You are unsure where money for an unexpected essential expense would come from. Check this before relying on the goal scenario.',
+      question: 'Where would money for an unexpected essential expense come from without disrupting this goal?',
+      basis: `Used your answer about unexpected essential expenses for this goal; ${rupees(goalTotal)} of entered holdings is linked to it.`,
+      limitation: 'This answer does not verify accessible savings, income, obligations or the size and timing of an emergency. It is not a risk profile or a recommendation to move money.' });
+  }
+
   if (validGoal && goalTotal > 0 && years <= 5 && goalEquityPct >= 60) {
     findings.push({ key: 'horizon', tone: 'amber', label: 'Goal timing', title: 'The linked goal is relatively near',
       detail: `${goalEquityPct.toFixed(0)}% of the holdings assigned to this goal is equity, while the goal is ${years} ${years === 1 ? 'year' : 'years'} away. Consider how much loss the goal can absorb.`,

@@ -56,6 +56,7 @@ function fillGoalForm(goal) {
   fillMixForm(goal);
   $('#affordable-loss').value = goal.affordableLoss ?? '';
   $('#tolerable-loss').value = goal.tolerableLoss ?? '';
+  $('#emergency-funding').value = goal.emergencyFunding ?? '';
   $('#loss-limits-error').textContent = '';
 }
 
@@ -425,6 +426,7 @@ $('#goal-form').addEventListener('submit', event => {
   const returnPct = Number($('#return-assumption').value);
   const inflationPct = Number($('#inflation-assumption').value);
   const equityDropPct = Number($('#equity-drop-assumption').value);
+  const emergencyFunding = $('#emergency-funding').value;
   if (!Number.isInteger(years) || years < 1 || years > 50 || !Number.isFinite(target) || target < 1000 || target > 1e12 ||
       !Number.isFinite(age) || age < 18 || age > 100 || !Number.isFinite(monthlyContribution) || monthlyContribution < 0 || monthlyContribution > 1e8 ||
       !Number.isFinite(returnPct) || returnPct < -20 || returnPct > 13 || !Number.isFinite(inflationPct) || inflationPct < -5 || inflationPct > 15 ||
@@ -434,6 +436,7 @@ $('#goal-form').addEventListener('submit', event => {
   }
   $('#form-error').textContent = '';
   const details = { name: $('#goal-name').value.trim() || 'My goal', years, target, age, monthlyContribution, returnPct, inflationPct, equityDropPct, confirmed: true };
+  if (emergencyFunding) details.emergencyFunding = emergencyFunding;
   if (creatingGoal) {
     const added = { id: crypto.randomUUID(), ...details, linkedIds: [] };
     state.goals.push(added);
@@ -447,6 +450,7 @@ $('#goal-form').addEventListener('submit', event => {
     fillMixForm(added);
   } else {
     state.goal = { ...state.goal, ...details };
+    if (!emergencyFunding) delete state.goal.emergencyFunding;
     state.goals = state.goals.map(goal => goal.id === state.activeGoalId ? state.goal : goal);
   }
   render();
@@ -468,6 +472,7 @@ $('#add-goal').addEventListener('click', () => {
   $('#return-assumption').value = '0';
   $('#inflation-assumption').value = '0';
   $('#equity-drop-assumption').value = '20';
+  $('#emergency-funding').value = '';
   $('#affordable-loss').value = '';
   $('#tolerable-loss').value = '';
   $('#loss-limits-error').textContent = '';
