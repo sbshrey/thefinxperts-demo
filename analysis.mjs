@@ -11,6 +11,7 @@ export const sampleHoldings = [
 ];
 
 export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 }, today = new Date()) {
+  const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
   const valid = holdings.filter(h => Number.isFinite(Number(h.value)) && Number(h.value) > 0);
   const total = valid.reduce((sum, h) => sum + Number(h.value), 0);
   const linkedIds = Array.isArray(goal.linkedIds) ? new Set(goal.linkedIds) : null;
@@ -73,7 +74,8 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const asOfSummary = dated.length === 0 ? 'Valuation dates not provided' :
     dated.length !== valid.length ? 'Some valuation dates missing' :
     new Set(dated).size === 1 ? `As of ${dated[0]}` : 'Mixed as-of dates';
-  const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  const todayDate = new Date(`${indiaToday}T00:00:00Z`);
   const staleCutoff = new Date(todayDate);
   staleCutoff.setUTCDate(staleCutoff.getUTCDate() - 90);
   const missingDates = valid.length - dated.length;
@@ -92,13 +94,17 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   if (conflictingIsins) {
     findings.push({ key: 'identity', tone: 'amber', label: 'Data quality', title: 'Check conflicting labels',
       detail: `${conflictingIsins} ISIN ${conflictingIsins === 1 ? 'appears' : 'appear'} with different holding types or asset categories. Recheck those rows before interpreting concentration or goal mix.`,
-      question: 'Which type and asset category does the original statement show for each conflicting ISIN?' });
+      question: 'Which type and asset category does the original statement show for each conflicting ISIN?',
+      basis: `Compared the type and asset label on every row sharing a format-valid ISIN; ${conflictingIsins} identifier ${conflictingIsins === 1 ? 'has' : 'have'} conflicting labels.`,
+      limitation: 'An ISIN in an import has not been checked against an instrument registry.' });
   }
 
   if (fundHouseSummaries.size) {
     findings.push({ key: 'summary', tone: 'amber', label: 'Statement detail', title: 'Only fund-house totals are visible',
       detail: `${fundHouseSummaries.size} fund ${fundHouseSummaries.size === 1 ? 'house is' : 'houses are'} represented by summary amounts, not individual schemes. Check a detailed CAS before judging scheme overlap, plan type or costs.`,
-      question: 'Can you get a detailed CAS that lists each scheme and its current value?' });
+      question: 'Can you get a detailed CAS that lists each scheme and its current value?',
+      basis: `Counted ${fundHouseSummaries.size} distinct fund-house names on rows marked as fund-house summaries.`,
+      limitation: 'Those rows have no scheme identifier, so scheme overlap, plan type and costs cannot be calculated.' });
   }
 
   if (valid.length && (missingDates || staleDates || futureDates)) {
@@ -109,13 +115,17 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     ].filter(Boolean).join('; ');
     findings.push({ key: 'valuation', tone: 'amber', label: 'Data quality', title: 'Check when these values were measured',
       detail: `${issues}. Refresh or verify those values before relying on the goal figures.`,
-      question: 'Can you confirm the value and valuation date of each flagged holding?' });
+      question: 'Can you confirm the value and valuation date of each flagged holding?',
+      basis: `Compared ${valid.length} entered holding dates with ${indiaToday} in India; dates before ${staleCutoff.toISOString().slice(0, 10)} are marked over 90 days old. Missing or invalid dates are counted together.`,
+      limitation: 'Ninety days is a prompt to recheck entered values, not a market-data freshness rule.' });
   }
 
   if (validGoal && goalTotal > 0 && years <= 5 && goalEquityPct >= 60) {
     findings.push({ key: 'horizon', tone: 'amber', label: 'Goal timing', title: 'The linked goal is relatively near',
       detail: `${goalEquityPct.toFixed(0)}% of the holdings assigned to this goal is equity, while the goal is ${years} ${years === 1 ? 'year' : 'years'} away. Consider how much loss the goal can absorb.`,
-      question: 'If equity falls before this goal date, how much of the goal cost can you still meet?' });
+      question: 'If equity falls before this goal date, how much of the goal cost can you still meet?',
+      basis: `${rupees(goalEquityValue)} labelled Equity ÷ ${rupees(goalTotal)} linked to this goal = ${goalEquityPct.toFixed(1)}%; entered horizon ${years} ${years === 1 ? 'year' : 'years'}.`,
+      limitation: 'Asset labels and values are as entered; this does not assess your cash reserve, liabilities or capacity for loss.' });
   }
   if (largestIssuer && total && largestIssuer[1] / total >= 0.10) {
     const sources = largestIssuerSources;
@@ -125,17 +135,24 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     findings.push({ key: 'issuer', tone: 'rose', label: 'Visible concentration',
       title: positions > 1 ? 'One company appears in several places' : 'One company is a large holding',
       detail: `${largestIssuer[0]} accounts for at least ${(largestIssuer[1] / total * 100).toFixed(1)}% through ${route}.${fundValue ? ' Unnamed fund holdings could add more.' : ''}`,
-      question: 'Would a large fall in this one company materially change your goal, and is fund exposure still unknown?' });
+      question: 'Would a large fall in this one company materially change your goal, and is fund exposure still unknown?',
+      basis: `${rupees(largestIssuer[1])} visible exposure ÷ ${rupees(total)} entered portfolio = ${(largestIssuer[1] / total * 100).toFixed(1)}%. Direct stock value and any supplied fund constituent weights are added.`,
+      limitation: `Only ${(classifiedValue / total * 100).toFixed(1)}% of entered value has named-company coverage; unknown fund holdings may add exposure.` });
   }
-  if (valid.filter(h => h.asset === 'Equity' && h.type === 'Mutual fund').length >= 3) {
+  const equityFunds = valid.filter(h => h.asset === 'Equity' && h.type === 'Mutual fund').length;
+  if (equityFunds >= 3) {
     findings.push({ key: 'funds', tone: 'blue', label: 'Fund roles', title: 'Check what each equity fund adds',
       detail: 'Several equity funds may own similar companies. Review their underlying holdings and the job each fund plays.',
-      question: 'What distinct exposure does each fund add, according to its latest disclosed holdings?' });
+      question: 'What distinct exposure does each fund add, according to its latest disclosed holdings?',
+      basis: `Counted ${equityFunds} entered mutual-fund rows labelled Equity.`,
+      limitation: 'A fund count does not prove overlap; current scheme holdings are needed to compare companies.' });
   }
   if (findings.length === 0 && total > 0) {
     findings.push({ key: 'review', tone: 'blue', label: 'Next review', title: 'Check the missing details',
       detail: 'A holdings snapshot shows composition, but transactions and current fund disclosures are needed for performance and precise overlap.',
-      question: 'Which missing statement or fund disclosure would answer your next portfolio question?' });
+      question: 'Which missing statement or fund disclosure would answer your next portfolio question?',
+      basis: `Calculated composition from ${valid.length} entered holding ${valid.length === 1 ? 'value' : 'values'}; no other rule yielded a priority review item.`,
+      limitation: 'A snapshot has no transaction history or verified fund constituents, so performance and precise overlap remain unknown.' });
   }
 
   return {

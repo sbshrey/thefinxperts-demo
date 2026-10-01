@@ -205,7 +205,16 @@ function render() {
     const nextLabel = document.createElement('strong');
     nextLabel.textContent = 'Check next: ';
     next.append(nextLabel, document.createTextNode(finding.question));
-    content.append(dot, label, title, detail, next);
+    const explanation = document.createElement('details');
+    explanation.className = 'finding-basis';
+    const explanationTitle = document.createElement('summary');
+    explanationTitle.textContent = 'Why this appeared';
+    const basis = document.createElement('p');
+    basis.textContent = finding.basis;
+    const limitation = document.createElement('p');
+    limitation.textContent = finding.limitation;
+    explanation.append(explanationTitle, basis, limitation);
+    content.append(dot, label, title, detail, next, explanation);
     article.append(number, content);
     findings.append(article);
   });
