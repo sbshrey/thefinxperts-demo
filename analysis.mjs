@@ -1,4 +1,5 @@
 import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs';
+import { compareMixPlan } from './mix-plan.mjs';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -142,6 +143,22 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       question: 'Can you confirm the value and valuation date of each flagged holding?',
       basis: `Compared ${valid.length} entered holding dates with ${indiaToday} in India; dates before ${staleCutoff.toISOString().slice(0, 10)} are marked over 90 days old. Missing or invalid dates are counted together.`,
       limitation: 'Ninety days is a prompt to recheck entered values, not a market-data freshness rule.' });
+  }
+
+  const mixComparison = validGoal && goalTotal > 0 && !goalDateCheck.count &&
+    !conflictingIsins && !goalHoldings.some(holding => holding.granularity === 'fund_house')
+    ? compareMixPlan(goalAssets, goalTotal, goal.targetMix) : null;
+  const largestMixDifference = mixComparison?.reduce((largest, row) =>
+    !largest || Math.abs(row.differencePct) > Math.abs(largest.differencePct) ? row : largest, null);
+  if (largestMixDifference && Math.abs(largestMixDifference.differencePct) >= 10) {
+    const row = largestMixDifference;
+    const direction = row.differencePct > 0 ? 'above' : 'below';
+    findings.push({ key: 'chosen-mix', tone: 'blue', label: 'Your chosen goal mix',
+      title: 'Your goal holdings differ from the mix you chose',
+      detail: `${row.asset} is ${row.currentPct.toFixed(1)}% of the entered value linked to this goal, ${Math.abs(row.differencePct).toFixed(1)} percentage points ${direction} your chosen ${row.plannedPct.toFixed(1)}% share.`,
+      question: 'Does the mix you entered still reflect what you want for this goal?',
+      basis: `${rupees(goalAssets[row.asset])} labelled ${row.asset} ÷ ${rupees(goalTotal)} linked to this goal = ${row.currentPct.toFixed(1)}%; your entered mix assigns ${row.plannedPct.toFixed(1)}% to ${row.asset}. The largest difference is shown when it reaches 10 percentage points.`,
+      limitation: 'This compares entered asset labels with your own mix. The 10-point trigger is a review prompt, not an allocation rule or a trade recommendation. Fund constituents, taxes and transaction costs are not assessed.' });
   }
 
   if (validGoal && goalTotal > 0 && ['goal_holdings', 'unsure'].includes(goal.emergencyFunding)) {

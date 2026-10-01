@@ -244,7 +244,8 @@ function render() {
   $('#panel-counter').textContent = result.findings.length ? `${String(result.findings.length).padStart(2, '0')} REVIEW ${result.findings.length === 1 ? 'ITEM' : 'ITEMS'}` : 'NO HOLDINGS';
   const reviewDestinations = {
     identity: ['#holdings', 'Review holding labels'], summary: ['#input-choice', 'See import choices'],
-    valuation: ['#holdings', 'Check entered values'], emergency: ['#goal-form', 'Review goal context'],
+    valuation: ['#holdings', 'Check entered values'], 'chosen-mix': ['#mix-plan-details', 'Compare my chosen mix'],
+    emergency: ['#goal-form', 'Review goal context'],
     horizon: ['#goal-form', 'Explore goal timing'], position: ['#holdings', 'Review linked holdings'],
     issuer: ['#holdings', 'Review holdings'], plan: ['#holdings', 'Review fund names'],
     funds: ['#holdings', 'Review fund list'], review: ['#holdings', 'Review holdings'],
