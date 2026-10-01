@@ -3,6 +3,7 @@ import { parseHoldingsCsv } from './csv.mjs';
 import { validateImportReview } from './import-review.mjs';
 import { setGoalHolding, relinkAfterReplacingHoldings } from './goals.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
+import { MIX_ASSETS, compareMixPlan, validMixPlan } from './mix-plan.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -23,6 +24,7 @@ function selectGoal(id) {
   state.activeGoalId = id;
   state.goal = selected;
   creatingGoal = false;
+  $('#mix-plan-details').hidden = false;
   $('#cancel-new-goal').hidden = true;
   $('#goal-form button[type="submit"]').textContent = 'Update my view →';
   fillGoalForm(selected);
@@ -37,6 +39,39 @@ function fillGoalForm(goal) {
     ['#equity-drop-assumption', goal.equityDropPct ?? 20],
   ]) $(selector).value = value;
   $('#form-error').textContent = '';
+  fillMixForm(goal);
+}
+
+function fillMixForm(goal) {
+  for (const asset of MIX_ASSETS) $(`#mix-${asset.toLowerCase()}`).value = goal.targetMix?.[asset] ?? '';
+  $('#mix-plan-error').textContent = '';
+}
+
+function renderMixPlan(result) {
+  const container = $('#mix-plan-result');
+  container.replaceChildren();
+  if (!state.goal.targetMix) {
+    container.textContent = 'No mix saved for this goal.';
+    return;
+  }
+  const rows = compareMixPlan(result.goalAssets, result.goalTotal, state.goal.targetMix);
+  if (!rows) {
+    container.textContent = 'Assign holdings to this goal to see the comparison.';
+    return;
+  }
+  const headings = document.createElement('div');
+  headings.className = 'mix-plan-row mix-plan-head';
+  for (const label of ['Asset', 'Current', 'Your mix', 'Difference']) {
+    const cell = document.createElement('span'); cell.textContent = label; headings.append(cell);
+  }
+  container.append(headings);
+  for (const row of rows) {
+    const line = document.createElement('div'); line.className = 'mix-plan-row';
+    for (const value of [row.asset, `${row.currentPct.toFixed(1)}%`, `${row.plannedPct.toFixed(1)}%`, `${row.differencePct >= 0 ? '+' : ''}${row.differencePct.toFixed(1)} pp`]) {
+      const cell = document.createElement('span'); cell.textContent = value; line.append(cell);
+    }
+    container.append(line);
+  }
 }
 
 function syncGoalSelector() {
@@ -56,6 +91,7 @@ function syncGoalSelector() {
 function render() {
   syncGoalSelector();
   const result = analyzePortfolio(state.holdings, state.goal);
+  renderMixPlan(result);
   $('#portfolio-value').textContent = rupees(result.total);
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
   $('#goal-years-value').textContent = `${state.goal.years} years`;
@@ -197,6 +233,27 @@ function render() {
 
 function pct(value, total) { return total ? `${(value / total * 100).toFixed(0)}%` : '0%'; }
 
+$('#mix-plan-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const values = MIX_ASSETS.map(asset => $(`#mix-${asset.toLowerCase()}`).value);
+  const plan = Object.fromEntries(MIX_ASSETS.map((asset, index) => [asset, Number(values[index])]));
+  if (values.some(value => value.trim() === '') || !validMixPlan(plan)) {
+    $('#mix-plan-error').textContent = 'Enter four percentages from 0 to 100 that total exactly 100%.';
+    return;
+  }
+  $('#mix-plan-error').textContent = '';
+  state.goal = { ...state.goal, targetMix: plan };
+  state.goals = state.goals.map(goal => goal.id === state.activeGoalId ? state.goal : goal);
+  render();
+});
+$('#clear-mix').addEventListener('click', () => {
+  state.goal = { ...state.goal };
+  delete state.goal.targetMix;
+  state.goals = state.goals.map(goal => goal.id === state.activeGoalId ? state.goal : goal);
+  fillMixForm(state.goal);
+  render();
+});
+
 $('#goal-form').addEventListener('submit', event => {
   event.preventDefault();
   const years = Number($('#goal-years').value);
@@ -223,6 +280,8 @@ $('#goal-form').addEventListener('submit', event => {
     creatingGoal = false;
     $('#cancel-new-goal').hidden = true;
     $('#goal-form button[type="submit"]').textContent = 'Update my view →';
+    $('#mix-plan-details').hidden = false;
+    fillMixForm(added);
   } else {
     state.goal = { ...state.goal, ...details };
     state.goals = state.goals.map(goal => goal.id === state.activeGoalId ? state.goal : goal);
@@ -235,6 +294,7 @@ $('#goal-select').addEventListener('change', event => selectGoal(event.target.va
 $('#add-goal').addEventListener('click', () => {
   if (state.goals.length >= 10) return;
   creatingGoal = true;
+  $('#mix-plan-details').hidden = true;
   $('#goal-name').value = '';
   $('#goal-years').value = '10';
   $('#goal-target').value = '';
@@ -492,6 +552,7 @@ function applyPortfolio(portfolio) {
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   state.source = 'user';
   creatingGoal = false;
+  $('#mix-plan-details').hidden = false;
   $('#cancel-new-goal').hidden = true;
   $('#goal-form button[type="submit"]').textContent = 'Update my view →';
   fillGoalForm(state.goal);

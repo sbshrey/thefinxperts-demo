@@ -20,6 +20,10 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     .reduce((sum, holding) => sum + Number(holding.value), 0);
   const goalEquityPct = goalTotal ? goalEquityValue / goalTotal * 100 : 0;
   const assets = { Equity: 0, Debt: 0, Gold: 0, Other: 0 };
+  const goalAssets = { Equity: 0, Debt: 0, Gold: 0, Other: 0 };
+  for (const holding of goalHoldings) {
+    goalAssets[Object.hasOwn(goalAssets, holding.asset) ? holding.asset : 'Other'] += Number(holding.value);
+  }
   const issuers = new Map();
   const issuerSources = new Map();
   const amcs = new Map();
@@ -109,7 +113,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   }
 
   return {
-    total, assets, equityPct, goalTotal, goalEquityPct, goalHoldingCount: goalHoldings.length,
+    total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
     largestIssuer, largestIssuerSources, largestAmc, fundValue, amcCoveredValue, asOfSummary,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,

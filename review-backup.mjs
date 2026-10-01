@@ -1,3 +1,4 @@
+import { validMixPlan } from './mix-plan.mjs';
 const MAX_BYTES = 2_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
@@ -6,7 +7,7 @@ const TYPES = new Set(['Mutual fund', 'Stock']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId'];
 const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi'];
-const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'linkedIds'];
+const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'linkedIds', 'targetMix'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
 export function buildReviewBackup(state) {
@@ -64,6 +65,7 @@ export function parseReviewBackup(text) {
         !boundedNumber(goal.monthlyContribution, 0, 100_000_000) ||
         !boundedNumber(goal.returnPct, -20, 13) || !boundedNumber(goal.inflationPct, -5, 15) ||
         (goal.equityDropPct !== undefined && !boundedNumber(goal.equityDropPct, 0, 60)) ||
+        (goal.targetMix !== undefined && !validMixPlan(goal.targetMix)) ||
         !Array.isArray(goal.linkedIds) || goal.linkedIds.length > 500) {
       return invalid('A goal in the review file is invalid or contains unsupported fields.');
     }
