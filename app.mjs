@@ -1,15 +1,59 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs';
 import { parseHoldingsCsv } from './csv.mjs';
 import { validateImportReview } from './import-review.mjs';
+import { setGoalHolding, relinkAfterReplacingHoldings } from './goals.mjs';
 
-const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goal: { years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0, returnPct: 0, inflationPct: 0, equityDropPct: 20 } };
+function demoGoal() {
+  return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
+    returnPct: 0, inflationPct: 0, equityDropPct: 20, linkedIds: sampleHoldings.map(holding => holding.id) };
+}
+const firstGoal = demoGoal();
+const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals: [firstGoal], activeGoalId: firstGoal.id, goal: firstGoal };
 const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
 const $ = selector => document.querySelector(selector);
 let pendingImport = null;
 let accountAuthenticated = false;
 let hasSavedPortfolio = false;
+let creatingGoal = false;
+
+function selectGoal(id) {
+  const selected = state.goals.find(goal => goal.id === id);
+  if (!selected) return;
+  state.activeGoalId = id;
+  state.goal = selected;
+  creatingGoal = false;
+  $('#cancel-new-goal').hidden = true;
+  $('#goal-form button[type="submit"]').textContent = 'Update my view →';
+  fillGoalForm(selected);
+  render();
+}
+
+function fillGoalForm(goal) {
+  for (const [selector, value] of [
+    ['#age', goal.age], ['#goal-years', goal.years], ['#goal-name', goal.name],
+    ['#goal-target', goal.target], ['#monthly-contribution', goal.monthlyContribution],
+    ['#return-assumption', goal.returnPct], ['#inflation-assumption', goal.inflationPct],
+    ['#equity-drop-assumption', goal.equityDropPct ?? 20],
+  ]) $(selector).value = value;
+  $('#form-error').textContent = '';
+}
+
+function syncGoalSelector() {
+  const select = $('#goal-select');
+  select.replaceChildren();
+  for (const goal of state.goals) {
+    const option = document.createElement('option');
+    option.value = goal.id;
+    option.textContent = goal.name;
+    select.append(option);
+  }
+  select.value = state.activeGoalId;
+  $('#add-goal').disabled = state.goals.length >= 10;
+  $('#delete-goal').disabled = state.goals.length <= 1;
+}
 
 function render() {
+  syncGoalSelector();
   const result = analyzePortfolio(state.holdings, state.goal);
   $('#portfolio-value').textContent = rupees(result.total);
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
@@ -104,14 +148,13 @@ function render() {
     goalCheckbox.checked = !Array.isArray(state.goal.linkedIds) || state.goal.linkedIds.includes(holding.id);
     goalCheckbox.setAttribute('aria-label', `Count ${holding.name} toward ${state.goal.name}`);
     goalCheckbox.addEventListener('change', () => {
-      const selected = new Set(state.goal.linkedIds || state.holdings.map(item => item.id));
-      if (goalCheckbox.checked) selected.add(holding.id);
-      else selected.delete(holding.id);
-      state.goal.linkedIds = [...selected];
+      state.goals = setGoalHolding(state.goals, state.activeGoalId, holding.id, goalCheckbox.checked);
+      state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
       render();
     });
     const goalLinkText = document.createElement('span');
-    goalLinkText.textContent = 'For this goal';
+    const otherGoal = state.goals.find(goal => goal.id !== state.activeGoalId && goal.linkedIds.includes(holding.id));
+    goalLinkText.textContent = otherGoal ? `Assigned to ${otherGoal.name}` : 'For this goal';
     goalLink.append(goalCheckbox, goalLinkText);
     info.append(name, meta, goalLink);
     const amount = document.createElement('strong');
@@ -124,7 +167,8 @@ function render() {
     remove.textContent = '×';
     remove.addEventListener('click', () => {
       state.holdings = state.holdings.filter(h => h.id !== holding.id);
-      if (Array.isArray(state.goal.linkedIds)) state.goal.linkedIds = state.goal.linkedIds.filter(id => id !== holding.id);
+      state.goals = state.goals.map(goal => ({ ...goal, linkedIds: goal.linkedIds.filter(id => id !== holding.id) }));
+      state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
       render();
     });
     row.append(info, amount, remove);
@@ -168,10 +212,46 @@ $('#goal-form').addEventListener('submit', event => {
     return;
   }
   $('#form-error').textContent = '';
-  state.goal = { name: $('#goal-name').value.trim() || 'My goal', years, target, age, monthlyContribution, returnPct, inflationPct, equityDropPct,
-    ...(Array.isArray(state.goal.linkedIds) ? { linkedIds: state.goal.linkedIds } : {}) };
+  const details = { name: $('#goal-name').value.trim() || 'My goal', years, target, age, monthlyContribution, returnPct, inflationPct, equityDropPct };
+  if (creatingGoal) {
+    const added = { id: crypto.randomUUID(), ...details, linkedIds: [] };
+    state.goals.push(added);
+    state.activeGoalId = added.id;
+    state.goal = added;
+    creatingGoal = false;
+    $('#cancel-new-goal').hidden = true;
+    $('#goal-form button[type="submit"]').textContent = 'Update my view →';
+  } else {
+    state.goal = { ...state.goal, ...details };
+    state.goals = state.goals.map(goal => goal.id === state.activeGoalId ? state.goal : goal);
+  }
   render();
   $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+$('#goal-select').addEventListener('change', event => selectGoal(event.target.value));
+$('#add-goal').addEventListener('click', () => {
+  if (state.goals.length >= 10) return;
+  creatingGoal = true;
+  $('#goal-name').value = '';
+  $('#goal-years').value = '10';
+  $('#goal-target').value = '';
+  $('#age').value = state.goal.age;
+  $('#monthly-contribution').value = '0';
+  $('#return-assumption').value = '0';
+  $('#inflation-assumption').value = '0';
+  $('#equity-drop-assumption').value = '20';
+  $('#form-error').textContent = '';
+  $('#cancel-new-goal').hidden = false;
+  $('#goal-form button[type="submit"]').textContent = 'Create goal →';
+  $('#goal-editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#goal-name').focus({ preventScroll: true });
+});
+$('#cancel-new-goal').addEventListener('click', () => selectGoal(state.activeGoalId));
+$('#delete-goal').addEventListener('click', () => {
+  if (state.goals.length <= 1 || !window.confirm(`Remove ${state.goal.name} and its holding links?`)) return;
+  state.goals = state.goals.filter(goal => goal.id !== state.activeGoalId);
+  selectGoal(state.goals[0].id);
 });
 
 $('#holding-form').addEventListener('submit', event => {
@@ -198,8 +278,19 @@ $('#holding-type').addEventListener('change', () => {
   $('#holding-asset').disabled = stock;
 });
 
-$('#reset-demo').addEventListener('click', () => { state.holdings = structuredClone(sampleHoldings); delete state.goal.linkedIds; state.source = 'demo'; render(); });
-$('#clear-all').addEventListener('click', () => { state.holdings = []; delete state.goal.linkedIds; state.source = 'user'; render(); });
+$('#reset-demo').addEventListener('click', () => {
+  state.holdings = structuredClone(sampleHoldings);
+  state.goals = [demoGoal()];
+  state.source = 'demo';
+  selectGoal(state.goals[0].id);
+});
+$('#clear-all').addEventListener('click', () => {
+  state.holdings = [];
+  state.goals = state.goals.map(goal => ({ ...goal, linkedIds: [] }));
+  state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
+  state.source = 'user';
+  render();
+});
 $('#csv-file').addEventListener('change', async event => {
   pendingImport = null;
   $('#import-preview').hidden = true;
@@ -355,7 +446,8 @@ $('#confirm-import').addEventListener('click', () => {
     const name = holding.name.trim();
     return { ...holding, name, id: crypto.randomUUID(), exposure: holding.type === 'Stock' ? { [name]: 1 } : null };
   });
-  delete state.goal.linkedIds;
+  state.goals = relinkAfterReplacingHoldings(state.goals, state.activeGoalId, state.holdings);
+  state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   state.source = 'user';
   pendingImport = null;
   $('#csv-file').value = '';
@@ -392,17 +484,28 @@ async function readSavedPortfolio(apply) {
       return;
     }
     if (apply) {
-      if (portfolio.version !== 1 || !Array.isArray(portfolio.holdings) || !portfolio.goal) throw new Error('Invalid saved data');
+      if (![1, 2].includes(portfolio.version) || !Array.isArray(portfolio.holdings) ||
+          (portfolio.version === 1 && !portfolio.goal) || (portfolio.version === 2 && !Array.isArray(portfolio.goals))) {
+        throw new Error('Invalid saved data');
+      }
       state.holdings = portfolio.holdings.map(holding => ({ ...holding, id: holding.id || crypto.randomUUID(),
         exposure: holding.type === 'Stock' ? { [holding.name]: 1 } : null }));
-      state.goal = portfolio.goal;
+      if (portfolio.version === 1) {
+        const oldGoal = { ...portfolio.goal, id: crypto.randomUUID(),
+          linkedIds: Array.isArray(portfolio.goal.linkedIds) ? portfolio.goal.linkedIds : state.holdings.map(holding => holding.id) };
+        state.goals = [oldGoal];
+        state.activeGoalId = oldGoal.id;
+      } else {
+        if (!portfolio.goals.length || !portfolio.goals.some(goal => goal.id === portfolio.activeGoalId)) throw new Error('Invalid goals');
+        state.goals = portfolio.goals;
+        state.activeGoalId = portfolio.activeGoalId;
+      }
+      state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
       state.source = 'user';
-      for (const [selector, value] of [
-        ['#age', state.goal.age], ['#goal-years', state.goal.years], ['#goal-name', state.goal.name],
-        ['#goal-target', state.goal.target], ['#monthly-contribution', state.goal.monthlyContribution],
-        ['#return-assumption', state.goal.returnPct], ['#inflation-assumption', state.goal.inflationPct],
-        ['#equity-drop-assumption', state.goal.equityDropPct ?? 20],
-      ]) $(selector).value = value;
+      creatingGoal = false;
+      $('#cancel-new-goal').hidden = true;
+      $('#goal-form button[type="submit"]').textContent = 'Update my view →';
+      fillGoalForm(state.goal);
       render();
       $('#account-status').textContent = 'Saved portfolio loaded into this tab.';
     } else $('#account-status').textContent = 'A saved portfolio is available. Load it when ready.';
@@ -431,10 +534,10 @@ async function initAccount() {
 
 $('#account-save').addEventListener('click', async () => {
   if (!accountAuthenticated || state.source !== 'user' || !state.holdings.length) return;
-  const payload = { version: 1, holdings: state.holdings.map(holding => ({
+  const payload = { version: 2, holdings: state.holdings.map(holding => ({
     id: holding.id, name: holding.name, type: holding.type, asset: holding.asset, value: holding.value,
     asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
-  })), goal: { ...state.goal } };
+  })), goals: state.goals.map(goal => ({ ...goal })), activeGoalId: state.activeGoalId };
   try {
     const response = await fetch('/api/portfolio', {
       method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Intent': 'portfolio-write' },
@@ -453,7 +556,7 @@ $('#account-export').addEventListener('click', async () => {
     const response = await fetch('/api/portfolio', { cache: 'no-store' });
     if (!response.ok) throw new Error('Export failed');
     const { portfolio } = await response.json();
-    if (!portfolio || portfolio.version !== 1) throw new Error('No saved portfolio');
+    if (!portfolio || ![1, 2].includes(portfolio.version)) throw new Error('No saved portfolio');
     const blob = new Blob([JSON.stringify(portfolio, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -465,7 +568,7 @@ $('#account-export').addEventListener('click', async () => {
   } catch { $('#account-status').textContent = 'Could not export the saved portfolio. Try again later.'; }
 });
 $('#account-delete').addEventListener('click', async () => {
-  if (!accountAuthenticated || !hasSavedPortfolio || !window.confirm('Delete your saved portfolio and goal? This cannot be undone.')) return;
+  if (!accountAuthenticated || !hasSavedPortfolio || !window.confirm('Delete your saved portfolio and goals? This cannot be undone.')) return;
   try {
     const response = await fetch('/api/portfolio', { method: 'DELETE', headers: { 'X-Thefinxperts-Intent': 'portfolio-write' } });
     if (!response.ok) throw new Error('Delete failed');

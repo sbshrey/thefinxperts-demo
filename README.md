@@ -1,3 +1,3 @@
 # TheFinxperts public demo
 
-Fictional portfolio example and browser-only manual/CSV inputs. No account server, CAS PDF importer, live data, or investment advice is included in this static site.
+Fictional portfolio example, browser-only manual/CSV inputs, and multiple goals with exclusive holding links. No account server, CAS PDF importer, live data, or investment advice is included in this static site.
