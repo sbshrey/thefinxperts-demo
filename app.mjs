@@ -28,6 +28,7 @@ let brokerRows = null;
 let brokerSource = 'Broker XLSX';
 let accountAuthenticated = false;
 let accountPortfolioAccess = false;
+let accountEnrollment = null;
 let hasSavedPortfolio = false;
 let creatingGoal = false;
 let inputMode = 'manual';
@@ -1101,13 +1102,24 @@ async function initAccount() {
     if (typeof info.authenticated !== 'boolean') return;
     accountAuthenticated = info.authenticated;
     accountPortfolioAccess = info.portfolioAccess === true;
+    accountEnrollment = accountAuthenticated && !accountPortfolioAccess &&
+      info.enrollment?.noticePath === '/private-data-notice.html' &&
+      /^[A-Za-z0-9._-]{1,40}$/.test(info.enrollment?.noticeVersion)
+      ? info.enrollment : null;
     $('#account-card').hidden = false;
     $('#account-login').hidden = accountAuthenticated;
     $('#account-save').hidden = !accountPortfolioAccess;
     $('#account-logout').hidden = !accountAuthenticated;
-    $('#account-title').textContent = accountPortfolioAccess ? 'Your private saved review' : accountAuthenticated
+    $('#account-enroll').hidden = !accountEnrollment;
+    if (accountEnrollment) $('#private-notice-link').href = accountEnrollment.noticePath;
+    $('#account-title').textContent = accountPortfolioAccess ? 'Your private saved review' : accountEnrollment
+      ? 'Enable private saving' : accountAuthenticated
       ? 'Account access pending' : 'Save your review';
     if (accountPortfolioAccess) await readSavedPortfolio(false);
+    else if (accountEnrollment) {
+      $('#account-description').textContent = 'Your account is signed in. Read the private data notice before enabling saved holdings and goals. Your current entries stay in this tab until you choose Save portfolio.';
+      $('#account-status').textContent = 'Private saving is optional.';
+    }
     else if (accountAuthenticated) {
       $('#account-description').textContent = 'Your account is signed in. Private portfolio saving is available after beta access is enabled. You can still review holdings here and download a local backup.';
       $('#account-status').textContent = 'Private beta access is not yet enabled for this account.';
@@ -1116,6 +1128,33 @@ async function initAccount() {
     updateAccountActions();
   } catch { /* Anonymous static preview works without an account server. */ }
 }
+
+$('#private-notice-accepted').addEventListener('change', event => {
+  $('#account-enroll-button').disabled = !event.target.checked;
+});
+$('#account-enroll').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!accountAuthenticated || !accountEnrollment || !$('#private-notice-accepted').checked) return;
+  const button = $('#account-enroll-button');
+  button.disabled = true;
+  try {
+    const response = await fetch('/api/enroll', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Intent': 'enroll' },
+      body: JSON.stringify({ accepted: true, noticeVersion: accountEnrollment.noticeVersion }),
+    });
+    if (!response.ok) throw new Error('Enrollment unavailable');
+    accountPortfolioAccess = true;
+    accountEnrollment = null;
+    $('#account-enroll').hidden = true;
+    $('#account-save').hidden = false;
+    $('#account-title').textContent = 'Your private saved review';
+    await readSavedPortfolio(false);
+    updateAccountActions();
+  } catch {
+    $('#account-status').textContent = 'Private saving could not be enabled. Sign out and try again later.';
+    button.disabled = false;
+  }
+});
 
 $('#account-save').addEventListener('click', async () => {
   if (!accountPortfolioAccess || state.source !== 'user' || !state.holdings.length) return;
