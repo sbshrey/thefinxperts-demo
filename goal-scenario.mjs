@@ -18,8 +18,10 @@ export function calculateGoalScenario(currentValue, goal) {
   const projectedValue = currentFutureValue + monthlyContribution * contributionFactor;
   const futureGap = Math.max(0, futureCost - projectedValue);
   const monthlyTotalNeeded = Math.max(0, (futureCost - currentFutureValue) / contributionFactor);
-  if (![contributionFactor, futureCost, projectedValue, futureGap, monthlyTotalNeeded].every(Number.isFinite)) return null;
-  return { futureCost, projectedValue, futureGap, monthlyTotalNeeded, monthlyContribution, returnPct, inflationPct, years };
+  const monthlyAdditionalNeeded = Math.max(0, monthlyTotalNeeded - monthlyContribution);
+  if (![contributionFactor, futureCost, projectedValue, futureGap, monthlyTotalNeeded, monthlyAdditionalNeeded].every(Number.isFinite)) return null;
+  return { futureCost, projectedValue, futureGap, monthlyTotalNeeded, monthlyAdditionalNeeded,
+    monthlyContribution, returnPct, inflationPct, years };
 }
 
 /** A one-time, user-chosen equity loss applied only to holdings assigned to a goal. */

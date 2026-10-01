@@ -184,7 +184,7 @@ function render() {
   $('#scenario-cost').textContent = scenario ? rupees(scenario.futureCost) : '—';
   $('#scenario-value').textContent = scenario ? rupees(scenario.projectedValue) : '—';
   $('#scenario-gap').textContent = scenario ? rupees(scenario.futureGap) : '—';
-  $('#scenario-monthly').textContent = scenario ? rupees(Math.ceil(scenario.monthlyTotalNeeded)) : '—';
+  $('#scenario-monthly').textContent = scenario ? rupees(Math.ceil(scenario.monthlyAdditionalNeeded)) : '—';
   const shock = pauseGoalFigures ? null : result.shock;
   $('#shock-drop').textContent = shock ? `${shock.dropPct}%` : '—';
   $('#shock-loss').textContent = shock ? rupees(shock.loss) : '—';
@@ -196,7 +196,7 @@ function render() {
   const shockContinuation = pauseGoalFigures ? null : result.shockContinuation;
   $('#shock-goal-context').hidden = !shockContinuation;
   $('#shock-goal-context').textContent = shockContinuation
-    ? `If that fall happened now, then the same ${shockContinuation.returnPct}% growth, ${shockContinuation.inflationPct}% inflation and ${rupees(shockContinuation.monthlyContribution)} monthly contribution assumptions held: the goal-date gap would be ${rupees(shockContinuation.futureGap)} versus ${rupees(scenario.futureGap)} before the fall. The total monthly amount needed would be ${rupees(Math.ceil(shockContinuation.monthlyTotalNeeded))} versus ${rupees(Math.ceil(scenario.monthlyTotalNeeded))}. This is a fixed-assumption illustration, not a forecast; actual prices, cash flows and costs can differ.`
+    ? `If that fall happened now, then the same ${shockContinuation.returnPct}% growth, ${shockContinuation.inflationPct}% inflation and ${rupees(shockContinuation.monthlyContribution)} monthly contribution assumptions held: the goal-date gap would be ${rupees(shockContinuation.futureGap)} versus ${rupees(scenario.futureGap)} before the fall. The additional monthly amount above your plan would be ${rupees(Math.ceil(shockContinuation.monthlyAdditionalNeeded))} versus ${rupees(Math.ceil(scenario.monthlyAdditionalNeeded))}. This is a fixed-assumption illustration, not a forecast; actual prices, cash flows and costs can differ.`
     : '';
   const limits = result.lossLimits;
   const limitText = (label, check) => check ?
@@ -206,7 +206,7 @@ function render() {
     !limits?.affordable && !limits?.tolerable ? 'Add your own optional loss limits below to put this illustration in context.' :
       `${limitText('Amount you could cover', limits.affordable)} ${limitText('Amount you could tolerate', limits.tolerable)} This is your own comparison, not a formal risk profile; real losses may be larger.`.trim();
   $('#scenario-note').textContent = mixedWithExample ? 'Clear the fictional example before using a personal goal illustration.' : needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : scenario
-    ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. This is arithmetic, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
+    ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and your planned ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. The total mathematical monthly amount would be ${rupees(Math.ceil(scenario.monthlyTotalNeeded))}; the number above is only the extra beyond your plan. This is arithmetic, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
     : 'Enter valid goal assumptions to see an illustrative scenario.';
   if (scenario && result.goalDateCheck.count) {
     $('#scenario-note').textContent += ' Check the linked valuation dates flagged in your goal view before relying on these figures.';

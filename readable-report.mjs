@@ -43,11 +43,18 @@ export function buildReadableReport(state, preparedAt = new Date()) {
       unsure: 'I am unsure' }[goal.emergencyFunding];
     if (answer) lines.push(`Your answer about unexpected essential expenses: ${answer}. This has not been verified.`);
   }
+  if (result.scenario) {
+    lines.push('', 'ILLUSTRATIVE GOAL-DATE SCENARIO',
+      `With your entered ${result.scenario.returnPct}% growth, ${result.scenario.inflationPct}% inflation and ${rupees(result.scenario.monthlyContribution)} month-end contribution assumptions:`,
+      `Goal cost: ${rupees(result.scenario.futureCost)} | linked holdings and planned contributions: ${rupees(result.scenario.projectedValue)} | gap: ${rupees(result.scenario.futureGap)}`,
+      `Additional whole-rupee monthly amount above your plan: ${rupees(Math.ceil(result.scenario.monthlyAdditionalNeeded))}. Total mathematical monthly amount: ${rupees(Math.ceil(result.scenario.monthlyTotalNeeded))}.`,
+      'This is arithmetic, not a return forecast or investment recommendation; taxes, fees and market losses may differ.');
+  }
   if (result.shockContinuation) {
     lines.push('', 'HYPOTHETICAL EQUITY FALL AND GOAL DATE',
       `A ${result.shock.dropPct}% immediate fall in linked equity would remove ${rupees(result.shock.loss)} from the entered goal holdings.`,
       `With the same growth, inflation and monthly contribution assumptions afterward, the goal-date gap would be ${rupees(result.shockContinuation.futureGap)} versus ${rupees(result.scenario.futureGap)} before the fall.`,
-      `Whole-rupee monthly amount needed under those assumptions: ${rupees(Math.ceil(result.shockContinuation.monthlyTotalNeeded))} after the fall versus ${rupees(Math.ceil(result.scenario.monthlyTotalNeeded))} before it.`,
+      `Additional whole-rupee monthly amount above your plan: ${rupees(Math.ceil(result.shockContinuation.monthlyAdditionalNeeded))} after the fall versus ${rupees(Math.ceil(result.scenario.monthlyAdditionalNeeded))} before it.`,
       'This is a fixed-assumption illustration, not a forecast or investment recommendation; actual prices, cash flows and costs can differ.');
   }
   if (result.lossLimits?.affordable || result.lossLimits?.tolerable) {
