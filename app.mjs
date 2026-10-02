@@ -784,6 +784,11 @@ $('#holding-form').addEventListener('submit', event => {
   const asset = $('#holding-asset').value;
   const type = $('#holding-type').value;
   const isin = $('#holding-isin').value.trim().toUpperCase();
+  if (!['Equity', 'Debt', 'Gold', 'Other'].includes(asset)) {
+    $('#holding-error').textContent = 'Choose the fund asset category, or choose Other / not sure if you need to check it later.';
+    $('#holding-asset').focus();
+    return;
+  }
   if (!name || name.length > 80 || !Number.isFinite(value) || value <= 0 || value > 1e10 ||
       (type === 'Stock' && asset !== 'Equity') || !validEnteredDate(asOf)) {
     $('#holding-error').textContent = 'Enter a name, a positive value, and a date no later than today if supplied.';
@@ -821,7 +826,7 @@ $('#holding-form').addEventListener('submit', event => {
 
 $('#holding-type').addEventListener('change', () => {
   const stock = $('#holding-type').value === 'Stock';
-  if (stock) $('#holding-asset').value = 'Equity';
+  $('#holding-asset').value = stock ? 'Equity' : '';
   $('#holding-asset').disabled = stock;
 });
 
