@@ -587,8 +587,8 @@ function render() {
   if (showNextStep) {
     const selectedPending = state.goal.confirmed !== true;
     $('#goal-next-step-text').textContent = selectedPending ?
-      'Your holdings are entered. Check the goal name, then enter your age, goal cost and time horizon to see goal figures and download your review.' :
-      `${pendingGoals.length} ${pendingGoals.length === 1 ? 'other goal needs' : 'other goals need'} details before you can download a review. Choose a goal above, then enter its details.`;
+      'Your holdings are entered. Check the goal name, then enter your age, goal cost and time horizon to see its figures and readable analysis. You can already download a private JSON backup.' :
+      `${pendingGoals.length} ${pendingGoals.length === 1 ? 'other goal needs' : 'other goals need'} details before its figures and readable analysis are available. Choose a goal above, then enter its details.`;
     $('#goal-next-step-link').href = selectedPending ? '#goal-form' : '#goals';
     $('#goal-next-step-link').textContent = selectedPending ? 'Enter my goal details →' : 'Choose a goal →';
   }
@@ -620,7 +620,7 @@ function render() {
   $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length + result.additionalFindings.length} review items.`;
   const hasPersonalHoldings = state.source === 'user' && state.holdings.length > 0;
   $('#download-review').disabled = !hasPersonalHoldings;
-  $('#download-readable').disabled = !hasPersonalHoldings || state.goals.some(goal => goal.confirmed !== true);
+  $('#download-readable').disabled = !hasPersonalHoldings || state.goal.confirmed !== true;
   updateAccountActions();
 }
 
@@ -1396,7 +1396,7 @@ function downloadFile(content, mimeType, filename) {
 $('#download-readable').addEventListener('click', () => {
   const report = buildReadableReport(state);
   if (!report) {
-    $('#backup-status').textContent = 'Confirm your personal holdings and every goal before downloading a summary.';
+    $('#backup-status').textContent = 'Add your holdings and confirm the selected goal before downloading its summary.';
     return;
   }
   downloadFile(report, 'text/plain;charset=utf-8', 'thefinxperts-readable-review.txt');

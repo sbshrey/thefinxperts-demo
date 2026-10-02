@@ -11,10 +11,10 @@ const indiaDate = date => new Date(date.getTime() + 330 * 60_000).toISOString().
 /** A private, plain-text snapshot for reading or printing; never a restorable backup. */
 export function buildReadableReport(state, preparedAt = new Date()) {
   if (state?.source !== 'user' || !Array.isArray(state.holdings) || state.holdings.length === 0 ||
-      !Array.isArray(state.goals) || state.goals.some(goal => goal.confirmed !== true) ||
+      !Array.isArray(state.goals) ||
       !(preparedAt instanceof Date) || Number.isNaN(preparedAt.getTime())) return null;
   const goal = state.goals.find(item => item.id === state.activeGoalId);
-  if (!goal) return null;
+  if (!goal || goal.confirmed !== true) return null;
   const result = analyzePortfolio(state.holdings, goal, preparedAt, state.reserve);
   const monthsOfEssentials = reserveMonths(state.reserve);
   const goalCoverage = summarizeGoalCoverage(state.goals, state.activeGoalId, state.holdings);
