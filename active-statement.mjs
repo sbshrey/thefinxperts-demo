@@ -51,6 +51,7 @@ export function parseActiveStatementHtml(html) {
     return { holdings: schemes.holdings, errors: [], notices: [
       'Individual scheme rows reconcile to the fund-house summary in this statement. Scheme names, units and values are still unverified statement data; ISINs and underlying fund constituents remain unknown.',
       'Equity and non-equity labels are inferred only from the statement summary where the arithmetic gives one unique answer. Non-equity stays Other until its debt, gold or other category is checked.',
+      ...(schemes.combinedRows ? [`${schemes.combinedRows} repeated scheme ${schemes.combinedRows === 1 ? 'row was' : 'rows were'} combined where name, statement category and NAV matched. Check the combined units and value in the preview.`] : []),
     ] };
   }
   if (schemes.detected) notices.unshift('Scheme rows could not be fully reconciled, so only fund-house totals are shown.');
@@ -105,7 +106,7 @@ function parseSchemeRows(html, summaries, asOf) {
         Math.abs(Number(units) * Number(nav) - valuePaise / 100) > Math.max(1, valuePaise / 10_000_000))
       return fail();
     if (!groups.has(code)) groups.set(code, []);
-    if (valuePaise > 0) groups.get(code).push({ name, statementCategory, units, valuePaise });
+    if (valuePaise > 0) groups.get(code).push({ name, statementCategory, units, nav, valuePaise });
   }
   if (!detected) return { detected: false, holdings: null };
   const positiveSummaries = [...summaries].map(([amc, values]) => ({ amc, ...values,
@@ -115,7 +116,24 @@ function parseSchemeRows(html, summaries, asOf) {
 
   const used = new Set();
   const holdings = [];
-  for (const items of positiveGroups) {
+  let combinedRows = 0;
+  for (const rawItems of positiveGroups) {
+    const byName = new Map();
+    for (const item of rawItems) {
+      const key = item.name.toLocaleLowerCase('en-IN');
+      const previous = byName.get(key);
+      if (!previous) { byName.set(key, { ...item }); continue; }
+      if (previous.statementCategory !== item.statementCategory || previous.nav !== item.nav) return fail();
+      const units = addUnitStrings(previous.units, item.units);
+      const combinedPaise = previous.valuePaise + item.valuePaise;
+      if (!units || combinedPaise / 100 > 10_000_000_000 ||
+          Math.abs(Number(units) * Number(item.nav) - combinedPaise / 100) >
+            Math.max(1, combinedPaise / 10_000_000)) return fail();
+      previous.units = units;
+      previous.valuePaise = combinedPaise;
+      combinedRows++;
+    }
+    const items = [...byName.values()];
     if (items.length > 16) return fail();
     const total = items.reduce((sum, item) => sum + item.valuePaise, 0);
     const matches = positiveSummaries.filter(item => Math.abs(item.total - total) <= 100);
@@ -139,7 +157,19 @@ function parseSchemeRows(html, summaries, asOf) {
       statementCategory: item.statementCategory, exposure: null,
     }));
   }
-  return { detected: true, holdings: holdings.length && used.size === positiveSummaries.length ? holdings : null };
+  return { detected: true, holdings: holdings.length && used.size === positiveSummaries.length ? holdings : null, combinedRows };
+}
+
+function addUnitStrings(left, right) {
+  const scaled = value => {
+    const [whole, fraction = ''] = value.split('.');
+    return BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, '0') || '0');
+  };
+  const total = scaled(left) + scaled(right);
+  const whole = total / 1_000_000n;
+  if (whole > 9_999_999_999n) return null;
+  const fraction = String(total % 1_000_000n).padStart(6, '0').replace(/0+$/, '');
+  return `${whole}${fraction ? `.${fraction}` : ''}`;
 }
 
 function numericString(raw, maxDecimals, allowZero = false) {
