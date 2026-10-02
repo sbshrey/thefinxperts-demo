@@ -56,6 +56,24 @@ const state = { confirmed: [], drafts: [], history: [], file: null, busy: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
   goalFacts: null, goalDraftGoalId: null, correction: null, refresh: null, casAvailable: false, casLocal: false,
   capacityReached: false };
+const reviewToggle = $('#review-toggle');
+const mobileReview = window.matchMedia('(max-width: 800px)');
+function syncReviewAccessibility() {
+  $('.chat-panel').inert = reviewToggle?.getAttribute('aria-expanded') === 'true' && mobileReview.matches;
+}
+function setReviewExpanded(expanded) {
+  $('.workspace').classList.toggle('review-expanded', expanded);
+  reviewToggle.setAttribute('aria-expanded', String(expanded));
+  reviewToggle.textContent = expanded ? 'Back to chat' : 'Open review';
+  syncReviewAccessibility();
+}
+reviewToggle?.addEventListener('click', () =>
+  setReviewExpanded(reviewToggle.getAttribute('aria-expanded') !== 'true'));
+mobileReview.addEventListener('change', syncReviewAccessibility);
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && reviewToggle?.getAttribute('aria-expanded') === 'true')
+    setReviewExpanded(false);
+});
 const casStatusPromise = browserOnly ? Promise.resolve(false) : fetch('/api/cas/status', { cache: 'no-store' })
   .then(response => response.ok ? response.json() : null)
   .then(status => {

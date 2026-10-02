@@ -34,6 +34,7 @@ body{margin:0}
 .panel-heading h1{font-size:27px;letter-spacing:-.04em;margin:9px 0 6px}
 .panel-heading p{color:#5f706a;line-height:1.45;margin:0;max-width:650px;font-size:14px}
 .panel-heading a{color:#226246;text-decoration:underline}
+.mobile-data-link{display:none}
 .panel-heading .credit-policy{margin-top:8px;color:#245d45;font-size:12px}
 .credit-meter{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border:1px solid #cce4d2;border-radius:11px;background:#f1f8f2;color:#245d45;font-size:12px}
 .credit-meter strong{font-size:13px}
@@ -43,7 +44,7 @@ body{margin:0}
 .credit-pips .available{background:#338b62}
 .credit-pips .used{background:#fff}
 .messages{min-height:0;flex:1;overflow-y:auto;padding:22px 32px;display:flex;flex-direction:column;gap:15px}
-.message{max-width:82%;padding:14px 17px;border-radius:16px;line-height:1.48;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+.message{flex:none;max-width:82%;padding:14px 17px;border-radius:16px;line-height:1.48;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
 .message.assistant{align-self:flex-start;background:#eff5f0;border-bottom-left-radius:4px}
 .message.user{align-self:flex-end;background:#173f35;color:#fff;border-bottom-right-radius:4px}
 .message.note{align-self:center;background:#fff8e6;border:1px solid #f0dfaa;font-size:13px;max-width:94%}
@@ -81,6 +82,7 @@ body{margin:0}
 .review-head{display:flex;align-items:center;justify-content:space-between;padding:24px 28px 16px}
 .review-head h2{font-size:24px;letter-spacing:-.03em;margin:6px 0 0}
 .review-head>span{font-size:11px;color:#51705e;background:#dff0e2;padding:7px 10px;border-radius:99px}
+.review-toggle{display:none;border:1px solid #8db59a;border-radius:9px;background:#fff;color:#174d3f;padding:8px 10px;font:700 12px Arial,Helvetica,sans-serif;cursor:pointer}
 .review-body{overflow-y:auto;padding:0 28px 24px;display:grid;gap:14px}
 .hero-card{background:#174d3f;color:#fff;padding:21px 23px;border-radius:17px;display:flex;flex-direction:column;gap:7px}
 .hero-card span{font-size:10px;letter-spacing:.12em;opacity:.75}
@@ -121,7 +123,7 @@ body{margin:0}
 .brand{font-size:15px}
 .top-actions{gap:3px;font-size:11px}
 .beta{display:none}
-.workspace{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(190px,32dvh)}
+.workspace{position:relative;grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(150px,22dvh)}
 .panel-heading{padding:14px 17px 12px}
 .panel-heading h1{font-size:21px}
 .panel-heading p{font-size:12px}
@@ -130,9 +132,19 @@ body{margin:0}
 .composer{padding:9px 12px}
 .composer-foot span:last-child{display:none}
 .review-panel{border-left:0;border-top:1px solid #dce6df}
-.review-head{padding:10px 15px}
+.review-head{padding:10px 15px;gap:8px}
 .review-head h2{font-size:17px}
-.review-body{padding:0 14px 14px;grid-template-columns:1fr 1fr}
+.review-head>span{display:none}
+.review-toggle{display:block;margin-left:auto;white-space:nowrap}
+.review-body{padding:0 14px 14px;grid-template-columns:1fr;overflow:hidden}
+.review-body>:not(.hero-card){display:none}
+.workspace.review-expanded .review-panel{position:absolute;inset:0;z-index:5;border-top:0}
+.workspace.review-expanded .review-head{background:#f4f7f4}
+.workspace.review-expanded .review-body{overflow-y:auto;align-content:start;grid-template-columns:1fr 1fr}
+.workspace.review-expanded .review-body>*{display:block}
+.workspace.review-expanded .review-body .hero-card{display:flex}
+.workspace.review-expanded .review-body .stat-grid{display:grid}
+.workspace.review-expanded .review-body .section-card{grid-column:1/-1}
 .hero-card{padding:13px}
 .hero-card strong{font-size:25px}
 .stat-grid{gap:6px}
@@ -142,6 +154,9 @@ body{margin:0}
 .drafts{margin:0 12px 5px;max-height:140px}
 }
 @media(max-width:600px){body[data-mode="browser-only"] .brand>span{display:none}
+body[data-mode="browser-only"] .messages{padding-top:8px;padding-bottom:8px}
+body[data-mode="browser-only"] .panel-heading p{display:none}
+body[data-mode="browser-only"] .mobile-data-link{display:inline-block;margin-top:3px;font-size:11px}
 body[data-mode="browser-only"] .top-actions{gap:1px}
 body[data-mode="browser-only"] .top-actions>.quiet{padding:5px 4px;white-space:nowrap}
 }
