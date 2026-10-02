@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta name="description" content="A free, browser-only conversation to review your own mutual funds, stocks and goals. Files stay in this tab.">
+  <meta name="description" content="A free, browser-only conversation to review your own mutual funds, stocks and goals. Optional encrypted saving on this device.">
   <title>Guided browser review · TheFinxperts</title>
   <link rel="stylesheet" href="./assistant.css">
   <script type="module" src="./assistant.mjs"></script>
@@ -13,11 +13,11 @@
   <div class="shell">
     <header class="topbar">
       <div class="brand"><a href="./index.html" aria-label="TheFinxperts home" class="mark">f.</a><span>thefinxperts</span><span class="beta">BROWSER REVIEW</span></div>
-      <div class="top-actions"><button id="new-chat" type="button" class="quiet">New chat</button><button id="download-tab-review" type="button" class="quiet" aria-label="Download private review file" disabled>Save file</button><button id="restore-tab-review" type="button" class="quiet" aria-label="Open private review file">Open file</button><input id="restore-tab-file" type="file" accept=".json,application/json" hidden><button id="clear-review" type="button" class="quiet">Clear tab</button><details id="account-menu" class="account-menu" hidden><summary>Account</summary><div><button id="export-saved" type="button" hidden>Download saved review</button><button id="delete-saved" type="button" hidden>Delete saved review</button><a href="/logout">Sign out</a></div></details></div>
+      <div class="top-actions"><button id="new-chat" type="button" class="quiet">New chat</button><button id="device-review-action" type="button" class="quiet">Save here</button><button id="forget-device-review" type="button" class="quiet" hidden>Forget here</button><button id="download-tab-review" type="button" class="quiet" aria-label="Download private review file" disabled>Save file</button><button id="restore-tab-review" type="button" class="quiet" aria-label="Open private review file">Open file</button><input id="restore-tab-file" type="file" accept=".json,application/json" hidden><button id="clear-review" type="button" class="quiet">Clear tab</button><details id="account-menu" class="account-menu" hidden><summary>Account</summary><div><button id="export-saved" type="button" hidden>Download saved review</button><button id="delete-saved" type="button" hidden>Delete saved review</button><a href="/logout">Sign out</a></div></details></div>
     </header>
     <main class="workspace">
       <section class="chat-panel" aria-labelledby="chat-title">
-        <div class="panel-heading"><span class="eyebrow">YOUR INVESTMENTS, IN CONVERSATION</span><h1 id="chat-title">What would you like to understand?</h1><p>Describe one holding, or upload a CAMS Active Statement, holdings CSV or broker XLSX. I’ll ask for missing facts and show possible holdings for you to confirm. Files and answers stay in this tab. <a href="./data-handling.html">How your data is handled</a>.</p><div id="credit-meter" class="credit-meter" hidden><strong id="credit-meter-title">5 free AI answers</strong><span id="credit-pips" class="credit-pips" aria-hidden="true"></span><span id="credit-meter-detail"></span></div><p id="credit-policy" class="credit-policy" hidden>One credit is used only when an AI answer completes. Report preview, holding confirmation, simple clarifications and explicit goal commands use no credit. Credits do not reset when you start a new chat.</p></div>
+        <div class="panel-heading"><span class="eyebrow">YOUR INVESTMENTS, IN CONVERSATION</span><h1 id="chat-title">What would you like to understand?</h1><p>Describe one holding, or upload a CAMS Active Statement, holdings CSV or broker XLSX. I’ll ask for missing facts and show possible holdings for you to confirm. Your review stays in this tab unless you choose encrypted device saving or download a file. <a href="./data-handling.html">How your data is handled</a>.</p><div id="credit-meter" class="credit-meter" hidden><strong id="credit-meter-title">5 free AI answers</strong><span id="credit-pips" class="credit-pips" aria-hidden="true"></span><span id="credit-meter-detail"></span></div><p id="credit-policy" class="credit-policy" hidden>One credit is used only when an AI answer completes. Report preview, holding confirmation, simple clarifications and explicit goal commands use no credit. Credits do not reset when you start a new chat.</p></div>
         <div id="messages" class="messages" role="log" aria-live="polite" aria-label="Review conversation">
           <div class="message assistant">Tell me about one holding, such as “I own a stock called Fictional Bank worth ₹50,000”. Or attach a CAMS Active Statement or holdings report. I’ll ask for missing facts, then you can check the draft before it enters the review. This browser review uses fixed calculations, not AI.</div>
         </div>
@@ -42,10 +42,20 @@
           <div class="section-card"><h3>Asset picture</h3><div id="asset-bars" class="asset-bars"><p>Nothing to compare yet.</p></div></div>
           <div class="section-card"><h3>What to check next</h3><ul id="review-questions"><li>Describe one holding or upload a CAMS Active Statement or holdings report to start.</li></ul></div>
           <div class="section-card"><h3>Included holdings</h3><div id="holding-list" class="holding-list"><p>Confirmed rows will appear here.</p></div></div>
-          <p class="review-limit">This is a factual review of supplied values. It does not verify current prices or give buy, sell, switch or allocation instructions. Drafts remain separate until you confirm them. Download a private review file to continue after closing this tab.</p>
+          <p class="review-limit">This is a factual review of supplied values. It does not verify current prices or give buy, sell, switch or allocation instructions. Drafts remain separate until you confirm them. Choose encrypted device saving or download a private review file to continue later.</p>
         </div>
       </aside>
     </main>
   </div>
+  <dialog id="device-review-dialog" class="device-dialog" aria-labelledby="device-dialog-title">
+    <form id="device-review-form">
+      <h2 id="device-dialog-title">Save this review on this device</h2>
+      <p id="device-dialog-copy">Choose a passphrase of at least 12 characters. You will need it after a refresh. There is no recovery if you forget it, so keep a private review file too.</p>
+      <label for="device-passphrase">Passphrase</label>
+      <input id="device-passphrase" type="password" minlength="12" maxlength="200" autocomplete="off" required>
+      <p id="device-dialog-error" class="device-error" role="alert" hidden></p>
+      <div class="device-dialog-actions"><button id="device-dialog-cancel" type="button" class="quiet">Cancel</button><button id="device-dialog-submit" type="submit">Save encrypted review</button></div>
+    </form>
+  </dialog>
 </body>
 </html>

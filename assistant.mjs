@@ -10,11 +10,46 @@ import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
 import { analyzePortfolio } from './analysis.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
 import { parseBrowserGoalFact, parseBrowserHoldingStatement, nextBrowserGoalQuestion } from './assistant-local.mjs';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
 const browserOnly = document.body.dataset.mode === 'browser-only';
+const DEVICE_KEY = 'thefinxperts:encrypted-review:v1';
+let devicePassphrase = null;
+let deviceSaveRevision = 0;
+let deviceBusy = false;
+function deviceRecord() {
+  try { return localStorage.getItem(DEVICE_KEY); }
+  catch { return null; }
+}
+function renderDeviceActions() {
+  if (!browserOnly) return;
+  const exists = Boolean(deviceRecord());
+  $('#device-review-action').textContent = exists ? devicePassphrase ? 'Saved here' : 'Unlock here' : 'Save here';
+  $('#device-review-action').disabled = deviceBusy || (!exists && !state.account?.portfolio);
+  $('#forget-device-review').hidden = !exists;
+  $('#forget-device-review').disabled = deviceBusy;
+}
+function forgetDeviceRecord() {
+  deviceSaveRevision++;
+  devicePassphrase = null;
+  try { localStorage.removeItem(DEVICE_KEY); return true; }
+  catch { return false; }
+}
+async function saveDeviceReview(portfolio) {
+  if (!devicePassphrase || !portfolio) return;
+  const revision = ++deviceSaveRevision;
+  try {
+    const encrypted = await encryptDeviceReview(JSON.stringify(portfolio), devicePassphrase);
+    if (revision !== deviceSaveRevision || !devicePassphrase) return;
+    localStorage.setItem(DEVICE_KEY, encrypted);
+    renderDeviceActions();
+  } catch {
+    if (revision === deviceSaveRevision) say('note', 'Could not save this review on this device. Download a private review file to keep your changes.');
+  }
+}
 const state = { confirmed: [], drafts: [], history: [], file: null, busy: false, available: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
   goalFacts: null, goalDraftGoalId: null, casAvailable: false, casLocal: false,
@@ -73,6 +108,7 @@ function renderAccountActions() {
   $('#delete-saved').disabled = state.busy;
   const localDownload = $('#download-tab-review');
   if (localDownload) localDownload.disabled = state.busy || !saved;
+  renderDeviceActions();
 }
 
 function say(role, text, question = null) {
@@ -299,6 +335,7 @@ function acceptAccount(payload) {
 async function writeAccount(portfolio, conflictMessage) {
   if (browserOnly) {
     acceptAccount({ portfolio, revision: state.account.revision + 1 });
+    await saveDeviceReview(portfolio);
     return;
   }
   const response = await fetch('/api/portfolio', { method: 'PUT',
@@ -738,9 +775,13 @@ $('#new-chat').addEventListener('click', () => {
 
 $('#clear-review').addEventListener('click', () => {
   if (state.hosted) return;
-  if (state.confirmed.length && !window.confirm(browserOnly ?
-    'Clear the holdings and conversation in this tab? Download a review file first if you want to continue later.' :
+  if ((state.confirmed.length || deviceRecord()) && !window.confirm(browserOnly ?
+    'Clear the holdings and conversation in this tab and the encrypted copy saved on this device? Download a review file first if you want to continue later.' :
     'Clear the holdings and conversation in this tab? Saved account holdings remain available after reload.')) return;
+  if (browserOnly && !forgetDeviceRecord()) {
+    say('note', 'Could not remove the saved device copy. Use “Forget here” when browser storage is available.');
+    return;
+  }
   if (browserOnly) state.account = { portfolio: null, revision: 0 };
   state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.history = []; clearFile();
   $('#messages').replaceChildren();
@@ -752,6 +793,7 @@ $('#clear-review').addEventListener('click', () => {
 if (browserOnly) {
   $('#service-status').textContent = 'Browser-only answers · no AI credits';
   renderAccountActions();
+  if (deviceRecord()) say('note', 'An encrypted review is saved on this device. Choose “Unlock here” and enter its passphrase to continue.');
 } else fetch('/api/assistant/status').then(response => response.ok ? response.json() : null).then(async status => {
   state.available = Boolean(status?.available);
   state.hosted = status?.local === false;
@@ -795,7 +837,78 @@ $('#restore-tab-file')?.addEventListener('change', async event => {
   if (state.account?.portfolio && !window.confirm('Replace the review in this tab with the selected file?')) return;
   state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
   acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
+  await saveDeviceReview(parsed.portfolio);
   renderDrafts(); renderGoalDraft();
   say('note', `Restored ${state.confirmed.length} holding${state.confirmed.length === 1 ? '' : 's'} from your private file. Check the dates before using this review.`);
+});
+$('#device-review-action')?.addEventListener('click', () => {
+  if (!browserOnly || deviceBusy) return;
+  if (devicePassphrase && deviceRecord()) {
+    say('note', 'This review saves on this device after each confirmed change. Keep your passphrase; you will need it after a refresh.');
+    return;
+  }
+  const unlock = Boolean(deviceRecord());
+  if (!unlock && !state.account?.portfolio) return;
+  $('#device-dialog-title').textContent = unlock ? 'Unlock review on this device' : 'Save this review on this device';
+  $('#device-dialog-copy').textContent = unlock ?
+    'Enter your passphrase to load the encrypted review. A review file can restore it if you forgot the passphrase.' :
+    'Choose a passphrase of at least 12 characters. You will need it after a refresh. There is no recovery if you forget it, so keep a private review file too.';
+  $('#device-dialog-submit').textContent = unlock ? 'Unlock review' : 'Save encrypted review';
+  $('#device-dialog-error').hidden = true;
+  $('#device-passphrase').value = '';
+  $('#device-review-dialog').showModal();
+  $('#device-passphrase').focus();
+});
+$('#device-dialog-cancel')?.addEventListener('click', () => $('#device-review-dialog').close());
+$('#device-review-form')?.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (deviceBusy) return;
+  const passphrase = $('#device-passphrase').value;
+  const saved = deviceRecord();
+  deviceBusy = true;
+  $('#device-dialog-submit').disabled = true;
+  renderDeviceActions();
+  try {
+    if (saved) {
+      const plain = await decryptDeviceReview(saved, passphrase);
+      const parsed = parseReviewBackup(plain);
+      if (parsed.errors.length) throw new Error('The saved review is damaged or uses an unsupported format.');
+      if (state.account?.portfolio && !window.confirm('Replace the current tab review with the saved device review?')) return;
+      devicePassphrase = passphrase;
+      state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+      acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
+      renderDrafts(); renderGoalDraft();
+      say('note', `Unlocked ${state.confirmed.length} holding${state.confirmed.length === 1 ? '' : 's'} from this device. Check the dates before using this review.`);
+    } else {
+      if (!state.account?.portfolio) throw new Error('Add and confirm a holding or goal before saving on this device.');
+      const encrypted = await encryptDeviceReview(JSON.stringify(state.account.portfolio), passphrase);
+      localStorage.setItem(DEVICE_KEY, encrypted);
+      devicePassphrase = passphrase;
+      say('note', 'Encrypted review saved on this device. Confirmed changes will save here while this tab is open. Keep your passphrase and a private backup file.');
+    }
+    $('#device-passphrase').value = '';
+    $('#device-review-dialog').close();
+  } catch (error) {
+    $('#device-dialog-error').textContent = error.message || 'Could not save or unlock this review.';
+    $('#device-dialog-error').hidden = false;
+  } finally {
+    deviceBusy = false;
+    $('#device-dialog-submit').disabled = false;
+    renderDeviceActions();
+  }
+});
+$('#forget-device-review')?.addEventListener('click', () => {
+  if (!browserOnly || !deviceRecord()) return;
+  if (!window.confirm('Remove the encrypted review from this device? The current tab and any downloaded review file will stay available.')) return;
+  if (forgetDeviceRecord()) say('note', 'Encrypted device copy removed. Your current tab review is still open.');
+  else say('note', 'Could not remove the saved device copy. Check browser storage settings.');
+  renderDeviceActions();
+});
+window.addEventListener('storage', event => {
+  if (!browserOnly || event.key !== DEVICE_KEY) return;
+  deviceSaveRevision++;
+  devicePassphrase = null;
+  renderDeviceActions();
+  say('note', 'The saved review changed in another tab. This tab stopped saving to this device; unlock again to load the latest copy.');
 });
 renderReview();

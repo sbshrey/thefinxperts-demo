@@ -23,8 +23,14 @@
 
       <section aria-labelledby="data-in-browser">
         <h2 id="data-in-browser">What happens in this browser</h2>
-        <p>Manual entries, simple CSV files, broker XLSX or CSV files and CAMS Active Statement PDFs or HTML attachments are read in your browser tab. The Active Statement password is used there only to open a selected PDF. Questions in “Ask this review” and the guided browser review are answered from these entries in the tab without an AI request. These inputs are not uploaded to TheFinxperts by the public review. They are not stored in browser local storage or session storage.</p>
-        <p>Entries remain in the tab while it is open. Refreshing or closing the tab loses the review unless you chose to download a file. After an Active Statement preview, the file selection and password field are cleared. Your browser may retain temporary data in memory until it releases it or the tab closes.</p>
+        <p>Manual entries, simple CSV files, broker XLSX or CSV files and CAMS Active Statement PDFs or HTML attachments are read in your browser tab. The Active Statement password is used there only to open a selected PDF. Questions in “Ask this review” and the guided browser review are answered from these entries in the tab without an AI request. These inputs are not uploaded to TheFinxperts by the public review. They are not stored in browser session storage. The detailed review does not use browser local storage.</p>
+        <p>Entries remain in the tab while it is open. Refreshing or closing the tab loses the review unless you chose to download a file or saved an encrypted copy with “Save here” in the guided review. After an Active Statement preview, the file selection and password field are cleared. Your browser may retain temporary data in memory until it releases it or the tab closes.</p>
+      </section>
+
+      <section aria-labelledby="data-device">
+        <h2 id="data-device">Optional encrypted saving on this device</h2>
+        <p>In the guided review, “Save here” encrypts the confirmed portfolio and goal details in this browser before putting the encrypted copy in local storage. It uses a passphrase you choose, PBKDF2 with SHA-256 and 310,000 iterations, and AES-256-GCM. Your passphrase stays in tab memory and is needed again after a refresh. Confirmed changes save automatically while the tab stays unlocked. Drafts, chat text, selected files and PDF passwords are not saved there.</p>
+        <p>“Forget here” deletes that browser copy. “Clear tab” also deletes it; downloaded files remain on your device. If you forget the passphrase, we cannot recover the browser copy. Browser storage may be cleared by your browser, and someone with access to an unlocked tab can read the review. Keep a private file backup if you need a second copy. The other detailed review page does not open this saved device copy.</p>
       </section>
 
       <section aria-labelledby="data-downloads">
