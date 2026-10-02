@@ -348,7 +348,11 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.statementCategory ? ` · statement category: ${holding.statementCategory}` : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    const sourceCategory = document.createElement('small');
+    sourceCategory.className = 'holding-source-category';
+    sourceCategory.textContent = holding.statementCategory ?
+      `Statement category: ${holding.statementCategory} · broad asset here: ${holding.asset}` : '';
     const goalLink = document.createElement('label');
     goalLink.className = 'holding-goal-link';
     const goalCheckbox = document.createElement('input');
@@ -542,7 +546,7 @@ function render() {
         const identifierChanged = isinInput && isin !== (item.isin || '');
         const updated = { ...item, value, asOf: asOf || null, asset,
           ...((asset !== item.asset || (identifierChanged && item.type === 'Mutual fund')) ? { exposure: null } : {}) };
-        if (asset !== item.asset || identifierChanged) delete updated.statementCategory;
+        if (identifierChanged) delete updated.statementCategory;
         if (isinInput) {
           if (isin) updated.isin = isin;
           else delete updated.isin;
@@ -562,7 +566,9 @@ function render() {
       render();
     });
     update.append(updateTitle, updateForm);
-    info.append(name, meta, goalLink);
+    info.append(name, meta);
+    if (holding.statementCategory) info.append(sourceCategory);
+    info.append(goalLink);
     if (state.goals.length > 1) info.append(allocation);
     info.append(update);
     const amount = document.createElement('strong');
@@ -1161,7 +1167,7 @@ function renderImportRows() {
     asset.addEventListener('change', () => {
       const previous = holding.asset;
       holding.asset = asset.value || null;
-      if (previous && previous !== holding.asset) { holding.isin = null; holding.amfi = null; delete holding.statementCategory; pendingPerformance.delete(holding.id); }
+      if (previous && previous !== holding.asset) { holding.isin = null; holding.amfi = null; pendingPerformance.delete(holding.id); }
       refreshMetadata(); rowSummary(); refreshImportSummary();
     });
     field('Asset category', asset);
