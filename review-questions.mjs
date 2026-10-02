@@ -1,6 +1,7 @@
 import { planFromName, valuationDateIssue } from './analysis.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
 import { reserveMonths } from './reserve.mjs';
+import { confirmedGoalAssumptions } from './goal-scenario.mjs';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -194,6 +195,32 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     return answer(`${lead}${missing} ${missing === 1 ? 'holding lacks' : 'holdings lack'} a date, ${stale} ${stale === 1 ? 'is' : 'are'} dated over 90 days ago, and ${future} ${future === 1 ? 'has a' : 'have'} future ${future === 1 ? 'date' : 'dates'}.${list} ${String(result.asOfSummary).replace(/\.$/, '')}.`,
       `Compared the dates on ${valid.length} entered ${valid.length === 1 ? 'holding' : 'holdings'} with today's date in India; the 90-day threshold is a review prompt.`,
       'A dated entry is not a verified live quote. Refresh values from the original source.', '#holdings', 'Check dated values');
+  }
+  const futureGoalQuestion = /\b(?:future|project(?:ion|ed)?|goal[ -]date|in \d+ years|per month|monthly)\b/.test(input) &&
+    /\b(?:goal|target|gap|need|cost|contribut(?:ion|e)|retirement)\b/.test(input);
+  if (futureGoalQuestion) {
+    if (goal?.confirmed !== true) return answer('Confirm the selected goal’s age, target amount and time horizon before using a future illustration.',
+      'The selected goal details are unfinished.',
+      'A portfolio value alone cannot establish a future goal amount.', '#goal-form', 'Confirm goal details');
+    if (!result.goalTotal) return answer('Link at least one holding to this goal before calculating a future illustration.',
+      `Selected goal ${goal.name}; no entered holding value is assigned.`,
+      'Unassigned holdings are excluded from this goal.', '#holdings', 'Link a holding');
+    if (!confirmedGoalAssumptions(goal)) return answer('The future illustration is paused until you confirm your monthly contribution, growth and inflation assumptions. You may deliberately choose zero.',
+      'One or more of the three goal assumptions has not been confirmed.',
+      'No default growth, inflation or contribution should be treated as your plan.', '#goal-assumptions', 'Confirm assumptions');
+    if (result.goalDateCheck.count) return answer('The future illustration is paused until you check missing, future or over-90-day values linked to this goal.',
+      `${result.goalDateCheck.count} linked ${result.goalDateCheck.count === 1 ? 'holding needs' : 'holdings need'} a valuation-date check.`,
+      'A stale or undated value may change the starting amount materially.', '#holdings', 'Check linked values');
+    if (result.goalAccessCheck.count) return answer('The future illustration is paused while linked other investments have no checked access date. Check their maturity or withdrawal terms for this goal.',
+      `${money(result.goalAccessCheck.value)} of manually valued other investments is assigned to ${goal.name}.`,
+      'The gross current gap does not establish that these amounts will be spendable at the goal date.', '#holdings', 'Check linked access');
+    if (!result.scenario) return answer('I cannot calculate a future illustration from the current goal inputs. Check the goal amount, horizon and assumptions.',
+      `Selected goal ${goal.name}; future calculation is unavailable.`,
+      'No future value is inferred when the inputs fail validation.', '#goal-form', 'Check goal inputs');
+    const scenario = result.scenario;
+    return answer(`Under your chosen assumptions, ${goal.name} would cost ${money(scenario.futureCost)} at the goal date. Linked holdings and your planned monthly amount would illustrate ${money(scenario.projectedValue)}, leaving a ${money(scenario.futureGap)} gap. The total mathematical monthly amount is ${money(Math.ceil(scenario.monthlyTotalNeeded))}; that is ${money(Math.ceil(scenario.monthlyAdditionalNeeded))} above your entered plan.`,
+      `${money(result.goalTotal)} linked value for ${scenario.years} years; ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and ${money(scenario.monthlyContribution)} added at each month’s end. Target in today’s rupees: ${money(goal.target)}.`,
+      `This fixed-assumption arithmetic is not a forecast or an instruction to invest that amount. Taxes, fees, losses and unentered holdings may change the outcome. ${coverageNote}`, '#goals', 'Review goal scenario');
   }
   if (/\b(goal|target|gap|horizon|retirement|future)\b/.test(input)) {
     if (source === 'user' && goal?.confirmed === false)

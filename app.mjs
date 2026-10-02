@@ -37,7 +37,7 @@ const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
 const $ = selector => document.querySelector(selector);
 function renderReviewAnswer() {
   const response = answerReviewQuestion(lastReviewQuestion, { holdings: state.holdings,
-    goal: state.goal, source: state.source, coverage: state.coverage,
+    goal: state.goal, source: state.source, coverage: state.coverage, reserve: state.reserve,
     result: currentReviewResult });
   $('#review-question-answer').hidden = !response;
   if (!response) return;
@@ -47,6 +47,9 @@ function renderReviewAnswer() {
   $('#review-answer-link').href = response.href;
   $('#review-answer-link').textContent = `${response.action} →`;
 }
+$('#review-answer-link').addEventListener('click', () => {
+  if ($('#review-answer-link').getAttribute('href') === '#goal-assumptions') $('#goal-assumptions').open = true;
+});
 $('#review-question-form').addEventListener('submit', event => {
   event.preventDefault();
   lastReviewQuestion = $('#review-question').value.trim();
