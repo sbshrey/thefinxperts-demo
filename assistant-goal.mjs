@@ -28,6 +28,21 @@ export function parseAssistantGoalCommand(message) {
   return null;
 }
 
+/** Record the investor's own answer about a nearer essential expense for the selected goal. */
+export function parseAssistantEmergencyFunding(message) {
+  if (typeof message !== 'string' || message.length > 1500) return null;
+  const input = message.trim().replace(/[.!]$/, '').toLocaleLowerCase('en-IN');
+  const answer = {
+    'unexpected expense from separate money': 'separate',
+    'unexpected expense from goal holdings': 'goal_holdings',
+    'unsure about unexpected expenses': 'unsure',
+  }[input];
+  if (answer) return { facts: { emergencyFunding: answer } };
+  if (/^(?:unexpected expense|unsure about unexpected expenses)\b/.test(input))
+    return { error: 'Say “unexpected expense from separate money”, “unexpected expense from goal holdings”, or “unsure about unexpected expenses”.' };
+  return null;
+}
+
 function goalByName(portfolio, name) {
   const matches = portfolio.goals.filter(goal => normalized(goal.name) === normalized(name));
   return matches.length === 1 ? matches[0] : null;
@@ -120,7 +135,7 @@ export function prepareAssistantGoalSave(saved, facts, { newId = () => crypto.ra
   const portfolio = asVersionTwo(saved, newId);
   if (!portfolio) return { portfolio: null, errors: ['This saved review format needs an account check.'] };
   if (!facts || typeof facts !== 'object' || Array.isArray(facts) || !Object.keys(facts).length ||
-      Object.keys(facts).some(key => key !== 'name' && key !== 'targetMix' && !Object.hasOwn(LIMITS, key)))
+      Object.keys(facts).some(key => !['name', 'targetMix', 'emergencyFunding'].includes(key) && !Object.hasOwn(LIMITS, key)))
     return { portfolio: null, errors: ['No supported goal facts were supplied.'] };
   const goal = portfolio.goals.find(item => item.id === portfolio.activeGoalId);
   if (!goal) return { portfolio: null, errors: ['The selected goal could not be found.'] };
@@ -148,6 +163,11 @@ export function prepareAssistantGoalSave(saved, facts, { newId = () => crypto.ra
     if (facts.targetMix === null) delete goal.targetMix;
     else if (validMixPlan(facts.targetMix)) goal.targetMix = { ...facts.targetMix };
     else return { portfolio: null, errors: ['Check that your chosen goal mix uses the four asset categories and totals 100%.'] };
+  }
+  if (Object.hasOwn(facts, 'emergencyFunding')) {
+    if (!['separate', 'goal_holdings', 'unsure'].includes(facts.emergencyFunding))
+      return { portfolio: null, errors: ['Choose separate money, goal holdings or unsure for unexpected expenses.'] };
+    goal.emergencyFunding = facts.emergencyFunding;
   }
   goal.confirmed = goal.age !== null && goal.years !== null && goal.target !== null;
   return { portfolio, errors: [] };

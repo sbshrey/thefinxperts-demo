@@ -3,7 +3,8 @@ import { prepareAssistantSave, findAssistantOverlap } from './assistant-save.mjs
 import { buildAssistantGoalReview, buildAssistantReviewChecks } from './assistant-review.mjs';
 import { goalShare } from './goals.mjs';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
-  parseAssistantGoalCommand, prepareAssistantGoalCommand } from './assistant-goal.mjs';
+  parseAssistantGoalCommand, prepareAssistantGoalCommand,
+  parseAssistantEmergencyFunding } from './assistant-goal.mjs';
 import { clarifyDrafts, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs';
 import { previewAssistantImport } from './assistant-import.mjs';
 import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
@@ -218,13 +219,17 @@ function renderGoalDraft() {
     target: 'Target in today’s rupees', monthlyContribution: 'Monthly contribution',
     returnPct: 'Annual growth assumption', inflationPct: 'Annual inflation assumption',
     targetMix: 'Your chosen goal mix', equityDropPct: 'Hypothetical equity fall',
-    affordableLoss: 'Loss you could cover', tolerableLoss: 'Loss you could tolerate' };
+    affordableLoss: 'Loss you could cover', tolerableLoss: 'Loss you could tolerate',
+    emergencyFunding: 'Unexpected essential expense money' };
+  const expenseAnswer = { separate: 'separate accessible money', goal_holdings: 'holdings assigned to this goal',
+    unsure: 'unsure' };
   for (const [key, value] of Object.entries(state.goalFacts)) {
     const item = document.createElement('li');
     item.textContent = `${labels[key]}: ${key === 'targetMix' ? value === null ? 'remove comparison' :
       Object.entries(value).map(([asset, share]) => `${asset} ${share}%`).join(', ') :
       ['target', 'monthlyContribution', 'affordableLoss', 'tolerableLoss'].includes(key) ? money(value) :
-        ['returnPct', 'inflationPct', 'equityDropPct'].includes(key) ? `${value}%` : value}`;
+        ['returnPct', 'inflationPct', 'equityDropPct'].includes(key) ? `${value}%` :
+          key === 'emergencyFunding' ? expenseAnswer[value] : value}`;
     ul.append(item);
   }
   list.append(ul);
@@ -386,6 +391,11 @@ function renderGoalReview() {
     if (review.mixPlan) root.append(paragraph(`Your chosen mix is saved: ${Object.entries(review.mixPlan).map(([asset, share]) => `${asset} ${share}%`).join(', ')}. The comparison waits for confirmed goal details.`));
     return;
   }
+  const expenseText = { separate: 'You said a nearer unexpected essential expense would use separate money outside this goal.',
+    goal_holdings: 'You said a nearer unexpected essential expense may use holdings assigned to this goal. Check how using them early would change the goal plan.',
+    unsure: 'You are unsure where money for a nearer unexpected essential expense would come from. Check this before relying on the goal illustration.' };
+  root.append(paragraph(review.emergencyFunding ? expenseText[review.emergencyFunding] :
+    'For this goal, where would money for a nearer unexpected essential expense come from? In chat, say “unexpected expense from separate money”, “unexpected expense from goal holdings”, or “unsure about unexpected expenses”. Your answer needs confirmation.'));
   const stats = document.createElement('div'); stats.className = 'goal-stats';
   for (const [label, value] of [
     ['Target today', money(review.target)], ['Assigned now', money(review.linkedValue)],
@@ -864,6 +874,25 @@ $('#composer').addEventListener('submit', async event => {
       `I staged that separate reserve amount. ${nextAssistantReserveQuestion(state.account.portfolio, state.reserveFacts)}`);
     return;
   }
+  const emergencyAnswer = message && !state.file ? parseAssistantEmergencyFunding(message) : null;
+  if (emergencyAnswer) {
+    say('user', message); $('#message').value = '';
+    if (emergencyAnswer.error) { say('note', emergencyAnswer.error); return; }
+    if (!state.account) { say('note', 'The saved review has not loaded yet. Try again when it is available.'); return; }
+    const selectedGoal = state.account.portfolio?.goals?.find(goal => goal.id === state.account.portfolio.activeGoalId);
+    if (!selectedGoal?.confirmed) { say('note', 'Confirm a selected goal before answering where a nearer expense would come from.'); return; }
+    if (state.reserveFacts || state.drafts.length || state.correction || state.refresh) {
+      say('note', 'Confirm or discard the current review change before answering for a goal.'); return;
+    }
+    if (state.goalFacts && state.goalDraftGoalId !== selectedGoal.id) {
+      say('note', 'Confirm or discard the current goal draft before answering for the selected goal.'); return;
+    }
+    state.goalFacts = { ...(state.goalFacts || {}), ...emergencyAnswer.facts };
+    state.goalDraftGoalId = selectedGoal.id;
+    renderGoalDraft();
+    say('assistant', 'I staged your answer for the selected goal. Check it in the goal draft, then save or discard it. This does not change any holding or select a trade.');
+    return;
+  }
   if (browserOnly && message && !state.file) {
     const portfolio = state.account?.portfolio;
     const selected = portfolio?.goals?.find(goal => goal.id === portfolio.activeGoalId);
@@ -976,6 +1005,8 @@ $('#confirm-goal').addEventListener('click', async () => {
   }
   const prepared = prepareAssistantGoalSave(state.account.portfolio, state.goalFacts);
   if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
+  const completingGoalSetup = Object.keys(state.goalFacts).some(field =>
+    ['name', 'age', 'years', 'target'].includes(field));
   state.busy = true; renderGoalDraft(); renderCredits();
   try {
     await writeAccount(prepared.portfolio,
@@ -984,7 +1015,7 @@ $('#confirm-goal').addEventListener('click', async () => {
     const goal = prepared.portfolio.goals.find(item => item.id === prepared.portfolio.activeGoalId);
     say('note', goal.confirmed ? `Goal facts ${browserOnly ? 'added to this tab' : 'saved to your account'}. The goal review has been recalculated.` :
       'Goal facts saved as an unfinished draft. Share the remaining details when you are ready.');
-    if (browserOnly && goal.confirmed && !goal.targetMix)
+    if (browserOnly && completingGoalSetup && goal.confirmed && !goal.targetMix)
       say('assistant', 'If you have already chosen an asset mix for this goal, you can say “goal mix 60% equity, 30% debt, 10% gold”. I can compare your linked holdings with it; I cannot choose percentages for you.');
   } catch (error) { say('note', error.message || 'The goal save failed. Your draft is still here.'); }
   finally { state.busy = false; renderGoalDraft(); renderCredits(); renderGoalReview(); }
@@ -1005,6 +1036,9 @@ $('#confirm-reserve').addEventListener('click', async () => {
       'The saved review changed in another tab. Discard these reserve totals and answer again.');
     state.reserveFacts = null; state.reserveDraftRevision = null; renderReserveDraft();
     say('note', prepared.result);
+    const selected = prepared.portfolio.goals?.find(goal => goal.id === prepared.portfolio.activeGoalId);
+    if (browserOnly && selected?.confirmed && !selected.emergencyFunding && prepared.portfolio.reserve)
+      say('assistant', 'For this goal, would an unexpected essential expense use separate money, the holdings assigned here, or are you unsure? Reply “unexpected expense from separate money”, “unexpected expense from goal holdings”, or “unsure about unexpected expenses”.');
   } catch (error) { say('note', error.message || 'The separate reserve totals could not be saved.'); }
   finally { state.busy = false; renderReserveDraft(); renderCredits(); }
 });

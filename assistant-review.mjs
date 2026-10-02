@@ -22,7 +22,7 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
       result.scenario ? 'ready' : 'invalid';
   return { kind: 'confirmed', name: goal.name, age: goal.age, years: goal.years, target: goal.target,
     linkedValue: result.goalTotal, linkedCount: result.goalHoldingCount, gapToday: result.goalGap,
-    coverage: portfolio.coverage || null,
+    coverage: portfolio.coverage || null, emergencyFunding: goal.emergencyFunding || null,
     dateCheckCount: result.goalDateCheck.count, accessCheck: result.goalAccessCheck,
     scenario: scenarioStatus === 'ready' ? result.scenario : null,
     scenarioStatus, missingAssumptions,
