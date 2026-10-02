@@ -1,5 +1,6 @@
 import { valuationDateIssue } from './analysis.mjs';
 import { goalShare } from './goals.mjs';
+import { confirmedGoalAssumptions } from './goal-scenario.mjs';
 
 /** Choose one concrete next action for the selected goal, without scoring suitability. */
 export function chooseNextReviewStep({ source, holdings, goal, coverage }, today = new Date()) {
@@ -43,6 +44,10 @@ export function chooseNextReviewStep({ source, holdings, goal, coverage }, today
   if (linkedIndices.some(index => holdings[index].granularity === 'fund_house')) return {
     kind: 'detail', href: '#input-choice', label: 'Check scheme details →',
     text: 'A fund-house total may contain several schemes. A detailed statement will make the fund part of this review clearer.',
+  };
+  if (!confirmedGoalAssumptions(goal)) return {
+    kind: 'assumptions', href: '#goal-assumptions', label: 'Confirm goal assumptions →',
+    text: 'Choose a monthly amount, growth and inflation assumption before viewing a future goal illustration. You can deliberately choose zero for any of them.',
   };
   return {
     kind: 'review', href: '#finding-list', label: 'Read my review questions →',

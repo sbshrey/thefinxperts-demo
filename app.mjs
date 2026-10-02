@@ -14,6 +14,7 @@ import { contextNeedsReview } from './market-context.mjs';
 import { estimateNavValue } from './nav-estimate.mjs';
 import { estimateStockValue, validShares } from './stock-estimate.mjs';
 import { chooseNextReviewStep } from './next-step.mjs';
+import { confirmedGoalAssumptions } from './goal-scenario.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
 import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs';
 
@@ -387,7 +388,8 @@ function render() {
     `${rupees(result.assets.Other)} is labelled Other. ${otherFromFundHouse ? 'CAMS non-equity totals are not classified as debt or gold here. Check a detailed statement before judging this mix.' : 'Check what these holdings contain before judging this mix.'}` : '';
   $('#summary-asof').textContent = result.asOfSummary;
   $('#goal-title').textContent = needsGoalConfirmation ? 'Set your goal' : state.goal.name;
-  const scenario = result.scenario;
+  const assumptionsReady = state.source === 'demo' || confirmedGoalAssumptions(state.goal);
+  const scenario = assumptionsReady && !result.goalDateCheck.count ? result.scenario : null;
   $('#scenario-cost').textContent = scenario ? rupees(scenario.futureCost) : '—';
   $('#scenario-value').textContent = scenario ? rupees(scenario.projectedValue) : '—';
   $('#scenario-gap').textContent = scenario ? rupees(scenario.futureGap) : '—';
@@ -401,7 +403,7 @@ function render() {
     result.stressPause === 'access_uncertain' ? 'Check when the linked other investments can be used before interpreting this goal stress calculation.' : shock
     ? `This subtracts ${shock.dropPct}% once from only the holdings marked Equity and linked to this goal. It uses today's entered values and goal cost; it excludes future growth, contributions, inflation, taxes and changes in other assets. It is a what-if loss, not a prediction or a target allocation.`
     : 'Enter a valid equity-loss percentage to see this illustration.';
-  const shockContinuation = pauseGoalFigures ? null : result.shockContinuation;
+  const shockContinuation = pauseGoalFigures || !assumptionsReady || result.goalDateCheck.count ? null : result.shockContinuation;
   $('#shock-goal-context').hidden = !shockContinuation;
   $('#shock-goal-context').textContent = shockContinuation
     ? `If that fall happened now, then the same ${shockContinuation.returnPct}% growth, ${shockContinuation.inflationPct}% inflation and ${rupees(shockContinuation.monthlyContribution)} monthly contribution assumptions held: the goal-date gap would be ${rupees(shockContinuation.futureGap)} versus ${rupees(scenario.futureGap)} before the fall. The additional monthly amount above your plan would be ${rupees(Math.ceil(shockContinuation.monthlyAdditionalNeeded))} versus ${rupees(Math.ceil(scenario.monthlyAdditionalNeeded))}. This is a fixed-assumption illustration, not a forecast; actual prices, cash flows and costs can differ.`
@@ -416,12 +418,11 @@ function render() {
       `${limits.capacityGap !== null ? `The amount you could tolerate is ${rupees(limits.capacityGap)} above the amount you said you could cover. Check whether a loss between those amounts would delay this goal or essential spending. ` : ''}` +
       'This is your own comparison, not a formal risk profile; real losses may be larger.';
   $('#scenario-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' :
+    !assumptionsReady ? 'Future illustration paused. Open the goal assumptions below and confirm your monthly amount, growth and inflation choices. Zero is valid when you choose it deliberately.' :
     result.goalAccessCheck.count ? `Future illustration paused: ${rupees(result.goalAccessCheck.value)} of manually entered other investments is linked to this goal, but access by the goal date has not been checked. Unlink these rows to project the remaining holdings, or check the product terms before relying on the gross gap.` : scenario
     ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and your planned ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. The total mathematical monthly amount would be ${rupees(Math.ceil(scenario.monthlyTotalNeeded))}; the number above is only the extra beyond your plan. This is arithmetic, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
-    : 'Enter valid goal assumptions to see an illustrative scenario.';
-  if (scenario && result.goalDateCheck.count) {
-    $('#scenario-note').textContent += ' Check the linked valuation dates flagged in your goal view before relying on these figures.';
-  }
+    : result.goalDateCheck.count ? 'Future illustration paused. Check missing, future or over-90-day valuation dates on linked holdings before using these figures.' :
+      'Enter valid goal assumptions to see an illustrative scenario.';
   $('#workspace-note').textContent = state.source === 'demo' ? 'Illustrative portfolio · values are entered, not live' : 'Your entries · values are entered, not live';
   $('#holding-form-hint').textContent = `${state.source === 'demo' ? 'Adding your first holding removes the fictional example. ' : ''}New holdings count toward the selected goal. Untick them below to change that. You can add a checked invested amount to an individual holding later. Fund constituents remain unknown until verified data is available.`;
   $('#entry-state').hidden = state.source === 'user';
@@ -1113,6 +1114,7 @@ $('#coverage-quick-check').addEventListener('click', () => {
 });
 $('#review-next-action-link').addEventListener('click', () => {
   if ($('#review-next-action-link').getAttribute('href') === '#coverage-details') $('#coverage-details').open = true;
+  if ($('#review-next-action-link').getAttribute('href') === '#goal-assumptions') $('#goal-assumptions').open = true;
 });
 
 $('#coverage-form').addEventListener('submit', event => {

@@ -1,3 +1,9 @@
+/** A future illustration needs the investor to check every starting assumption. */
+export function confirmedGoalAssumptions(goal) {
+  return ['monthlyContribution', 'returnPct', 'inflationPct']
+    .every(field => goal?.assumptionsChecked?.[field] === true);
+}
+
 /** Pure arithmetic scenario; no expected-return forecast or suitability decision. */
 export function calculateGoalScenario(currentValue, goal) {
   const years = Number(goal.years);
