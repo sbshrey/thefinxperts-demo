@@ -9,7 +9,9 @@ body{margin:0}
 .mark{text-decoration:none}
 .beta{font-size:10px;letter-spacing:.1em;color:#52766c;background:#e8f4ec;padding:7px 9px;border-radius:99px}
 .quiet{border:0;background:transparent;color:#376356;font:inherit;cursor:pointer}
-.top-actions{display:flex;align-items:center;gap:12px;font-size:13px}
+.top-actions{position:relative;display:flex;align-items:center;gap:12px;font-size:13px}
+.tools-toggle{display:none}
+.tools-items{display:flex;align-items:center;gap:12px}
 .device-dialog{width:min(420px,calc(100vw - 28px));border:1px solid #cbded0;border-radius:16px;padding:22px;background:#fff;color:#17322d;box-shadow:0 20px 70px #17322d44}
 .device-dialog::backdrop{background:#10291f99}
 .device-dialog h2{font-size:20px;line-height:1.2;margin:0 0 10px}
@@ -153,10 +155,17 @@ body{margin:0}
 .section-card{grid-column:1/-1}
 .drafts{margin:0 12px 5px;max-height:140px}
 }
-@media(max-width:600px){body[data-mode="browser-only"] .brand>span{display:none}
+@media(max-width:600px){.brand>span{display:none}
 body[data-mode="browser-only"] .messages{padding-top:8px;padding-bottom:8px}
 body[data-mode="browser-only"] .panel-heading p{display:none}
 body[data-mode="browser-only"] .mobile-data-link{display:inline-block;margin-top:3px;font-size:11px}
-body[data-mode="browser-only"] .top-actions{gap:1px}
-body[data-mode="browser-only"] .top-actions>.quiet{padding:5px 4px;white-space:nowrap}
+.top-actions{gap:7px}
+.top-actions>.quiet{padding:8px 9px;white-space:nowrap;font-size:12px}
+.tools-toggle{display:block;border:1px solid #aacbb5;border-radius:9px;background:#f5faf5;color:#174d3f;padding:8px 10px;font:700 12px Arial,Helvetica,sans-serif;cursor:pointer}
+.tools-toggle:focus-visible,.tools-items .quiet:focus-visible{outline:3px solid #82bd98;outline-offset:2px}
+.tools-items{display:none;position:absolute;z-index:20;right:0;top:calc(100% + 10px);width:min(240px,calc(100vw - 28px));padding:7px;flex-direction:column;align-items:stretch;gap:2px;border:1px solid #dce6df;border-radius:12px;background:#fff;box-shadow:0 12px 30px #17322d22}
+.top-actions.tools-open .tools-items{display:flex}
+.tools-items>.quiet{padding:11px 12px;border-radius:7px;text-align:left;font-size:13px}
+.tools-items>.quiet:hover{background:#edf5ee}
+.tools-items>.quiet:disabled{opacity:.5}
 }

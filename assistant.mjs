@@ -56,6 +56,26 @@ const state = { confirmed: [], drafts: [], history: [], file: null, busy: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
   goalFacts: null, goalDraftGoalId: null, correction: null, refresh: null, casAvailable: false, casLocal: false,
   capacityReached: false };
+const toolsToggle = $('#tools-toggle');
+const mobileTools = window.matchMedia('(max-width: 600px)');
+function setToolsOpen(open) {
+  $('.top-actions').classList.toggle('tools-open', open);
+  toolsToggle.setAttribute('aria-expanded', String(open));
+}
+toolsToggle.addEventListener('click', () =>
+  setToolsOpen(toolsToggle.getAttribute('aria-expanded') !== 'true'));
+$('#tools-items').addEventListener('click', event => {
+  if (event.target.closest('button,a')) setToolsOpen(false);
+});
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('.top-actions')) setToolsOpen(false);
+});
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || toolsToggle.getAttribute('aria-expanded') !== 'true') return;
+  setToolsOpen(false);
+  toolsToggle.focus();
+});
+mobileTools.addEventListener('change', event => { if (!event.matches) setToolsOpen(false); });
 const reviewToggle = $('#review-toggle');
 const mobileReview = window.matchMedia('(max-width: 800px)');
 function syncReviewAccessibility() {
