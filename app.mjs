@@ -10,6 +10,7 @@ import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
 import { contextNeedsReview } from './market-context.mjs';
 import { estimateNavValue } from './nav-estimate.mjs';
+import { chooseNextReviewStep } from './next-step.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -175,6 +176,13 @@ function render() {
   const pauseGoalFigures = needsGoalConfirmation;
   const result = analyzePortfolio(state.holdings, pauseGoalFigures ? { ...state.goal, years: 0, target: 0 } : state.goal,
     new Date(), state.reserve, state.source === 'user' ? state.coverage : null);
+  const nextStep = chooseNextReviewStep(state);
+  $('#review-next-action').hidden = !nextStep;
+  if (nextStep) {
+    $('#review-next-action-text').textContent = nextStep.text;
+    $('#review-next-action-link').href = nextStep.href;
+    $('#review-next-action-link').textContent = nextStep.label;
+  }
   $('#reserve-check').hidden = state.source !== 'user';
   const months = reserveMonths(state.reserve);
   $('#reserve-result').textContent = months === null ? 'Add both amounts to see months of essential spending covered.' :
@@ -935,6 +943,9 @@ $('#coverage-quick-check').addEventListener('click', () => {
   $('#coverage-details').open = true;
   $('#coverage-details').scrollIntoView({ behavior: 'smooth', block: 'start' });
   $('#coverage-mutual-funds').focus({ preventScroll: true });
+});
+$('#review-next-action-link').addEventListener('click', () => {
+  if ($('#review-next-action-link').getAttribute('href') === '#coverage-details') $('#coverage-details').open = true;
 });
 
 $('#coverage-form').addEventListener('submit', event => {
