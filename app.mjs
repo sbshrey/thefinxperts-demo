@@ -166,6 +166,8 @@ function render() {
     `${rupees(state.reserve.accessibleMoney)} outside entered holdings ÷ ${rupees(state.reserve.monthlyEssentials)} monthly essentials = ${months.toFixed(1)} months. This does not establish an adequate reserve; income stability, debt, dependants and insurance are not assessed.`;
   renderMixPlan(result, pauseGoalFigures);
   $('#portfolio-value').textContent = rupees(result.total);
+  $('#portfolio-value-label').textContent = state.source === 'demo' ? 'Example holdings total' : 'Entered holdings total';
+  $('#portfolio-scope').hidden = state.source !== 'user' || !state.holdings.length;
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
   $('#goal-years-value').textContent = needsGoalConfirmation ? 'Goal details needed' : `${state.goal.years} years`;
   $('#age-at-goal').textContent = pauseGoalFigures ? 'Goal figures paused' : `Age ${Number(state.goal.age) + Number(state.goal.years)} at the goal date`;
