@@ -289,6 +289,7 @@ function render() {
   const reviewDestinations = {
     scope: ['#coverage-details', 'Check snapshot coverage'],
     identity: ['#holdings', 'Review holding labels'], summary: ['#input-choice', 'See import choices'],
+    classification: ['#holdings', 'Check asset categories'],
     valuation: ['#holdings', 'Check entered values'], 'chosen-mix': ['#mix-plan-details', 'Compare my chosen mix'],
     emergency: ['#goal-form', 'Review goal context'], reserve: ['#reserve-check', 'Check accessible money'],
     horizon: ['#goal-form', 'Explore goal timing'], position: ['#holdings', 'Review linked holdings'],

@@ -163,6 +163,17 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       limitation: 'Those rows have no scheme identifier, so scheme overlap, plan type and costs cannot be calculated.' });
   }
 
+  const unclassifiedSchemeValue = valid.filter(holding => holding.asset === 'Other' &&
+    holding.granularity !== 'fund_house').reduce((sum, holding) => sum + Number(holding.value), 0);
+  if (unclassifiedSchemeValue > 0) {
+    findings.push({ key: 'classification', tone: 'amber', label: 'Asset labels',
+      title: 'Check holdings labelled Other',
+      detail: `${rupees(unclassifiedSchemeValue)} of entered holding value is labelled Other. Check the original statement or scheme objective before using the asset mix for a goal.`,
+      question: 'Which of these holdings can you classify from its original statement or scheme information?',
+      basis: `${rupees(unclassifiedSchemeValue)} labelled Other ÷ ${rupees(total)} entered value = ${(unclassifiedSchemeValue / total * 100).toFixed(1)}%. Fund-house summary portions are excluded from this check because they have a separate detail prompt.`,
+      limitation: 'A statement label or fund name alone does not establish whether a holding belongs in Debt, Gold, Equity or another category. This is a data check, not a suggested allocation.' });
+  }
+
   if (valid.length && (missingDates || staleDates || futureDates)) {
     const issues = [
       missingDates ? `${missingDates} without a valuation date` : null,
