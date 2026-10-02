@@ -1203,11 +1203,13 @@ $('#broker-file').addEventListener('change', () => {
 function fillBrokerColumns(index) {
   const headers = brokerRows[index] || [];
   const guess = suggestBrokerColumns([headers]);
-  for (const [id, selected] of [['broker-name', guess.name], ['broker-value', guess.value], ['broker-isin', guess.isin]]) {
+  for (const [id, selected] of [['broker-name', guess.name], ['broker-value', guess.value],
+    ['broker-isin', guess.isin], ['broker-cost', guess.cost]]) {
     const select = $(`#${id}`);
     select.replaceChildren();
     const blank = document.createElement('option');
-    blank.value = ''; blank.textContent = id === 'broker-isin' ? 'No ISIN column' : 'Choose a column';
+    blank.value = ''; blank.textContent = id === 'broker-isin' ? 'No ISIN column' :
+      id === 'broker-cost' ? 'No invested amount column' : 'Choose a column';
     select.append(blank);
     headers.forEach((header, column) => {
       const option = document.createElement('option');
@@ -1267,7 +1269,8 @@ $('#broker-preview').addEventListener('click', () => {
   if (!brokerRows) return;
   const selected = id => $(id).value === '' ? null : Number($(id).value);
   const result = parseBrokerHoldingsRows(brokerRows, Number($('#broker-header').value),
-    { name: selected('#broker-name'), value: selected('#broker-value'), isin: selected('#broker-isin') },
+    { name: selected('#broker-name'), value: selected('#broker-value'), isin: selected('#broker-isin'),
+      cost: selected('#broker-cost') },
     $('#broker-date').value, { strictWidth: brokerSource === 'Broker CSV' });
   if (result.errors.length) {
     $('#broker-error').textContent = result.errors.join(' ');
@@ -1376,7 +1379,7 @@ function refreshImportSummary() {
     $('#refresh-statement').textContent = 'Refresh matched positions';
     $('#refresh-explanation').textContent = `${brokerRefresh.matched.length} exact ISIN ${brokerRefresh.matched.length === 1 ? 'match' : 'matches'} can receive the newer dated value. ` +
       `${brokerRefresh.skipped} report ${brokerRefresh.skipped === 1 ? 'row is' : 'rows are'} unmatched and will not be added. ` +
-      'No existing holding will be removed. Use this only for a newer view of the same account and positions; another account may hold the same ISIN. Goal links stay in place. A prior unit or share count and any manual price estimate will be cleared because this report does not verify them.';
+      'No existing holding will be removed. Use this only for a newer view of the same account and positions; another account may hold the same ISIN. Goal links stay in place. A prior unit or share count and any manual price estimate will be cleared because this report does not verify them. Old invested amounts clear; only newly checked report amounts replace them.';
     for (const { current, next } of brokerRefresh.matched) {
       const row = document.createElement('li');
       row.textContent = `${current.name} · ISIN ${current.isin} · ${rupees(current.value)} as of ${current.asOf} → ${rupees(next.value)} as of ${next.asOf}. Goal links stay in place.`;
@@ -1404,13 +1407,14 @@ function renderImportRows() {
       if (holding.amfi) parts.push(`AMFI code: ${holding.amfi}`);
       if (holding.units) parts.push(`Statement units: ${holding.units}`);
       if (holding.statementCategory) parts.push(`Statement category: ${holding.statementCategory}`);
+      if (holding._costCandidate !== undefined) parts.push(`${holding.costBasis !== undefined ? 'Checked' : 'Unconfirmed'} report invested amount: ${rupees(holding._costCandidate)} as of ${holding._costCandidateAsOf}`);
       if (pendingPerformance.has(holding.id)) parts.push(`Indicative statement-period XIRR: ${pendingPerformance.get(holding.id).toFixed(2)}% a year`);
       if (holding.granularity === 'fund_house') parts.push('Fund-house summary, not an individual scheme');
       metadata.textContent = parts.length ? parts.join(' · ') : 'No fund-house or instrument identifier supplied.';
     };
     refreshMetadata();
     const rowSummary = () => {
-      summary.textContent = `${holding.name || 'Unnamed holding'} — ${holding.type || 'choose type'}, ${holding.asset || 'choose asset'}, ${Number.isFinite(Number(holding.value)) ? rupees(holding.value) : 'check value'}${holding.asOf ? ` as of ${holding.asOf}` : ''}`;
+      summary.textContent = `${holding.name || 'Unnamed holding'} — ${holding.type || 'choose type'}, ${holding.asset || 'choose asset'}, ${Number.isFinite(Number(holding.value)) ? rupees(holding.value) : 'check value'}${holding.asOf ? ` as of ${holding.asOf}` : ''}${holding._costCandidate !== undefined ? ` · invested amount ${holding.costBasis !== undefined ? 'checked' : 'to check'}` : ''}`;
     };
     rowSummary();
     const fields = document.createElement('div');
@@ -1472,6 +1476,25 @@ function renderImportRows() {
     date.type = 'date'; date.value = holding.asOf || '';
     date.addEventListener('input', () => { holding.asOf = date.value || null; pendingPerformance.delete(holding.id); refreshMetadata(); rowSummary(); refreshImportSummary(); });
     field('Valuation date', date);
+    if (broker && holding._costCandidate !== undefined) {
+      const label = document.createElement('label');
+      label.className = 'broker-cost-check';
+      const confirmCost = document.createElement('input');
+      confirmCost.type = 'checkbox';
+      confirmCost.checked = holding.costBasis !== undefined;
+      confirmCost.addEventListener('change', () => {
+        if (confirmCost.checked) {
+          holding.costBasis = holding._costCandidate;
+          holding.costBasisAsOf = holding._costCandidateAsOf;
+        } else {
+          delete holding.costBasis;
+          delete holding.costBasisAsOf;
+        }
+        refreshMetadata(); rowSummary(); refreshImportSummary();
+      });
+      label.append(confirmCost, document.createTextNode(` I checked that ${rupees(holding._costCandidate)} is the invested amount for the units or shares still held on ${holding._costCandidateAsOf}.`));
+      fields.append(label);
+    }
     const remove = document.createElement('button');
     remove.type = 'button'; remove.className = 'text-button muted'; remove.textContent = 'Leave out this holding';
     remove.addEventListener('click', () => { pendingImport.splice(index, 1); renderImportRows(); });
@@ -1579,7 +1602,7 @@ function applyImport(mode) {
     const origin = entryOriginFromImport($('#import-preview').dataset.source);
     if (state.source === 'user' && ['broker_xlsx', 'broker_csv'].includes(origin)) {
       const refresh = planBrokerReportRefresh(state.holdings, pendingImport, origin);
-      if (!refresh || !window.confirm(`Refresh ${refresh.matched.length} matched ${refresh.matched.length === 1 ? 'position' : 'positions'} from this newer broker report? Confirm this is the same account and positions, not another account or an extra lot. ${refresh.skipped} unmatched report ${refresh.skipped === 1 ? 'row will' : 'rows will'} be left out. No holding will be removed, and matched goal links will stay. Recheck invested amounts for refreshed positions.`)) return;
+      if (!refresh || !window.confirm(`Refresh ${refresh.matched.length} matched ${refresh.matched.length === 1 ? 'position' : 'positions'} from this newer broker report? Confirm this is the same account and positions, not another account or an extra lot. ${refresh.skipped} unmatched report ${refresh.skipped === 1 ? 'row will' : 'rows will'} be left out. No holding will be removed, and matched goal links will stay. Old invested amounts clear; only newly checked report amounts replace them.`)) return;
       state.holdings = refresh.holdings;
       pendingImport = null;
       pendingPerformance.clear();
@@ -1588,7 +1611,7 @@ function applyImport(mode) {
       $('#broker-map').hidden = true;
       $('#import-preview').hidden = true;
       render();
-      $('#live-status').textContent = `${refresh.matched.length} matched positions refreshed from the broker report. ${refresh.skipped} unmatched rows left out. Goal links kept. Enter invested amounts again after checking the current positions.`;
+      $('#live-status').textContent = `${refresh.matched.length} matched positions refreshed from the broker report. ${refresh.skipped} unmatched rows left out. Goal links kept. Old invested amounts cleared unless a new report amount was checked.`;
       $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
@@ -1628,7 +1651,8 @@ function applyImport(mode) {
       !window.confirm(`Replace ${state.holdings.length} current ${state.holdings.length === 1 ? 'holding' : 'holdings'} and remove their goal links? This also removes any direct stocks not in the new preview. Download a private backup first if you want to keep this review.`)) return;
   const imported = pendingImport.map(holding => {
     const name = holding.name.trim();
-    return { ...holding, name, id: crypto.randomUUID(), exposure: holding.type === 'Stock' ? { [name]: 1 } : null };
+    const { _costCandidate, _costCandidateAsOf, ...checked } = holding;
+    return { ...checked, name, id: crypto.randomUUID(), exposure: holding.type === 'Stock' ? { [name]: 1 } : null };
   });
   const fromExample = mode === 'replace' && state.source === 'demo';
   if (fromExample) state.goals = state.goals.map(goal =>

@@ -126,7 +126,9 @@ export function planBrokerReportRefresh(existing, incoming, origin) {
     const { navEstimate: _navEstimate, stockEstimate: _stockEstimate,
       costBasis: _costBasis, costBasisAsOf: _costBasisAsOf,
       units: _units, shares: _shares, ...prior } = holding;
-    return { ...prior, value: next.value, asOf: next.asOf, valuationOrigin: origin };
+    return { ...prior, value: next.value, asOf: next.asOf, valuationOrigin: origin,
+      ...(next.costBasis !== undefined ? { costBasis: next.costBasis,
+        costBasisAsOf: next.costBasisAsOf } : {}) };
   });
   const total = holdings.reduce((sum, holding) => sum + Number(holding.value), 0);
   if (!Number.isFinite(total) || total > 1_000_000_000_000) return null;

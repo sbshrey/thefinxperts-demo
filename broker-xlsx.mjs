@@ -54,17 +54,19 @@ export function checkXlsxArchive(buffer) {
 }
 
 export function suggestBrokerColumns(rows) {
-  if (!Array.isArray(rows) || !rows.length) return { headerIndex: 0, name: '', value: '', isin: '' };
-  let best = { headerIndex: 0, score: -1, name: '', value: '', isin: '' };
+  if (!Array.isArray(rows) || !rows.length) return { headerIndex: 0, name: '', value: '', isin: '', cost: '' };
+  let best = { headerIndex: 0, score: -1, name: '', value: '', isin: '', cost: '' };
   for (let index = 0; index < Math.min(rows.length, 15); index++) {
     const cells = Array.isArray(rows[index]) ? rows[index].map(cell => String(cell ?? '').trim().toLowerCase()) : [];
     const find = pattern => cells.findIndex(cell => pattern.test(cell));
     const name = find(/^(?:symbol|instrument|security|stock|stock name|security name|instrument name|scrip|scrip name)$/);
     const value = find(/^(?:current value|market value|current market value|holding value|holdings value|valuation|current valuation)$/);
     const isin = find(/^isin(?: no| number)?$/);
+    const cost = find(/^(?:total )?(?:invested amount|invested value|investment value|purchase cost|purchase value|cost basis|buy value)$/);
     const score = (name >= 0 ? 2 : 0) + (value >= 0 ? 2 : 0) + (isin >= 0 ? 1 : 0);
     if (score > best.score) best = { headerIndex: index, score, name: name >= 0 ? String(name) : '',
-      value: value >= 0 ? String(value) : '', isin: isin >= 0 ? String(isin) : '' };
+      value: value >= 0 ? String(value) : '', isin: isin >= 0 ? String(isin) : '',
+      cost: cost >= 0 ? String(cost) : '' };
   }
   const { score, ...result } = best;
   return result;
@@ -82,13 +84,20 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
   if (!Array.isArray(header) || !Number.isInteger(columns.name) || !Number.isInteger(columns.value) ||
       columns.name < 0 || columns.value < 0 || columns.name === columns.value ||
       columns.name >= header.length || columns.value >= header.length ||
-      (columns.isin != null && (!Number.isInteger(columns.isin) || columns.isin < 0 ||
-        columns.isin >= header.length || [columns.name, columns.value].includes(columns.isin))))
-    return { holdings: [], errors: ['Choose separate name and current market value columns; ISIN is optional.'], notices: [] };
+      [columns.isin, columns.cost].some((column, position) => column != null &&
+        (!Number.isInteger(column) || column < 0 || column >= header.length ||
+         [columns.name, columns.value, position ? columns.isin : columns.cost].includes(column))))
+    return { holdings: [], errors: ['Choose separate name and current market value columns; ISIN and invested amount are optional.'], notices: [] };
   const valueLabel = String(header[columns.value] ?? '').trim().toLowerCase().replace(/[._-]/g, ' ');
   if (!/(?:\bcurrent\b|\bmarket\b|\bmkt\b|\bvaluation\b|\bpresent\b|\bholdings? value\b)/.test(valueLabel) ||
       /\b(?:cost|buy|purchase|average|avg|invested|profit|loss)\b|p\s*&\s*l/.test(valueLabel))
     return { holdings: [], errors: ['Choose a column labelled current market value, not purchase cost or profit/loss.'], notices: [] };
+  if (columns.cost != null) {
+    const costLabel = String(header[columns.cost] ?? '').trim().toLowerCase().replace(/[._-]/g, ' ');
+    if (!/^(?:total )?(?:invested amount|invested value|investment value|purchase cost|purchase value|cost basis|buy value)$/.test(costLabel))
+      return { holdings: [], errors: ['Choose a total invested amount for the current position, not average price, profit or a transaction amount.'], notices: [] };
+    notices.push('The mapped invested amount stays a draft until you check each row against the current units or shares.');
+  }
   const holdings = [];
   const seen = new Set();
   const seenIsins = new Set();
@@ -111,9 +120,13 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
       continue;
     }
     const isin = columns.isin == null ? '' : String(row[columns.isin] ?? '').trim().toUpperCase();
+    const cost = columns.cost == null || row[columns.cost] == null || String(row[columns.cost]).trim() === '' ?
+      null : numericAmount(row[columns.cost]);
     if (!name || name.length > 200 || value === null || value <= 0 || value > 10_000_000_000 ||
-        (isin && !/^[A-Z]{2}[A-Z0-9]{10}$/.test(isin))) {
-      errors.push(`Report row ${index + 1}: check the name, current value and ISIN.`);
+        (isin && !/^[A-Z]{2}[A-Z0-9]{10}$/.test(isin)) ||
+        columns.cost != null && cost !== null && (cost <= 0 || cost > 10_000_000_000) ||
+        columns.cost != null && String(row[columns.cost] ?? '').trim() !== '' && cost === null) {
+      errors.push(`Report row ${index + 1}: check the name, current value, invested amount and ISIN.`);
       if (errors.length >= 5) break;
       continue;
     }
@@ -127,7 +140,9 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
     seen.add(key);
     if (isin) seenIsins.add(isin);
     seenNames.set(nameKey, isin);
-    holdings.push({ name, type: null, asset: null, value, asOf, amc: null, isin: isin || null, amfi: null, exposure: null });
+    holdings.push({ name, type: null, asset: null, value, asOf, amc: null, isin: isin || null, amfi: null,
+      exposure: null, ...(cost !== null && asOf !== null ?
+        { _costCandidate: cost, _costCandidateAsOf: asOf } : {}) });
     if (holdings.length > MAX_ROWS) { errors.push('Import at most 200 holdings at a time.'); break; }
   }
   if (!holdings.length && !errors.length) errors.push('No holdings were found below the selected header.');
