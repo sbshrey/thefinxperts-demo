@@ -91,6 +91,8 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
     return { holdings: [], errors: ['Choose a column labelled current market value, not purchase cost or profit/loss.'], notices: [] };
   const holdings = [];
   const seen = new Set();
+  const seenIsins = new Set();
+  const seenNames = new Map();
   let reportedTotal = null;
   for (let index = headerIndex + 1; index < rows.length; index++) {
     const row = rows[index];
@@ -117,7 +119,14 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
     }
     const key = `${name.toLocaleLowerCase('en-IN')}|${value}|${isin}`;
     if (seen.has(key)) { errors.push(`Report row ${index + 1}: duplicate row; check the report before import.`); continue; }
+    const nameKey = name.toLocaleLowerCase('en-IN');
+    if (isin && seenIsins.has(isin) || seenNames.has(nameKey) && (!isin || !seenNames.get(nameKey))) {
+      errors.push(`Report row ${index + 1}: repeated ISIN or name may represent another lot or a duplicate. Check and aggregate this report before import.`);
+      continue;
+    }
     seen.add(key);
+    if (isin) seenIsins.add(isin);
+    seenNames.set(nameKey, isin);
     holdings.push({ name, type: null, asset: null, value, asOf, amc: null, isin: isin || null, amfi: null, exposure: null });
     if (holdings.length > MAX_ROWS) { errors.push('Import at most 200 holdings at a time.'); break; }
   }

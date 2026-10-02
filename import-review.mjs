@@ -148,7 +148,7 @@ export function isRepeatedActiveStatement(existing, incoming) {
   return incoming.every(holding => {
     const current = currentByKey.get(activeStatementKey(holding));
     return current && isRealIsoDate(holding.asOf) && current.asOf === holding.asOf &&
-      sourceAssetCompatible(current, holding) &&
+      sourceAssetCompatible(current, holding) && sourceIdentifiersCompatible(current, holding) &&
       Number(current.value) === Number(holding.value) &&
       (current.units || null) === (holding.units || null) &&
       (current.statementCategory || null) === (holding.statementCategory || null);
@@ -175,7 +175,8 @@ export function planActiveStatementRefresh(existing, incoming) {
   if (currentByKey.size !== funds.length || incomingByKey.size !== incoming.length) return null;
   const sharedKeys = [...incomingByKey.keys()].filter(item => currentByKey.has(item));
   if (!sharedKeys.length) return null;
-  if (sharedKeys.some(key => !sourceAssetCompatible(currentByKey.get(key), incomingByKey.get(key)))) return null;
+  if (sharedKeys.some(key => !sourceAssetCompatible(currentByKey.get(key), incomingByKey.get(key)) ||
+      !sourceIdentifiersCompatible(currentByKey.get(key), incomingByKey.get(key)))) return null;
   const date = incoming[0].asOf;
   const indiaToday = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
   if (!isRealIsoDate(date) || incoming.some(holding => holding.asOf !== date) ||
@@ -212,6 +213,11 @@ function sourceAssetCompatible(current, incoming) {
   // A corrected Debt/Gold label may still come back as CAMS non-equity (Other).
   if (incoming.asset === 'Other') return ['Debt', 'Gold', 'Other'].includes(current.asset);
   return incoming.asset === 'Equity' && current.asset === 'Equity';
+}
+
+function sourceIdentifiersCompatible(current, incoming) {
+  return (!current.isin || !incoming.isin || current.isin === incoming.isin) &&
+    (!current.amfi || !incoming.amfi || current.amfi === incoming.amfi);
 }
 
 function isRealIsoDate(value) {
