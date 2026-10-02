@@ -7,7 +7,7 @@ const TYPES = new Set(['Mutual fund', 'Stock']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId'];
 const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units'];
-const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'targetMix', 'confirmed'];
+const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
 export function buildReviewBackup(state) {
@@ -18,7 +18,8 @@ export function buildReviewBackup(state) {
       asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
       granularity: holding.granularity || null, units: holding.units || null,
     })),
-    goals: state.goals.map(goal => ({ ...goal })),
+    goals: state.goals.map(goal => ({ ...goal, linkedIds: [...goal.linkedIds],
+      ...(goal.allocationPct ? { allocationPct: { ...goal.allocationPct } } : {}) })),
     activeGoalId: state.activeGoalId,
   };
 }
@@ -62,7 +63,7 @@ export function parseReviewBackup(text) {
   if (total > 1_000_000_000_000) return invalid('The combined portfolio value is too large.');
 
   const goalIds = new Set();
-  const assigned = new Set();
+  const assigned = new Map();
   const goals = [];
   for (const goal of document.goals) {
     if (!exactKeys(goal, GOAL_KEYS) || !isUuid(goal.id) || goalIds.has(goal.id) || !isName(goal.name, 60) ||
@@ -76,17 +77,30 @@ export function parseReviewBackup(text) {
         (goal.emergencyFunding !== undefined && !['separate', 'goal_holdings', 'unsure'].includes(goal.emergencyFunding)) ||
         (goal.confirmed !== undefined && typeof goal.confirmed !== 'boolean') ||
         (goal.targetMix !== undefined && !validMixPlan(goal.targetMix)) ||
-        !Array.isArray(goal.linkedIds) || goal.linkedIds.length > 500) {
+        !Array.isArray(goal.linkedIds) || goal.linkedIds.length > 500 ||
+        (goal.allocationPct !== undefined && (!record(goal.allocationPct) || Object.keys(goal.allocationPct).length > 500))) {
       return invalid('A goal in the review file is invalid or contains unsupported fields.');
     }
+    const ownLinks = new Set();
     for (const id of goal.linkedIds) {
-      if (!isUuid(id) || !holdingIds.has(id) || assigned.has(id)) {
-        return invalid('Goal links are invalid or count a holding more than once.');
+      if (!isUuid(id) || !holdingIds.has(id) || ownLinks.has(id)) {
+        return invalid('Goal links are invalid or duplicated.');
       }
-      assigned.add(id);
+      ownLinks.add(id);
+      const share = goal.allocationPct?.[id] ?? 100;
+      if (!boundedNumber(share, 1, 100, true) || (assigned.get(id) || 0) + share > 100) {
+        return invalid('Goal shares for a holding must total no more than 100%.');
+      }
+      assigned.set(id, (assigned.get(id) || 0) + share);
+    }
+    for (const [id, share] of Object.entries(goal.allocationPct || {})) {
+      if (!ownLinks.has(id) || !boundedNumber(share, 1, 100, true)) {
+        return invalid('Goal shares must name linked holdings and be whole percentages from 1 to 100.');
+      }
     }
     goalIds.add(goal.id);
-    goals.push({ ...goal, name: goal.name.trim(), linkedIds: [...goal.linkedIds] });
+    goals.push({ ...goal, name: goal.name.trim(), linkedIds: [...goal.linkedIds],
+      ...(goal.allocationPct ? { allocationPct: { ...goal.allocationPct } } : {}) });
   }
   if (!goalIds.has(document.activeGoalId)) return invalid('The selected goal is missing from the review file.');
   return { portfolio: { version: 2, holdings, goals, activeGoalId: document.activeGoalId }, errors: [] };

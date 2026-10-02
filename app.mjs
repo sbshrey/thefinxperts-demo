@@ -2,7 +2,7 @@ import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { validateImportReview, validateImportMerge } from './import-review.mjs';
-import { setGoalHolding, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
+import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, compareMixPlan, validMixPlan } from './mix-plan.mjs';
@@ -159,8 +159,8 @@ function render() {
       'No linked values have missing, future or over-90-day dates; values are still unverified.';
   const goalCoverage = summarizeGoalCoverage(state.goals, state.activeGoalId, state.holdings);
   $('#goal-coverage-note').textContent = !state.holdings.length ? 'Add holdings below to link them to this goal.' :
-    result.goalHoldingCount === state.holdings.length ? 'All entered holdings are linked to this goal.' :
-    `${result.goalHoldingCount} of ${state.holdings.length} holdings are linked here. ${rupees(goalCoverage.elsewhereValue)} is assigned to other goals; ${rupees(goalCoverage.unassignedValue)} is unassigned. Neither amount is included in this goal's figures.`;
+    !goalCoverage.elsewhereValue && !goalCoverage.unassignedValue ? 'All entered value is linked to this goal.' :
+    `${result.goalHoldingCount} of ${state.holdings.length} holdings contribute here. ${rupees(goalCoverage.elsewhereValue)} is assigned to other goals; ${rupees(goalCoverage.unassignedValue)} is unassigned. Neither amount is included in this goal's figures.`;
   $('#goal-largest-value').textContent = result.largestGoalPosition ?
     `${(result.largestGoalPosition.value / result.goalTotal * 100).toFixed(1)}%` : 'Unknown';
   $('#goal-largest-label').textContent = result.largestGoalPosition?.granularity === 'fund_house' ?
@@ -307,7 +307,7 @@ function render() {
     goalLink.className = 'holding-goal-link';
     const goalCheckbox = document.createElement('input');
     goalCheckbox.type = 'checkbox';
-    goalCheckbox.checked = !Array.isArray(state.goal.linkedIds) || state.goal.linkedIds.includes(holding.id);
+    goalCheckbox.checked = goalShare(state.goal, holding.id) > 0;
     goalCheckbox.setAttribute('aria-label', `Count ${holding.name} toward ${state.goal.name}`);
     goalCheckbox.addEventListener('change', () => {
       state.goals = setGoalHolding(state.goals, state.activeGoalId, holding.id, goalCheckbox.checked);
@@ -315,9 +315,54 @@ function render() {
       render();
     });
     const goalLinkText = document.createElement('span');
-    const otherGoal = state.goals.find(goal => goal.id !== state.activeGoalId && goal.linkedIds.includes(holding.id));
-    goalLinkText.textContent = otherGoal ? `Assigned to ${otherGoal.name}` : 'For this goal';
+    const otherGoal = state.goals.find(goal => goal.id !== state.activeGoalId && goalShare(goal, holding.id) > 0);
+    const selectedShare = goalShare(state.goal, holding.id);
+    goalLinkText.textContent = selectedShare && selectedShare < 100 ? `${selectedShare}% for this goal` :
+      otherGoal ? `Assigned to ${otherGoal.name}` : 'For this goal';
     goalLink.append(goalCheckbox, goalLinkText);
+    const allocation = document.createElement('details');
+    allocation.className = 'holding-allocation';
+    if (state.goals.length > 1) {
+      const allocationTitle = document.createElement('summary');
+      allocationTitle.textContent = 'Divide this holding between goals';
+      const allocationForm = document.createElement('form');
+      const allocationHint = document.createElement('p');
+      allocationHint.textContent = 'Enter whole percentages. The total can be less than 100%; the rest stays unassigned.';
+      allocationForm.append(allocationHint);
+      const inputs = new Map();
+      for (const goal of state.goals) {
+        const label = document.createElement('label');
+        label.textContent = `${goal.name} (%)`;
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '0';
+        input.max = '100';
+        input.step = '1';
+        input.required = true;
+        input.value = String(goalShare(goal, holding.id));
+        label.append(input);
+        allocationForm.append(label);
+        inputs.set(goal.id, input);
+      }
+      const allocationError = document.createElement('span');
+      allocationError.className = 'form-error';
+      allocationError.setAttribute('role', 'alert');
+      const allocationSave = document.createElement('button');
+      allocationSave.type = 'submit';
+      allocationSave.className = 'text-button';
+      allocationSave.textContent = 'Save goal shares';
+      allocationForm.append(allocationError, allocationSave);
+      allocationForm.addEventListener('submit', event => {
+        event.preventDefault();
+        const shares = Object.fromEntries([...inputs].map(([id, input]) => [id, Number(input.value)]));
+        try {
+          state.goals = setHoldingAllocations(state.goals, holding.id, shares);
+          state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
+          render();
+        } catch (error) { allocationError.textContent = error.message; }
+      });
+      allocation.append(allocationTitle, allocationForm);
+    }
     const update = document.createElement('details');
     update.className = 'holding-update';
     const updateTitle = document.createElement('summary');
@@ -418,7 +463,9 @@ function render() {
       render();
     });
     update.append(updateTitle, updateForm);
-    info.append(name, meta, goalLink, update);
+    info.append(name, meta, goalLink);
+    if (state.goals.length > 1) info.append(allocation);
+    info.append(update);
     const amount = document.createElement('strong');
     amount.className = 'holding-amount';
     amount.textContent = rupees(holding.value);
@@ -429,7 +476,7 @@ function render() {
     remove.textContent = '×';
     remove.addEventListener('click', () => {
       state.holdings = state.holdings.filter(h => h.id !== holding.id);
-      state.goals = state.goals.map(goal => ({ ...goal, linkedIds: goal.linkedIds.filter(id => id !== holding.id) }));
+      state.goals = removeHoldingAllocation(state.goals, holding.id);
       state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
       render();
     });
@@ -637,7 +684,7 @@ function clearCurrentReview() {
   $('#import-preview').hidden = true;
   state.holdings = [];
   const fromExample = state.source === 'demo';
-  state.goals = state.goals.map(goal => ({ ...goal, linkedIds: [],
+  state.goals = state.goals.map(({ allocationPct: ignored, ...goal }) => ({ ...goal, linkedIds: [],
     ...(fromExample ? { age: null, years: null, target: null, confirmed: false } : {}) }));
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   state.source = 'user';

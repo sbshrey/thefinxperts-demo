@@ -1,6 +1,6 @@
 import { analyzePortfolio } from './analysis.mjs';
 import { MIX_ASSETS, compareMixPlan } from './mix-plan.mjs';
-import { summarizeGoalCoverage } from './goals.mjs';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -15,7 +15,6 @@ export function buildReadableReport(state, preparedAt = new Date()) {
   if (!goal) return null;
   const result = analyzePortfolio(state.holdings, goal, preparedAt);
   const goalCoverage = summarizeGoalCoverage(state.goals, state.activeGoalId, state.holdings);
-  const linked = new Set(goal.linkedIds || []);
   const fundHouseOther = state.holdings.some(holding => holding.granularity === 'fund_house' && holding.asset === 'Other');
   const lines = [
     'THEFINXPERTS | PRIVATE PORTFOLIO REVIEW',
@@ -36,7 +35,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Time until goal: ${goal.years} ${goal.years === 1 ? 'year' : 'years'}`,
     `Goal cost in today's rupees: ${rupees(goal.target)}`,
     `Value linked to this goal: ${rupees(result.goalTotal)} across ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}`,
-    `Outside this goal: ${rupees(goalCoverage.elsewhereValue)} assigned to other goals across ${goalCoverage.elsewhereCount} ${goalCoverage.elsewhereCount === 1 ? 'holding' : 'holdings'}; ${rupees(goalCoverage.unassignedValue)} unassigned across ${goalCoverage.unassignedCount} ${goalCoverage.unassignedCount === 1 ? 'holding' : 'holdings'}. These amounts are excluded from this goal's figures.`,
+    `Outside this goal: ${rupees(goalCoverage.elsewhereValue)} assigned to other goals across ${goalCoverage.elsewhereCount} ${goalCoverage.elsewhereCount === 1 ? 'holding' : 'holdings'}; ${rupees(goalCoverage.unassignedValue)} unassigned across ${goalCoverage.unassignedCount} ${goalCoverage.unassignedCount === 1 ? 'holding' : 'holdings'}. A shared holding may appear in more than one count; these amounts are excluded from this goal's figures.`,
     `Linked asset mix: ${result.goalTotal ? MIX_ASSETS.map(asset => `${asset} ${(result.goalAssets[asset] / result.goalTotal * 100).toFixed(1)}%`).join(' | ') : 'No holdings linked'}`,
     `Linked value needing a valuation-date check: ${rupees(result.goalDateCheck.value)} across ${result.goalDateCheck.count} holdings (missing, future or over 90 days old; entered values remain unverified)`,
     `Current gap before growth, inflation or tax: ${rupees(result.goalGap ?? 0)}`,
@@ -93,7 +92,8 @@ export function buildReadableReport(state, preparedAt = new Date()) {
 
   lines.push('', 'ENTERED HOLDINGS');
   for (const holding of state.holdings) {
-    const label = linked.has(holding.id) ? 'linked to selected goal' : 'not linked to selected goal';
+    const share = goalShare(goal, holding.id);
+    const label = share ? `${share}% (${rupees(Number(holding.value) * share / 100)}) linked to selected goal` : 'not linked to selected goal';
     const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
     lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | ${label}`);
   }

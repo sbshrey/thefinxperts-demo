@@ -1,5 +1,6 @@
 import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs';
 import { compareMixPlan } from './mix-plan.mjs';
+import { goalShare } from './goals.mjs';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -15,8 +16,10 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
   const valid = holdings.filter(h => Number.isFinite(Number(h.value)) && Number(h.value) > 0);
   const total = valid.reduce((sum, h) => sum + Number(h.value), 0);
-  const linkedIds = Array.isArray(goal.linkedIds) ? new Set(goal.linkedIds) : null;
-  const goalHoldings = linkedIds ? valid.filter(holding => linkedIds.has(holding.id)) : valid;
+  const goalHoldings = Array.isArray(goal.linkedIds) ? valid.flatMap(holding => {
+    const share = goalShare(goal, holding.id);
+    return share ? [{ ...holding, value: Number(holding.value) * share / 100 }] : [];
+  }) : valid;
   const goalTotal = goalHoldings.reduce((sum, holding) => sum + Number(holding.value), 0);
   const largestGoalPosition = largestPositionByIsin(goalHoldings);
   const goalEquityValue = goalHoldings.filter(holding => holding.asset === 'Equity')
