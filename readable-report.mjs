@@ -2,6 +2,7 @@ import { analyzePortfolio } from './analysis.mjs';
 import { MIX_ASSETS, compareMixPlan } from './mix-plan.mjs';
 import { goalShare, summarizeGoalCoverage } from './goals.mjs';
 import { reserveMonths } from './reserve.mjs';
+import { entryOriginText } from './entry-origin.mjs';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -25,6 +26,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     '',
     'PORTFOLIO SNAPSHOT',
     `Entered value: ${rupees(result.total)} across ${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`,
+    'Scope: only the holdings entered or imported here; check other fund and broker statements before treating this as your full portfolio.',
     `Valuation dates: ${result.asOfSummary}`,
     `Asset mix: ${MIX_ASSETS.map(asset => `${asset} ${result.total ? (result.assets[asset] / result.total * 100).toFixed(1) : '0.0'}%`).join(' | ')}`,
     `Fund plan labels from entered names: Regular ${rupees(result.fundPlans.Regular)} | Direct ${rupees(result.fundPlans.Direct)} | unclear ${rupees(result.fundPlans.Unclear)}; current expense ratios not verified`,
@@ -103,7 +105,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     const share = goalShare(goal, holding.id);
     const label = share ? `${share}% (${rupees(Number(holding.value) * share / 100)}) linked to selected goal` : 'not linked to selected goal';
     const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
-    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
+    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | originally added from ${entryOriginText(holding.entryOrigin)}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
   }
   lines.push('', 'IMPORTANT LIMITS',
     'Values and asset labels are as entered or imported; this is not a live price feed.',

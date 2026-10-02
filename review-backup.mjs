@@ -1,5 +1,6 @@
 import { validMixPlan } from './mix-plan.mjs';
 import { validReserve } from './reserve.mjs';
+import { ENTRY_ORIGINS } from './entry-origin.mjs';
 const MAX_BYTES = 2_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
@@ -7,7 +8,7 @@ const AMFI = /^\d{5,8}$/;
 const TYPES = new Set(['Mutual fund', 'Stock']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId', 'reserve'];
-const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf'];
+const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
@@ -18,6 +19,7 @@ export function buildReviewBackup(state) {
       id: holding.id, name: holding.name, type: holding.type, asset: holding.asset, value: holding.value,
       asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
       granularity: holding.granularity || null, units: holding.units || null,
+      ...(holding.entryOrigin ? { entryOrigin: holding.entryOrigin } : {}),
       ...(holding.statementCategory ? { statementCategory: holding.statementCategory } : {}),
       ...(holding.expenseRatioPct !== undefined ? { expenseRatioPct: holding.expenseRatioPct,
         expenseRatioAsOf: holding.expenseRatioAsOf } : {}),
@@ -53,6 +55,7 @@ export function parseReviewBackup(text) {
         !isName(holding.name, 200) || !TYPES.has(holding.type) || !ASSETS.has(holding.asset) ||
         !boundedNumber(holding.value, Number.MIN_VALUE, 10_000_000_000) ||
         (holding.asOf != null && !isRealIsoDate(holding.asOf)) ||
+        (holding.entryOrigin !== undefined && !Object.hasOwn(ENTRY_ORIGINS, holding.entryOrigin)) ||
         (holding.amc != null && !isName(holding.amc, 200)) ||
         (holding.isin != null && (typeof holding.isin !== 'string' || !ISIN.test(holding.isin))) ||
         (holding.amfi != null && (typeof holding.amfi !== 'string' || !AMFI.test(holding.amfi))) ||

@@ -3,6 +3,7 @@ import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { validateImportReview, validateImportMerge, isRepeatedActiveStatement, planActiveStatementRefresh } from './import-review.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
+import { entryOriginFromImport, entryOriginText } from './entry-origin.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, compareMixPlan, validMixPlan } from './mix-plan.mjs';
@@ -336,7 +337,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.statementCategory ? ` · statement category: ${holding.statementCategory}` : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.statementCategory ? ` · statement category: ${holding.statementCategory}` : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const goalLink = document.createElement('label');
     goalLink.className = 'holding-goal-link';
     const goalCheckbox = document.createElement('input');
@@ -753,7 +754,7 @@ $('#holding-form').addEventListener('submit', event => {
     return;
   }
   $('#holding-error').textContent = '';
-  const added = { id: crypto.randomUUID(), name, type, asset, value, asOf: asOf || null,
+  const added = { id: crypto.randomUUID(), name, type, asset, value, asOf: asOf || null, entryOrigin: 'manual',
     ...(isin ? { isin } : {}), exposure: type === 'Stock' ? { [name]: 1 } : null };
   if (state.source === 'demo') clearCurrentReview();
   state.holdings.push(added);
@@ -956,7 +957,8 @@ $('#broker-preview').addEventListener('click', () => {
 });
 
 function showImportPreview(holdings, label, notices, performance = []) {
-  pendingImport = holdings.map(holding => ({ ...holding }));
+  const entryOrigin = entryOriginFromImport(label);
+  pendingImport = holdings.map(holding => ({ ...holding, ...(entryOrigin ? { entryOrigin } : {}) }));
   pendingPerformance = new Map(performance.map(item => [item.id, item.annualPercent]));
   $('#cas-performance-note').hidden = label !== 'CAS';
   if (!label.startsWith('Broker ')) $('#broker-map').hidden = true;

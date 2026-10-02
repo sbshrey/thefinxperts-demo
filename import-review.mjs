@@ -1,4 +1,6 @@
 /** Validate the editable holdings preview before it replaces the current portfolio. */
+import { ENTRY_ORIGINS } from './entry-origin.mjs';
+
 export function validateImportReview(holdings) {
   if (!Array.isArray(holdings) || holdings.length === 0) return ['Keep at least one holding to import.'];
   if (holdings.length > 500) return ['Import at most 500 holdings at a time.'];
@@ -16,6 +18,8 @@ export function validateImportReview(holdings) {
       errors.push(`Holding ${row}: enter a positive value up to ₹10,00,00,00,000.`);
     } else total += value;
     if (holding.asOf && !isRealIsoDate(holding.asOf)) errors.push(`Holding ${row}: check the valuation date.`);
+    if (holding.entryOrigin !== undefined && !Object.hasOwn(ENTRY_ORIGINS, holding.entryOrigin))
+      errors.push(`Holding ${row}: check the entry source.`);
     if (holding.amc != null && (typeof holding.amc !== 'string' || !holding.amc.trim() || holding.amc.length > 200))
       errors.push(`Holding ${row}: check the fund-house name.`);
     if (holding.isin != null && (typeof holding.isin !== 'string' || !/^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin)))
