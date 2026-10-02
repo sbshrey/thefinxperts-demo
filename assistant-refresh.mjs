@@ -82,9 +82,9 @@ export function prepareAssistantDematRefresh(saved, incoming) {
 }
 
 /** Update only unambiguous positions from a newer original mutual-fund CAS. */
-export function prepareAssistantCasRefresh(saved, incoming) {
+export function prepareAssistantCasRefresh(saved, incoming, { detailed = false } = {}) {
   if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(saved.goals) ||
-      !Array.isArray(incoming) || !incoming.length || incoming.length > 30) return null;
+      !Array.isArray(incoming) || !incoming.length || incoming.length > (detailed ? 500 : 30)) return null;
   const currentByIsin = new Map();
   for (const row of saved.holdings) {
     if (!row.isin) continue;

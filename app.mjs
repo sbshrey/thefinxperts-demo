@@ -3,6 +3,7 @@ import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { validateImportReview, validateImportMerge, possibleManualDuplicate, isRepeatedActiveStatement,
   planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs';
+import { prepareAssistantCasRefresh } from './assistant-refresh.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
 import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
@@ -1377,9 +1378,16 @@ function refreshImportSummary() {
     planBrokerReportRefresh(state.holdings, pendingImport, brokerOrigin) : null;
   const dematRefresh = canAdd && label === 'Demat CAS' && !errors.length ?
     planDematCasRefresh(state.holdings, pendingImport) : null;
-  $('#refresh-statement').hidden = !refresh && !repeated && !brokerRefresh && !dematRefresh;
-  $('#refresh-explanation').hidden = !refresh && !repeated && !brokerRefresh && !dematRefresh;
-  $('#refresh-changes').hidden = !refresh && !brokerRefresh && !dematRefresh?.changed.length;
+  const casRefresh = canAdd && label === 'CAS' && !errors.length ?
+    prepareAssistantCasRefresh({ version: 2, holdings: state.holdings, goals: state.goals,
+      coverage: state.coverage }, pendingImport, { detailed: true }) : null;
+  const casError = casRefresh?.errors?.join(' ');
+  $('#refresh-statement').hidden = !refresh && !repeated && !brokerRefresh && !dematRefresh &&
+    (!casRefresh || casError);
+  $('#refresh-explanation').hidden = !refresh && !repeated && !brokerRefresh && !dematRefresh &&
+    !casRefresh;
+  $('#refresh-changes').hidden = !refresh && !brokerRefresh && !dematRefresh?.changed.length &&
+    !casRefresh?.changes?.length;
   const changeList = $('#refresh-change-list');
   changeList.replaceChildren();
   if (repeated) {
@@ -1441,6 +1449,20 @@ function refreshImportSummary() {
       for (const { current, next } of dematRefresh.changed) {
         const row = document.createElement('li');
         row.textContent = `${current.name} · ISIN ${current.isin} · ${rupees(current.value)} as of ${current.asOf} → ${rupees(next.value)} as of ${next.asOf}${current.type === 'Mutual fund' ? ` · units ${current.units} → ${next.units}` : ''}. Goal links stay in place.`;
+        changeList.append(row);
+      }
+    }
+  }
+  if (casRefresh) {
+    $('#refresh-statement').textContent = casRefresh.scopeOnly ? 'Keep values; recheck coverage' :
+      casRefresh.repeated ? 'Keep my review — no changes' : 'Refresh matched CAS schemes';
+    $('#refresh-explanation').textContent = casError || casRefresh.description;
+    if (casRefresh.changes?.length) {
+      $('#refresh-changes summary').textContent = 'Review matched schemes before updating';
+      $('#refresh-changes').open = true;
+      for (const change of casRefresh.changes) {
+        const row = document.createElement('li');
+        row.textContent = change;
         changeList.append(row);
       }
     }
@@ -1677,6 +1699,27 @@ function applyImport(mode) {
   if (!pendingImport || validateImportReview(pendingImport).length) return;
   if (mode === 'refresh') {
     const origin = entryOriginFromImport($('#import-preview').dataset.source);
+    if (state.source === 'user' && origin === 'cas') {
+      const refresh = prepareAssistantCasRefresh({ version: 2, holdings: state.holdings,
+        goals: state.goals, coverage: state.coverage }, pendingImport, { detailed: true });
+      if (!refresh || refresh.errors?.length) return;
+      if (!refresh.repeated && !window.confirm(refresh.description)) return;
+      if (refresh.portfolio) {
+        state.holdings = refresh.portfolio.holdings;
+        state.coverage = refresh.portfolio.coverage || null;
+      }
+      pendingImport = null;
+      pendingPerformance.clear();
+      $('#cas-file').value = '';
+      $('#cas-password').value = '';
+      $('#import-preview').hidden = true;
+      render();
+      $('#live-status').textContent = refresh.repeated ?
+        'Matched CAS values and fund units already match this review. No holdings or goal links changed.' :
+        refresh.result;
+      $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     if (state.source === 'user' && origin === 'demat_cas') {
       const refresh = planDematCasRefresh(state.holdings, pendingImport);
       if (!refresh) return;
