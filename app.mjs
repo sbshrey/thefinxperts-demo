@@ -66,6 +66,8 @@ $('#deeper-review').open = window.matchMedia('(min-width: 800px)').matches;
 const indiaToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
 for (const card of document.querySelectorAll('.market-context-card')) {
   if (!contextNeedsReview(card.dataset.nextReview, indiaToday())) continue;
+  card.querySelector('h3').textContent = card.dataset.staleTitle;
+  card.querySelector('.market-context-grid').hidden = true;
   const status = card.querySelector('.market-context-status');
   status.textContent = card.dataset.staleMessage;
   status.classList.add('needs-review');
