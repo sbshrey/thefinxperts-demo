@@ -2,6 +2,7 @@ import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLoss
 import { compareMixPlan } from './mix-plan.mjs';
 import { goalShare } from './goals.mjs';
 import { reserveMonths } from './reserve.mjs';
+import { summarizeUnrealizedChange } from './cost-basis.mjs';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -18,6 +19,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
   const valid = holdings.filter(h => Number.isFinite(Number(h.value)) && Number(h.value) > 0);
   const total = valid.reduce((sum, h) => sum + Number(h.value), 0);
+  const unrealizedChange = summarizeUnrealizedChange(valid, today);
   const goalHoldings = Array.isArray(goal.linkedIds) ? valid.flatMap(holding => {
     const share = goalShare(goal, holding.id);
     return share ? [{ ...holding, value: Number(holding.value) * share / 100 }] : [];
@@ -294,6 +296,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     goalDateCheck, mixComparison, mixPause,
     largestGoalPosition,
     largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, fundCost, amcCoveredValue, asOfSummary,
+    unrealizedChange,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,
     scenario, shock, shockContinuation, lossLimits,

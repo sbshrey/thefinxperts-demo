@@ -32,6 +32,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Asset mix: ${MIX_ASSETS.map(asset => `${asset} ${result.total ? (result.assets[asset] / result.total * 100).toFixed(1) : '0.0'}%`).join(' | ')}`,
     `Fund plan labels from entered names: Regular ${rupees(result.fundPlans.Regular)} | Direct ${rupees(result.fundPlans.Direct)} | unclear ${rupees(result.fundPlans.Unclear)}; current expense ratios not verified`,
     `Entered fund cost coverage: ${rupees(result.fundCost.coveredValue)} of ${rupees(result.fundValue)} fund value across ${result.fundCost.coveredCount} dated scheme ${result.fundCost.coveredCount === 1 ? 'entry' : 'entries'}`,
+    ...(result.unrealizedChange.coveredCount ? [`Entered unrealized ${result.unrealizedChange.change >= 0 ? 'gain' : 'loss'} on ${result.unrealizedChange.coveredCount} cost-covered ${result.unrealizedChange.coveredCount === 1 ? 'holding' : 'holdings'}: ${rupees(Math.abs(result.unrealizedChange.change))}; current covered value ${rupees(result.unrealizedChange.coveredValue)} less invested amount ${rupees(result.unrealizedChange.invested)}. ${result.unrealizedChange.missingCount} ${result.unrealizedChange.missingCount === 1 ? 'row' : 'rows'} excluded. This is not lifetime profit or annual return.`] : []),
     ...(result.fundCost.coveredValue ? [`Weighted TER on covered fund value: ${result.fundCost.weightedPct.toFixed(2)}%; one-year illustration ${rupees(result.fundCost.annualIllustration)} if entered values and rates stayed unchanged. TER is already reflected in NAV, not an additional bill; rates and values are not independently verified.`] : []),
     ...(result.assets.Other > 0 ? [`Other category: ${rupees(result.assets.Other)}. ${fundHouseOther ?
       'CAMS non-equity totals are not classified as debt or gold here; check a detailed statement.' :
@@ -115,12 +116,13 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` | latest value from ${entryOriginText(holding.valuationOrigin)}` : ''}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
     if (holding.navEstimate) lines.push(`  User-entered NAV estimate: ${holding.units} statement units × ₹${holding.navEstimate.nav} on ${holding.navEstimate.navAsOf}; original statement value ${rupees(holding.navEstimate.originalValue)} on ${holding.navEstimate.originalAsOf || 'unknown'}. Units and exact scheme were confirmed by the investor, not independently verified here.`);
     if (holding.shares) lines.push(`  Entered direct-stock shares: ${holding.shares}. Check trades and corporate actions against a current broker report.`);
+    if (holding.costBasis !== undefined) lines.push(`  Entered invested amount for current units or shares: ${rupees(holding.costBasis)} checked ${holding.costBasisAsOf}. This is investor-supplied, not a verified transaction history.`);
     if (holding.stockEstimate) lines.push(`  User-entered stock-price estimate: ${holding.shares} shares × ₹${holding.stockEstimate.price} on ${holding.stockEstimate.priceAsOf}; earlier entered value ${rupees(holding.stockEstimate.originalValue)} on ${holding.stockEstimate.originalAsOf}. Shares, security and quote were confirmed by the investor, not independently verified here.`);
   }
   lines.push('', 'IMPORTANT LIMITS',
     'Values and asset labels are as entered or imported; a user-entered NAV or stock-price estimate is not a live price feed.',
     'Unknown fund constituents remain unknown. A fund-house summary is not a scheme-level review.',
-    'A holdings snapshot cannot establish performance, taxes, exit loads or precise overlap.',
+    'A checked invested amount can show only an unrealized change on covered holdings; a holdings snapshot cannot establish annualized return, lifetime profit, taxes, exit loads or precise overlap.',
     'This educational review does not recommend buying, selling or rebalancing a security.',
     'Keep the separate JSON backup if you want to restore this review later.', '');
   return lines.join('\n');

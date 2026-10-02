@@ -13,6 +13,7 @@ import { estimateNavValue } from './nav-estimate.mjs';
 import { estimateStockValue, validShares } from './stock-estimate.mjs';
 import { chooseNextReviewStep } from './next-step.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
+import { validCostBasis } from './cost-basis.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -393,7 +394,7 @@ function render() {
     $('#scenario-note').textContent += ' Check the linked valuation dates flagged in your goal view before relying on these figures.';
   }
   $('#workspace-note').textContent = state.source === 'demo' ? 'Illustrative portfolio · values are entered, not live' : 'Your entries · values are entered, not live';
-  $('#holding-form-hint').textContent = `${state.source === 'demo' ? 'Adding your first holding removes the fictional example. ' : ''}New holdings count toward the selected goal. Untick them below to change that. Fund constituents remain unknown until verified data is available.`;
+  $('#holding-form-hint').textContent = `${state.source === 'demo' ? 'Adding your first holding removes the fictional example. ' : ''}New holdings count toward the selected goal. Untick them below to change that. You can add a checked invested amount to an individual holding later. Fund constituents remain unknown until verified data is available.`;
   $('#entry-state').hidden = state.source === 'user';
   $('#entry-state-note').textContent = 'These holdings are fictional. Start blank, then add yours and check the goal details.';
   $('#start-own-review').textContent = state.source === 'user' ? 'Continue my review' : 'Start my free review';
@@ -493,7 +494,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` · latest value from ${entryOriginText(holding.valuationOrigin)}` : ''}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` · latest value from ${entryOriginText(holding.valuationOrigin)}` : ''}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.costBasis !== undefined ? ` · invested ${rupees(holding.costBasis)} checked ${holding.costBasisAsOf}` : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const sourceCategory = document.createElement('small');
     sourceCategory.className = 'holding-source-category';
     sourceCategory.textContent = holding.statementCategory ?
@@ -581,7 +582,8 @@ function render() {
     update.className = 'holding-update';
     const updateTitle = document.createElement('summary');
     updateTitle.textContent = holding.granularity === 'fund_house' ? 'Update value or date' :
-      holding.type === 'Mutual fund' ? 'Update value, details or fund cost' : 'Update value, date, asset or ISIN';
+      holding.type === 'Mutual fund' ? 'Update value, invested amount or fund cost' :
+        'Update value, invested amount or details';
     const updateForm = document.createElement('form');
     const valueLabel = document.createElement('label');
     valueLabel.textContent = 'Current value (₹)';
@@ -601,6 +603,28 @@ function render() {
     dateInput.max = indiaToday();
     dateInput.value = holding.asOf || '';
     dateLabel.append(dateInput);
+    let costInput = null;
+    let costDateInput = null;
+    let costLabel = null;
+    let costDateLabel = null;
+    let costHint = null;
+    if (holding.granularity !== 'fund_house') {
+      costLabel = document.createElement('label');
+      costLabel.textContent = 'Amount invested in units or shares still held (₹; optional)';
+      costInput = document.createElement('input');
+      costInput.type = 'number'; costInput.inputMode = 'decimal'; costInput.min = '0.01';
+      costInput.max = '10000000000'; costInput.step = '0.01';
+      costInput.value = holding.costBasis ?? '';
+      costLabel.append(costInput);
+      costDateLabel = document.createElement('label');
+      costDateLabel.textContent = 'Date that invested amount was checked';
+      costDateInput = document.createElement('input');
+      costDateInput.type = 'date'; costDateInput.max = indiaToday();
+      costDateInput.value = holding.costBasisAsOf || '';
+      costDateLabel.append(costDateInput);
+      costHint = document.createElement('p'); costHint.className = 'form-hint';
+      costHint.textContent = 'Use cost for your current units or shares, after any sales or redemptions. Check it against a report. Leave both blank if unsure; changing the ISIN or share count clears the old cost.';
+    }
     let sharesInput = null;
     let sharesLabel = null;
     if (holding.type === 'Stock') {
@@ -686,6 +710,7 @@ function render() {
     updateButton.className = 'text-button';
     updateButton.textContent = 'Save holding changes';
     updateForm.append(valueLabel, dateLabel);
+    if (costLabel) updateForm.append(costLabel, costDateLabel, costHint);
     if (sharesLabel) updateForm.append(sharesLabel);
     updateForm.append(assetLabel, assetHint);
     if (isinLabel) updateForm.append(isinLabel, isinHint);
@@ -700,6 +725,8 @@ function render() {
       const expenseRatio = expenseRatioInput?.value.trim() || '';
       const expenseDate = expenseDateInput?.value || '';
       const shares = sharesInput?.value.trim() || '';
+      const costAmount = costInput?.value.trim() || '';
+      const costChecked = costDateInput?.value || '';
       if (!Number.isFinite(value) || value <= 0 || value > 1e10 || !validEnteredDate(asOf)) {
         updateError.textContent = 'Enter a positive value and a valid date no later than today.';
         return;
@@ -715,6 +742,11 @@ function render() {
       }
       if (shares && !validShares(shares)) {
         updateError.textContent = 'Enter a positive whole share count of at most nine digits, or leave it blank.';
+        return;
+      }
+      if (costInput && (costAmount || costChecked) &&
+          (!costAmount || !costChecked || !validCostBasis(Number(costAmount), costChecked))) {
+        updateError.textContent = 'Enter a positive invested amount in rupees and paise with its checked date, or leave both blank.';
         return;
       }
       if (expenseRatioInput && ((expenseRatio !== '' && (!Number.isFinite(Number(expenseRatio)) ||
@@ -747,6 +779,15 @@ function render() {
         if (sharesInput) {
           if (shares) updated.shares = shares;
           else delete updated.shares;
+        }
+        if (costInput) {
+          if (costAmount && !identifierChanged && shares === (item.shares || '')) {
+            updated.costBasis = Number(costAmount);
+            updated.costBasisAsOf = costChecked;
+          } else {
+            delete updated.costBasis;
+            delete updated.costBasisAsOf;
+          }
         }
         if (identifierChanged) delete updated.statementCategory;
         if (isinInput) {
@@ -1538,7 +1579,7 @@ function applyImport(mode) {
     const origin = entryOriginFromImport($('#import-preview').dataset.source);
     if (state.source === 'user' && ['broker_xlsx', 'broker_csv'].includes(origin)) {
       const refresh = planBrokerReportRefresh(state.holdings, pendingImport, origin);
-      if (!refresh || !window.confirm(`Refresh ${refresh.matched.length} matched ${refresh.matched.length === 1 ? 'position' : 'positions'} from this newer broker report? Confirm this is the same account and positions, not another account or an extra lot. ${refresh.skipped} unmatched report ${refresh.skipped === 1 ? 'row will' : 'rows will'} be left out. No holding will be removed, and matched goal links will stay.`)) return;
+      if (!refresh || !window.confirm(`Refresh ${refresh.matched.length} matched ${refresh.matched.length === 1 ? 'position' : 'positions'} from this newer broker report? Confirm this is the same account and positions, not another account or an extra lot. ${refresh.skipped} unmatched report ${refresh.skipped === 1 ? 'row will' : 'rows will'} be left out. No holding will be removed, and matched goal links will stay. Recheck invested amounts for refreshed positions.`)) return;
       state.holdings = refresh.holdings;
       pendingImport = null;
       pendingPerformance.clear();
@@ -1547,7 +1588,7 @@ function applyImport(mode) {
       $('#broker-map').hidden = true;
       $('#import-preview').hidden = true;
       render();
-      $('#live-status').textContent = `${refresh.matched.length} matched positions refreshed from the broker report. ${refresh.skipped} unmatched rows left out. Goal links kept.`;
+      $('#live-status').textContent = `${refresh.matched.length} matched positions refreshed from the broker report. ${refresh.skipped} unmatched rows left out. Goal links kept. Enter invested amounts again after checking the current positions.`;
       $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
@@ -1578,7 +1619,7 @@ function applyImport(mode) {
     $('#active-password').value = '';
     $('#import-preview').hidden = true;
     render();
-    $('#live-status').textContent = `${refresh.updatedCount} fund rows updated, ${added.length} added, ${refresh.removed.length} removed. Direct stocks kept.`;
+    $('#live-status').textContent = `${refresh.updatedCount} fund rows updated, ${added.length} added, ${refresh.removed.length} removed. Direct stocks kept. Recheck invested amounts for updated funds.`;
     $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }

@@ -1,5 +1,6 @@
 /** Validate the editable holdings preview before it replaces the current portfolio. */
 import { ENTRY_ORIGINS } from './entry-origin.mjs';
+import { validCostBasis } from './cost-basis.mjs';
 
 export function validateImportReview(holdings) {
   if (!Array.isArray(holdings) || holdings.length === 0) return ['Keep at least one holding to import.'];
@@ -18,6 +19,9 @@ export function validateImportReview(holdings) {
       errors.push(`Holding ${row}: enter a positive value up to ₹10,00,00,00,000.`);
     } else total += value;
     if (holding.asOf && !isRealIsoDate(holding.asOf)) errors.push(`Holding ${row}: check the valuation date.`);
+    if ((holding.costBasis !== undefined || holding.costBasisAsOf !== undefined) &&
+        (holding.granularity === 'fund_house' || !validCostBasis(holding.costBasis, holding.costBasisAsOf)))
+      errors.push(`Holding ${row}: check the invested amount and its source-check date.`);
     if (holding.entryOrigin !== undefined && !Object.hasOwn(ENTRY_ORIGINS, holding.entryOrigin))
       errors.push(`Holding ${row}: check the entry source.`);
     if (holding.amc != null && (typeof holding.amc !== 'string' || !holding.amc.trim() || holding.amc.length > 200))
@@ -120,6 +124,7 @@ export function planBrokerReportRefresh(existing, incoming, origin) {
     const next = byId.get(holding.id);
     if (!next) return holding;
     const { navEstimate: _navEstimate, stockEstimate: _stockEstimate,
+      costBasis: _costBasis, costBasisAsOf: _costBasisAsOf,
       units: _units, shares: _shares, ...prior } = holding;
     return { ...prior, value: next.value, asOf: next.asOf, valuationOrigin: origin };
   });
@@ -188,7 +193,8 @@ export function planActiveStatementRefresh(existing, incoming) {
     if (holding.type !== 'Mutual fund') return holding;
     const next = incomingByKey.get(activeStatementKey(holding));
     if (!next) return [];
-    const { navEstimate: _previousEstimate, valuationOrigin: _previousValuationOrigin, ...prior } = holding;
+    const { navEstimate: _previousEstimate, valuationOrigin: _previousValuationOrigin,
+      costBasis: _costBasis, costBasisAsOf: _costBasisAsOf, ...prior } = holding;
     return [{ ...prior, value: next.value, asOf: next.asOf,
       ...(next.units ? { units: next.units } : {}),
       ...(next.statementCategory ? { statementCategory: next.statementCategory } : {}) }];
