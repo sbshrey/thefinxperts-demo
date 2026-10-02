@@ -29,6 +29,11 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `Selected goal ${goal.name}; assigned value ₹0.`,
       'The whole portfolio and the selected goal may contain different amounts.', '#holdings', 'Link a holding') : null;
 
+  if (goalScopeRequested && /\b(?:invested|profit|gains?|ter|expense ratio|regular plans?|direct plans?|overlap)\b/.test(input))
+    return answer(`I cannot calculate that metric separately for ${goal?.name || 'the selected goal'} from this review. Ask about the goal’s assigned value or asset mix, or ask for the whole-portfolio metric without naming a goal.`,
+      'Goal links assign shares of current holding value; checked cost, fund fees and overlap are not allocated to individual goals here.',
+      'Using a whole-portfolio figure as a goal figure would be misleading.', '#goals', 'Review goal assignments');
+
   const planQuestion = /\b(?:regular|direct)\s+plans?\b/.test(input) &&
     /^(?:which|what|how many|how much|do i|show|list)\b/.test(input);
   const planAction = /\b(?:buy|sell|switch|redeem|rebalance|optimi[sz]\w*|recommend\w*|advis\w*|should|best|choose|pick|prefer|better|convert|move|invest|suitable|trade)\b/.test(input);
@@ -310,6 +315,13 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     return answer(`${lead}the entered mix is Equity ${percent(result.assets.Equity, result.total)}, Debt ${percent(result.assets.Debt, result.total)}, Gold ${percent(result.assets.Gold, result.total)}, and Other ${percent(result.assets.Other, result.total)}.`,
       `Equity ${money(result.assets.Equity)}, Debt ${money(result.assets.Debt)}, Gold ${money(result.assets.Gold)}, Other ${money(result.assets.Other)} ÷ ${money(result.total)} entered total.`,
       `Asset labels are as entered. This does not judge whether the mix is suitable for your age or goal. ${coverageNote}`, '#goals', 'Review goal context');
+  if (goalScopeRequested && /\b(?:own|holdings?|worth|total|value)\b/.test(input)) {
+    const unavailable = unavailableGoalScope();
+    if (unavailable) return unavailable;
+    return answer(`${money(result.goalTotal)} of entered holding value is assigned to ${goal.name} across ${result.goalHoldingCount} linked ${result.goalHoldingCount === 1 ? 'row' : 'rows'}.`,
+      `Added only the shares of confirmed holding values linked to ${goal.name}; ${result.asOfSummary}.`,
+      `The assignments and valuation dates are supplied, not independently verified. Holdings outside this review and unassigned shares are excluded.`, '#goals', 'Review assigned holdings');
+  }
   if (/\b(own|holdings?|total|worth|value|portfolio|funds?|stocks?)\b/.test(input)) {
     const funds = valid.filter(row => row.type === 'Mutual fund').length;
     const stocks = valid.filter(row => row.type === 'Stock').length;

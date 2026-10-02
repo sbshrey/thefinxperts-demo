@@ -5,7 +5,7 @@ import { buildAssistantGoalReview, buildAssistantReviewChecks } from './assistan
 import { goalShare } from './goals.mjs';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding } from './assistant-goal.mjs';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs';
 import { clarifyDrafts, classifyDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs';
 import { previewAssistantImport } from './assistant-import.mjs';
 import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
@@ -1072,6 +1072,26 @@ $('#composer').addEventListener('submit', async event => {
     if (state.file.size > 4_000_000) { say('note', 'This PDF is too large for AI extraction. Use private CAS reading or remove the file.'); return; }
     if (!$('#pdf-consent').checked) { say('note', 'Tick the PDF consent box before sending this file, or remove it and describe the holdings in chat.'); return; }
     pdf = await encodedPdf(state.file);
+  }
+  const namedGoal = !pdf && namedGoalInQuestion(message, state.account?.portfolio);
+  if (namedGoal) {
+    if (namedGoal.error) { say('user', message); $('#message').value = ''; say('note', namedGoal.error); return; }
+    if (namedGoal.goal.id !== state.account.portfolio.activeGoalId) {
+      say('user', message); $('#message').value = '';
+      if (state.drafts.length || state.goalFacts || state.reserveFacts || state.correction || state.refresh) {
+        say('note', 'Confirm or discard the pending review change before asking about a different goal.'); return;
+      }
+      const prepared = prepareAssistantGoalCommand(state.account.portfolio,
+        { kind: 'select', goalName: namedGoal.goal.name });
+      if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
+      try {
+        await writeAccount(prepared.portfolio,
+          'The saved review changed in another tab. Check the selected goal, then ask again.');
+      } catch (error) { say('note', error.message || 'Could not select that goal.'); return; }
+      say('note', `Showing ${namedGoal.goal.name} in the review.`);
+      await aiTurn(message);
+      return;
+    }
   }
   say('user', message || 'Please review this selected PDF.');
   $('#message').value = '';

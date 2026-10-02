@@ -31,6 +31,21 @@ export function parseAssistantGoalCommand(message) {
   return null;
 }
 
+/** Find an explicitly named saved goal in a factual question without guessing from a holding name. */
+export function namedGoalInQuestion(message, portfolio) {
+  if (typeof message !== 'string' || !Array.isArray(portfolio?.goals) ||
+      !/^(?:what|how|which|show|tell me|is|are)\b/i.test(message.trim()) ||
+      /\b(?:buy|sell|switch|redeem|rebalance|recommend\w*|best)\b/i.test(message)) return null;
+  const matches = portfolio.goals.filter(goal => {
+    if (typeof goal.name !== 'string' || goal.name.length < 2) return false;
+    const name = goal.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    return new RegExp(`\\b(?:goal\\s+${name}|${name}\\s+goal|(?:for|in|toward|about)\\s+(?:my\\s+)?${name})(?=$|\\W)`, 'i').test(message);
+  });
+  if (!matches.length) return null;
+  return matches.length === 1 ? { goal: matches[0] } :
+    { error: `I found more than one named goal in that question. Ask about one goal at a time: ${matches.map(goal => goal.name).join(', ')}.` };
+}
+
 /** Record the investor's own answer about a nearer essential expense for the selected goal. */
 export function parseAssistantEmergencyFunding(message) {
   if (typeof message !== 'string' || message.length > 1500) return null;
