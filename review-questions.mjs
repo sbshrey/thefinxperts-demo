@@ -209,27 +209,32 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     const selectedGoal = goal?.confirmed === true && result.goalTotal > 0;
     const total = selectedGoal ? result.goalTotal : result.total;
     const assets = selectedGoal ? result.goalAssets : result.assets;
-    const largest = selectedGoal ? result.largestGoalPosition :
-      [...valid].sort((a, b) => Number(b.value) - Number(a.value))[0];
+    const top = selectedGoal ? result.topGoalPositions : result.topPositions;
+    const largest = top?.[0];
     const scope = selectedGoal ? `For ${goal.name}, the entered, assigned holdings` :
       'The entered holdings';
     const largestValue = Number(largest?.value) || 0;
+    const topValue = top?.reduce((sum, position) => sum + position.value, 0) || 0;
     const largestKind = largest?.granularity === 'fund_house' ? 'fund-house summary' : 'holding';
     const dateNote = selectedGoal && result.goalDateCheck.count ?
       `${result.goalDateCheck.count} assigned ${result.goalDateCheck.count === 1 ? 'value has' : 'values have'} a missing, future or over-90-day date. ` : '';
     const categoryNote = assets.Other > 0 ?
       `${money(assets.Other)} is labelled Other, so its asset class is unresolved. ` : '';
     return answer(`${scope} are Equity ${percent(assets.Equity, total)}, Debt ${percent(assets.Debt, total)}, Gold ${percent(assets.Gold, total)}, and Other ${percent(assets.Other, total)}. ` +
-      `The largest ${largestKind} is ${largest.name} at ${percent(largestValue, total)} of this ${selectedGoal ? 'goal’s assigned value' : 'entered total'}.`,
-      `${money(largestValue)} ÷ ${money(total)}; ${selectedGoal ? `${result.goalHoldingCount} assigned holding ${result.goalHoldingCount === 1 ? 'row' : 'rows'} for the selected goal` : `${valid.length} entered holding ${valid.length === 1 ? 'row' : 'rows'}`}. ${result.asOfSummary}.`,
+      `The largest ${largestKind} is ${largest.name} at ${percent(largestValue, total)} of this ${selectedGoal ? 'goal’s assigned value' : 'entered total'}.` +
+      (top.length > 1 ? ` The largest ${top.length} positions together are ${percent(topValue, total)}.` : ''),
+      `${money(largestValue)} ÷ ${money(total)}; ${selectedGoal ? `${result.goalHoldingCount} assigned holding ${result.goalHoldingCount === 1 ? 'row' : 'rows'} for the selected goal` : `${valid.length} entered holding ${valid.length === 1 ? 'row' : 'rows'}`}. ${top.length > 1 ? `The largest ${top.length} positions sum to ${money(topValue)}. ` : ''}Exact matching supplied ISINs and fund-house summary names are grouped; rows without those identifiers stay separate. ${result.asOfSummary}.`,
       `${dateNote}${categoryNote}Fund constituents and holdings outside this review are not verified. These shares do not establish whether the mix suits your age, risk capacity or goal. ${coverageNote}`,
       selectedGoal ? '#goals' : '#holdings', selectedGoal ? 'Review this goal' : 'Inspect holdings');
   }
   if (/\b(biggest|largest|concentrat(?:ion|ed|e|ing)?|top holding|single holding)\b/.test(input)) {
-    const largest = [...valid].sort((a, b) => Number(b.value) - Number(a.value))[0];
-    return answer(`${lead}${largest.name} is the largest entered row at ${money(largest.value)}, or ${percent(largest.value, result.total)} of the entered total.`,
-      `${money(largest.value)} ÷ ${money(result.total)} entered total; ${largest.granularity === 'fund_house' ? 'this row is a fund-house summary' : 'this is one entered holding row'}.`,
-      'One fund can contain many securities. This row share does not measure verified company concentration or tell you what to trade.', '#holdings', 'Inspect this holding');
+    const top = result.topPositions;
+    const largest = top[0];
+    const topValue = top.reduce((sum, position) => sum + position.value, 0);
+    const additional = top.length > 1 ? ` The largest ${top.length} entered positions together are ${money(topValue)}, or ${percent(topValue, result.total)}. They are ${top.map(position => `${position.name} ${percent(position.value, result.total)}`).join('; ')}.` : '';
+    return answer(`${lead}${largest.name} is the largest entered position at ${money(largest.value)}, or ${percent(largest.value, result.total)} of the entered total.${additional}`,
+      `${money(largest.value)} ÷ ${money(result.total)} entered total; ${largest.granularity === 'fund_house' ? 'the largest position is a fund-house summary' : largest.entries > 1 ? `${largest.entries} rows with the same supplied ISIN form the largest position` : 'the largest position is one entered row'}. Exact matching supplied ISINs and fund-house summary names are grouped; unidentified rows stay separate. ${result.asOfSummary}.`,
+      `One fund can contain many securities. These shares do not measure verified company concentration or tell you what to trade. ${coverageNote}`, '#holdings', 'Inspect this holding');
   }
   if (/\b(mix|equity|debt|gold|asset|allocation|diversif)\b/.test(input))
     return answer(`${lead}the entered mix is Equity ${percent(result.assets.Equity, result.total)}, Debt ${percent(result.assets.Debt, result.total)}, Gold ${percent(result.assets.Gold, result.total)}, and Other ${percent(result.assets.Other, result.total)}.`,

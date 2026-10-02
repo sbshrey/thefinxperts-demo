@@ -28,7 +28,9 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const goalAccessCheck = goalHoldings.filter(holding => holding.type === 'Other investment')
     .reduce((check, holding) => ({ count: check.count + 1, value: check.value + Number(holding.value) }),
       { count: 0, value: 0 });
-  const largestGoalPosition = largestPositionByIsin(goalHoldings);
+  const topPositions = positionsByIsin(valid).slice(0, 3);
+  const topGoalPositions = positionsByIsin(goalHoldings).slice(0, 3);
+  const largestGoalPosition = topGoalPositions[0] || null;
   const goalEquityValue = goalHoldings.filter(holding => holding.asset === 'Equity')
     .reduce((sum, holding) => sum + Number(holding.value), 0);
   const goalEquityPct = goalTotal ? goalEquityValue / goalTotal * 100 : 0;
@@ -315,7 +317,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   return {
     total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
     goalDateCheck, goalAccessCheck, mixComparison, mixPause,
-    largestGoalPosition,
+    largestGoalPosition, topPositions, topGoalPositions,
     largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, fundCost, amcCoveredValue, asOfSummary,
     unrealizedChange,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
@@ -334,7 +336,7 @@ export function planFromName(name) {
 }
 
 /** Combine only entries with the same valid-format ISIN and classification. */
-function largestPositionByIsin(holdings) {
+function positionsByIsin(holdings) {
   const positions = new Map();
   holdings.forEach((holding, index) => {
     const identified = typeof holding.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin);
@@ -346,8 +348,7 @@ function largestPositionByIsin(holdings) {
       { name: summarized ? holding.amc : holding.name || 'Unnamed holding', value: Number(holding.value),
         entries: 1, ...(summarized ? { granularity: 'fund_house' } : {}) });
   });
-  return [...positions.values()].reduce((largest, position) =>
-    !largest || position.value > largest.value ? position : largest, null);
+  return [...positions.values()].sort((a, b) => b.value - a.value);
 }
 
 function parseValuationDate(value) {
