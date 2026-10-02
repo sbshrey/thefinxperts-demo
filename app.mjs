@@ -1339,6 +1339,10 @@ function refreshImportSummary() {
   const count = pendingImport?.length || 0;
   const total = pendingImport?.reduce((sum, holding) => sum + Number(holding.value), 0) ?? 0;
   const label = $('#import-preview').dataset.source || 'imported';
+  const unclassifiedDemat = label === 'Demat CAS' ?
+    pendingImport.filter(row => row.entryOrigin === 'demat_cas' && !row.type && !row.asset) : [];
+  $('#demat-batch').hidden = unclassifiedDemat.length === 0;
+  $('#demat-batch-count').textContent = `${unclassifiedDemat.length} unclassified demat ${unclassifiedDemat.length === 1 ? 'row needs' : 'rows need'} a holding type.`;
   $('#import-summary').textContent = `${count} ${label} ${count === 1 ? 'holding' : 'holdings'} · ${Number.isFinite(total) ? rupees(total) : 'value needs correction'}`;
   const errors = validateImportReview(pendingImport);
   $('#import-validation').textContent = errors.join(' ');
@@ -1421,6 +1425,14 @@ function refreshImportSummary() {
     }
   }
 }
+
+$('#demat-batch-stock').addEventListener('click', () => {
+  if (!pendingImport || $('#import-preview').dataset.source !== 'Demat CAS') return;
+  const rows = pendingImport.filter(row => row.entryOrigin === 'demat_cas' && !row.type && !row.asset);
+  if (!rows.length || !window.confirm(`Have you checked all ${rows.length} unclassified demat ${rows.length === 1 ? 'row' : 'rows'} in the original statement and confirmed they are ordinary company shares? ETFs, REITs and other securities need individual review. No holdings will be imported yet.`)) return;
+  for (const row of rows) { row.type = 'Stock'; row.asset = 'Equity'; }
+  renderImportRows();
+});
 
 function renderImportRows() {
   const list = $('#import-rows');
