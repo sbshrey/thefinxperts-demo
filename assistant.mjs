@@ -9,7 +9,7 @@ import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
 import { clarifyDrafts, classifyDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs';
 import { previewAssistantImport } from './assistant-import.mjs';
 import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
-import { analyzePortfolio } from './analysis.mjs';
+import { analyzePortfolio, valuationDateIssue } from './analysis.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
@@ -354,10 +354,7 @@ function renderReview() {
   const total = rows.reduce((sum, row) => sum + row.value, 0);
   const assets = { Equity: 0, Debt: 0, Gold: 0, Other: 0 };
   for (const row of rows) assets[row.asset] += row.value;
-  const indiaNow = Date.now() + 330 * 60_000;
-  const today = new Date(indiaNow).toISOString().slice(0, 10);
-  const cutoff = new Date(indiaNow - 90 * 86_400_000).toISOString().slice(0, 10);
-  const stale = rows.filter(row => !row.asOf || row.asOf < cutoff || row.asOf > today).length;
+  const stale = rows.filter(row => valuationDateIssue(row.asOf)).length;
   $('#total').textContent = money(total);
   $('#count').textContent = String(rows.length);
   $('#stale-count').textContent = String(stale);
@@ -419,7 +416,16 @@ function renderReview() {
     const item = document.createElement('div'); item.className = 'holding-item';
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
     const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.shares ? ` · ${row.shares} reported shares; verify current balance` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${savedRow?.stockEstimate ? ' · user-entered stock-price estimate; shares assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
-    item.append(name, meta); holdings.append(item);
+    item.append(name, meta);
+    const dateIssue = valuationDateIssue(row.asOf);
+    if (dateIssue) {
+      const badge = document.createElement('span');
+      badge.className = 'valuation-badge';
+      badge.textContent = dateIssue === 'stale' ? 'Value over 90 days old · check a newer source' :
+        dateIssue === 'future' ? 'Future value date · check the source' : 'Value date missing · check the source';
+      item.append(badge);
+    }
+    holdings.append(item);
   }
   renderGoalReview();
   renderAccountActions();
@@ -1112,8 +1118,8 @@ $('#composer').addEventListener('submit', async event => {
 $('#message').addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); $('#composer').requestSubmit(); }
 });
-$('#report-help-open').addEventListener('click', () => $('#report-help-dialog').showModal());
-$('#report-help-close').addEventListener('click', () => $('#report-help-dialog').close());
+$('#report-help-open')?.addEventListener('click', () => $('#report-help-dialog').showModal());
+$('#report-help-close')?.addEventListener('click', () => $('#report-help-dialog').close());
 $('#starter-upload')?.addEventListener('click', () => $('#upload').click());
 $('#starter-open')?.addEventListener('click', () => {
   if (deviceRecord()) $('#device-review-action').click();
