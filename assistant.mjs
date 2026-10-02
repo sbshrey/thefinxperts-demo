@@ -327,6 +327,8 @@ function renderRefresh() {
   if (!stale) for (const change of state.refresh.changes) {
     const item = document.createElement('li'); item.textContent = change; changes.append(item);
   }
+  $('#confirm-refresh').textContent = state.refresh.scopeOnly ?
+    'Recheck coverage' : 'Apply report refresh';
   $('#confirm-refresh').disabled = state.busy || stale;
 }
 

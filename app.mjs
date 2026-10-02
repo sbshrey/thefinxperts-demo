@@ -1420,7 +1420,8 @@ function refreshImportSummary() {
     $('#refresh-statement').textContent = 'Refresh matched positions';
     $('#refresh-explanation').textContent = `${brokerRefresh.matched.length} exact ISIN ${brokerRefresh.matched.length === 1 ? 'match' : 'matches'} can receive the newer dated value. ` +
       `${brokerRefresh.skipped} report ${brokerRefresh.skipped === 1 ? 'row is' : 'rows are'} unmatched and will not be added. ` +
-      'No existing holding will be removed. Use this only for a newer view of the same account and positions; another account may hold the same ISIN. Goal links stay in place. A prior unit or share count and any manual price estimate will be cleared because this report does not verify them. Old invested amounts clear; only newly checked report amounts replace them.';
+      'No existing holding will be removed. Use this only for a newer view of the same account and positions; another account may hold the same ISIN. Goal links stay in place. A prior unit or share count and any manual price estimate will be cleared because this report does not verify them. Old invested amounts clear; only newly checked report amounts replace them.' +
+      (brokerRefresh.skipped ? ' Your self-reported portfolio coverage answer will clear for review.' : '');
     for (const { current, next } of brokerRefresh.matched) {
       const row = document.createElement('li');
       row.textContent = `${current.name} · ISIN ${current.isin} · ${rupees(current.value)} as of ${current.asOf} → ${rupees(next.value)} as of ${next.asOf}. Goal links stay in place.`;
@@ -1429,10 +1430,11 @@ function refreshImportSummary() {
   }
   if (dematRefresh) {
     $('#refresh-statement').textContent = dematRefresh.repeated ?
-      'Keep my review — no changes' : 'Refresh matched demat positions';
+      dematRefresh.skipped && state.coverage ? 'Keep values; recheck coverage' :
+        'Keep my review — no changes' : 'Refresh matched demat positions';
     $('#refresh-explanation').textContent = dematRefresh.repeated ?
-      `The ${dematRefresh.matched.length} matched positions already use these dated values and fund units. ${dematRefresh.skipped} unmatched rows stay out. No holdings or goal links change.` :
-      `${dematRefresh.changed.length} matched demat ${dematRefresh.changed.length === 1 ? 'position' : 'positions'} will use newer dated values. ${dematRefresh.skipped} unmatched ${dematRefresh.skipped === 1 ? 'row stays' : 'rows stay'} out. Confirm this is the same account and positions. No holding is removed and goal links stay. Earlier estimates, share counts and checked invested costs on updated rows clear; fund units update from the statement.`;
+      `The ${dematRefresh.matched.length} matched positions already use these dated values and fund units. ${dematRefresh.skipped} unmatched rows stay out. No holdings or goal links change.${dematRefresh.skipped && state.coverage ? ' Your self-reported coverage answer will clear for review.' : ''}` :
+      `${dematRefresh.changed.length} matched demat ${dematRefresh.changed.length === 1 ? 'position' : 'positions'} will use newer dated values. ${dematRefresh.skipped} unmatched ${dematRefresh.skipped === 1 ? 'row stays' : 'rows stay'} out. Confirm this is the same account and positions. No holding is removed and goal links stay. Earlier estimates, share counts and checked invested costs on updated rows clear; fund units update from the statement.${dematRefresh.skipped ? ' Your self-reported coverage answer will clear for review.' : ''}`;
     if (dematRefresh.changed.length) {
       $('#refresh-changes summary').textContent = 'Review demat positions before updating';
       $('#refresh-changes').open = true;
@@ -1679,10 +1681,12 @@ function applyImport(mode) {
       const refresh = planDematCasRefresh(state.holdings, pendingImport);
       if (!refresh) return;
       if (!refresh.repeated && !window.confirm(`Refresh ${refresh.changed.length} matched demat ${refresh.changed.length === 1 ? 'position' : 'positions'}? Confirm this is the same account and positions, not another account with the same ISIN. ${refresh.skipped} unmatched ${refresh.skipped === 1 ? 'row stays' : 'rows stay'} out. Earlier estimates, share counts and invested costs on updated rows clear. Goal links stay.`)) return;
+      if (refresh.repeated && refresh.skipped && state.coverage &&
+          !window.confirm(`The matched demat values are unchanged, but ${refresh.skipped} unmatched ${refresh.skipped === 1 ? 'row is' : 'rows are'} left out. Confirm this is the same account and clear your earlier portfolio coverage answer for review?`)) return;
       if (!refresh.repeated) {
         state.holdings = refresh.holdings;
-        if (refresh.skipped) state.coverage = null;
       }
+      if (refresh.skipped) state.coverage = null;
       pendingImport = null;
       pendingPerformance.clear();
       $('#cas-file').value = '';
@@ -1690,8 +1694,8 @@ function applyImport(mode) {
       $('#import-preview').hidden = true;
       render();
       $('#live-status').textContent = refresh.repeated ?
-        'These matched demat positions already use the same dated values and fund units. No holdings or goal links changed.' :
-        `${refresh.changed.length} matched demat positions refreshed. ${refresh.skipped} unmatched rows left out. Goal links kept; check the newer dated values and fund units.`;
+        `These matched demat positions already use the same dated values and fund units. No holdings or goal links changed.${refresh.skipped ? ' Recheck what your portfolio includes.' : ''}` :
+        `${refresh.changed.length} matched demat positions refreshed. ${refresh.skipped} unmatched rows left out. Goal links kept; check the newer dated values and fund units.${refresh.skipped ? ' Recheck what your portfolio includes.' : ''}`;
       $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
@@ -1699,6 +1703,7 @@ function applyImport(mode) {
       const refresh = planBrokerReportRefresh(state.holdings, pendingImport, origin);
       if (!refresh || !window.confirm(`Refresh ${refresh.matched.length} matched ${refresh.matched.length === 1 ? 'position' : 'positions'} from this newer broker report? Confirm this is the same account and positions, not another account or an extra lot. ${refresh.skipped} unmatched report ${refresh.skipped === 1 ? 'row will' : 'rows will'} be left out. No holding will be removed, and matched goal links will stay. Old invested amounts clear; only newly checked report amounts replace them.`)) return;
       state.holdings = refresh.holdings;
+      if (refresh.skipped) state.coverage = null;
       pendingImport = null;
       pendingPerformance.clear();
       $('#broker-file').value = '';
@@ -1706,7 +1711,7 @@ function applyImport(mode) {
       $('#broker-map').hidden = true;
       $('#import-preview').hidden = true;
       render();
-      $('#live-status').textContent = `${refresh.matched.length} matched positions refreshed from the broker report. ${refresh.skipped} unmatched rows left out. Goal links kept. Old invested amounts cleared unless a new report amount was checked.`;
+      $('#live-status').textContent = `${refresh.matched.length} matched positions refreshed from the broker report. ${refresh.skipped} unmatched rows left out. Goal links kept. Old invested amounts cleared unless a new report amount was checked.${refresh.skipped ? ' Recheck what your portfolio includes.' : ''}`;
       $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
