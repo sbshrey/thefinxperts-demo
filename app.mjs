@@ -257,7 +257,7 @@ function render() {
   $('#holding-form-hint').textContent = `${state.source === 'demo' ? 'Adding your first holding removes the fictional example. ' : ''}New holdings count toward the selected goal. Untick them below to change that. Fund constituents remain unknown until verified data is available.`;
   $('#entry-state').hidden = state.source === 'user';
   $('#entry-state-note').textContent = 'These holdings are fictional. Start blank, then add yours and check the goal details.';
-  $('#start-own-review').textContent = state.source === 'user' ? 'Continue my review' : 'Start with my holdings';
+  $('#start-own-review').textContent = state.source === 'user' ? 'Continue my review' : 'Start my free review';
   $('#start-own-review-inline').textContent = 'Start my review';
   $('#panel-foot').textContent = 'These are educational review prompts, not instructions to buy or sell. ' +
     (state.source === 'demo' ? 'The starting example is fictional.' :
