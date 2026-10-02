@@ -147,8 +147,8 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   if (goalAccessCheck.count) {
     findings.push({ key: 'goal-access', tone: 'amber', label: 'Goal timing',
       title: 'Check when linked savings can be used',
-      detail: `${rupees(goalAccessCheck.value)} across ${goalAccessCheck.count} manually entered other ${goalAccessCheck.count === 1 ? 'investment is' : 'investments are'} linked to this goal. The future illustration is paused until access by the goal date can be checked from the product terms or statement.`,
-      question: 'Will each linked amount be available for this goal when it is needed?',
+      detail: `${rupees(goalAccessCheck.value)} across ${goalAccessCheck.count} manually entered other ${goalAccessCheck.count === 1 ? 'investment is' : 'investments are'} linked to this goal. The future illustration stays paused while they are linked because this review cannot record a spendable amount at the goal date.`,
+      question: 'Which linked amounts should be removed from this goal while you check their withdrawal terms?',
       basis: `Counted ${goalAccessCheck.count} linked other-investment ${goalAccessCheck.count === 1 ? 'row' : 'rows'} and their assigned shares, totalling ${rupees(goalAccessCheck.value)} of ${rupees(goalTotal)} linked value.`,
       limitation: 'Withdrawal, maturity, tax and sale conditions were not supplied or verified. The gap today still shows gross entered value, not confirmed spendable money.' });
   }

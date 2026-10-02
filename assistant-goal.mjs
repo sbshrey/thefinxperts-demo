@@ -1,5 +1,5 @@
 import { asVersionTwo } from './assistant-save.mjs';
-import { setHoldingAllocations } from './goals.mjs';
+import { goalShare, setHoldingAllocations } from './goals.mjs';
 import { validMixPlan } from './mix-plan.mjs';
 
 const LIMITS = { age: [18, 100], years: [1, 50], target: [1000, 1_000_000_000_000],
@@ -22,6 +22,9 @@ export function parseAssistantGoalCommand(message) {
     secondPct: Number(split[4]), secondGoalName: cleanName(split[5]) };
   const assign = /^(?:assign|count) (.+?) (?:to|toward) goal (.+)$/i.exec(input);
   if (assign) return { kind: 'assign', holdingName: cleanName(assign[1]), goalName: cleanName(assign[2]) };
+  const unassign = /^(?:uncount|unlink) (.+?) from goal (.+)$/i.exec(input);
+  if (unassign) return { kind: 'unassign', holdingName: cleanName(unassign[1]),
+    goalName: cleanName(unassign[2]) };
   const move = /^move (.+?) from goal (.+?) to goal (.+)$/i.exec(input);
   if (move) return { kind: 'move', holdingName: cleanName(move[1]),
     sourceGoalName: cleanName(move[2]), goalName: cleanName(move[3]) };
@@ -49,7 +52,7 @@ function goalByName(portfolio, name) {
 }
 
 export function prepareAssistantGoalCommand(saved, command, { newId = () => crypto.randomUUID() } = {}) {
-  if (!command || !['create', 'select', 'assign', 'move', 'split'].includes(command.kind))
+  if (!command || !['create', 'select', 'assign', 'unassign', 'move', 'split'].includes(command.kind))
     return { portfolio: null, errors: ['Use a supported goal command.'] };
   const portfolio = asVersionTwo(saved, newId);
   if (!portfolio) return { portfolio: null, errors: ['This saved review format needs an account check.'] };
@@ -83,6 +86,15 @@ export function prepareAssistantGoalCommand(saved, command, { newId = () => cryp
   if (matches.length !== 1 || !matches[0].id) return { portfolio: null, errors: ['Name one saved holding exactly as shown in the review.'] };
   const holding = matches[0];
   const currentGoals = portfolio.goals.filter(item => item.linkedIds.includes(holding.id));
+  if (command.kind === 'unassign') {
+    if (!goal.linkedIds.includes(holding.id))
+      return { portfolio: null, errors: [`${holding.name} is not counted toward ${goal.name}.`] };
+    portfolio.goals = setHoldingAllocations(portfolio.goals, holding.id,
+      Object.fromEntries(portfolio.goals.map(item =>
+        [item.id, item.id === goal.id ? 0 : goalShare(item, holding.id)])));
+    portfolio.activeGoalId = goal.id;
+    return { portfolio, errors: [], description: `${holding.name} is no longer counted toward ${goal.name}. It remains in your total holdings; other goal shares stay as entered.` };
+  }
   if (command.kind === 'split') {
     const second = typeof command.secondGoalName === 'string' ?
       goalByName(portfolio, command.secondGoalName) : null;
