@@ -1,4 +1,4 @@
-import { isRepeatedActiveStatement, planActiveStatementRefresh } from './import-review.mjs';
+import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh } from './import-review.mjs';
 import { removeHoldingAllocation } from './goals.mjs';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -33,4 +33,20 @@ export function prepareAssistantActiveRefresh(saved, incoming, makeId = () => cr
     description: `CAMS Active Statement refresh. Confirm this is a complete newer statement for the same investments. ${plan.updatedCount} existing fund ${plan.updatedCount === 1 ? 'row' : 'rows'} will use its newer dated value; ${added.length} new ${added.length === 1 ? 'row stays' : 'rows stay'} unassigned; ${plan.removed.length} absent ${plan.removed.length === 1 ? 'fund row is' : 'fund rows are'} removed. Direct stocks and matched goal links stay. Checked invested costs and manual NAV estimates on updated funds clear. ${added.length || plan.removed.length ? 'Your self-reported portfolio coverage answer clears. ' : ''}No trade is placed.`,
     changes,
     result: `CAMS refresh applied: ${plan.updatedCount} existing fund ${plan.updatedCount === 1 ? 'row' : 'rows'} updated, ${added.length} added, ${plan.removed.length} removed. Direct stocks and matched goal links stayed. Recheck cost and goal assignment for new rows.` };
+}
+
+/** A newer broker snapshot may update only unique exact ISIN matches after review. */
+export function prepareAssistantBrokerRefresh(saved, incoming, origin) {
+  if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(incoming) ||
+      !['broker_csv', 'broker_xlsx'].includes(origin)) return null;
+  const known = new Set(saved.holdings.map(row => row.isin).filter(Boolean));
+  if (!incoming.some(row => row.isin && known.has(row.isin))) return null;
+  const plan = planBrokerReportRefresh(saved.holdings, incoming, origin);
+  if (!plan) return { errors: ['This report matches a saved ISIN, but it is not a safe newer valuation for that position. Check that it is the same account and holding, with a later ISO valuation date and matching type and asset class. Use the detailed review if the report needs manual reconciliation.'] };
+  const portfolio = structuredClone({ ...saved, holdings: plan.holdings });
+  const changes = plan.matched.map(({ current, next }) =>
+    `${current.name} · ISIN ${current.isin}: ${money(current.value)} (${current.asOf}) → ${money(next.value)} (${next.asOf})`);
+  return { portfolio, errors: [], kind: 'broker', changes,
+    description: `Newer broker report. Confirm this covers the same account and positions, not another account or an extra lot. ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'} will receive the newer dated value. ${plan.skipped} unmatched report ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out of this review. No holding is removed; goal links stay. Prior units, shares, price estimates and checked invested amounts on matched rows clear because this report does not verify them. No trade is placed.`,
+    result: `Broker report refresh applied to ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. Check saved units, invested amounts and the report source before relying on the newer values.` };
 }

@@ -13,7 +13,7 @@ import { parseReviewBackup } from './review-backup.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
 import { parseBrowserGoalFact, parseBrowserHoldingStatement, nextBrowserGoalQuestion } from './assistant-local.mjs';
 import { parseHoldingCorrection, prepareHoldingCorrection } from './assistant-correction.mjs';
-import { prepareAssistantActiveRefresh } from './assistant-refresh.mjs';
+import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh } from './assistant-refresh.mjs';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -198,6 +198,9 @@ function renderRefresh() {
   box.hidden = !state.refresh;
   if (!state.refresh) return;
   const stale = state.account?.revision !== state.refresh.revision;
+  $('#refresh-help').textContent = state.refresh.kind === 'broker' ?
+    'Confirm this newer report covers the same account and positions. Unmatched rows will stay out.' :
+    'Confirm this is a complete newer statement for the same investments.';
   $('#refresh-summary').textContent = stale ?
     'The confirmed review changed after this report was read. Discard this preview and open the statement again.' :
     state.refresh.description;
@@ -471,6 +474,9 @@ async function aiTurn(message, pdf = null) {
     if (!response.ok) throw new Error(result.error || 'The assistant could not answer.');
     state.capacityReached = false;
     say('assistant', result.answer, result.nextQuestion);
+    if (result.creditUsed === true && Number.isInteger(result.credits?.remaining)) {
+      say('note', `1 free AI credit used · ${result.credits.remaining} of ${result.credits.freeTotal} left on this account.`);
+    }
     const drafts = (result.draftHoldings || []).map(row => normalizedDraft(row)).filter(Boolean);
     if (drafts.length) { state.drafts = mergeAssistantDrafts(state.drafts, drafts); renderDrafts(); }
     if (result.goalFacts && typeof result.goalFacts === 'object' && Object.keys(result.goalFacts).length) {
@@ -620,7 +626,16 @@ $('#upload').addEventListener('change', async event => {
       else {
         const drafts = result.drafts.map(row => normalizedDraft(row));
         if (drafts.some(row => !row)) say('note', 'A report row could not be staged safely. No rows were added. Use the detailed review to inspect the report.');
-        else { state.drafts = drafts; renderDrafts(); say('note', result.message); }
+        else {
+          const origin = drafts[0]?.entryOrigin;
+          const prepared = prepareAssistantBrokerRefresh(state.account?.portfolio, drafts, origin);
+          if (prepared?.errors?.length) say('note', prepared.errors.join(' '));
+          else if (prepared) {
+            state.refresh = { ...prepared, revision: state.account.revision };
+            renderRefresh();
+            say('assistant', 'I found newer values for saved positions with exact ISIN matches. Review the changes before applying them. The dashboard has not changed yet.');
+          } else { state.drafts = drafts; renderDrafts(); say('note', result.message); }
+        }
       }
     } finally { state.busy = false; clearFile(); renderCredits(); renderDrafts(); }
     return;
@@ -857,14 +872,14 @@ $('#confirm-refresh')?.addEventListener('click', async () => {
   state.busy = true; renderAccountActions();
   try {
     await writeAccount(refresh.portfolio,
-      'The saved review changed in another tab. Discard this statement preview and open the report again.');
+      'The saved review changed in another tab. Discard this report preview and open the report again.');
     state.refresh = null;
     say('note', refresh.result);
-  } catch (error) { say('note', error.message || 'The statement refresh could not be saved. Check the preview and try again.'); }
+  } catch (error) { say('note', error.message || 'The report refresh could not be saved. Check the preview and try again.'); }
   finally { state.busy = false; renderAccountActions(); }
 });
 $('#discard-refresh')?.addEventListener('click', () => {
-  state.refresh = null; renderRefresh(); say('note', 'The statement refresh was discarded. Your confirmed review did not change.');
+  state.refresh = null; renderRefresh(); say('note', 'The report refresh was discarded. Your confirmed review did not change.');
 });
 
 $('#export-saved').addEventListener('click', async () => {
