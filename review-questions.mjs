@@ -32,10 +32,31 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     return answer('Add one fund or stock, or import a supported statement, and I can answer from that review.',
       'There are no positive holding values in this tab.',
       'No portfolio calculation is available yet.', '#input-choice', 'Choose an input');
-  if (/\b(overlap|duplicates?|same stocks|same funds)\b/.test(input))
-    return answer('This review cannot confirm fund overlap from names alone. Compare scheme identifiers and current constituent disclosures before treating two holdings as the same exposure.',
-      `${valid.length} entered holdings; fund constituent look-through is not verified for your personal imports.`,
-      'Matching names or ISINs can signal a possible duplicate, but separate account positions may still be distinct.', '#holdings', 'Inspect holdings');
+  if (/\b(overlap|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
+  {
+    const byInstrument = new Map();
+    for (const row of valid) {
+      if (typeof row.isin !== 'string' || !/^[A-Z]{2}[A-Z0-9]{10}$/.test(row.isin)) continue;
+      const key = `${row.type}:${row.isin}`;
+      byInstrument.set(key, (byInstrument.get(key) || 0) + 1);
+    }
+    const repeated = [...byInstrument.entries()].filter(([, count]) => count > 1);
+    const repeatedRows = repeated.reduce((sum, [, count]) => sum + count, 0);
+    const missingIds = valid.filter(row => typeof row.isin !== 'string' ||
+      !/^[A-Z]{2}[A-Z0-9]{10}$/.test(row.isin)).length;
+    const prefix = repeated.length ?
+      `I found ${repeated.length} repeated instrument ${repeated.length === 1 ? 'identifier' : 'identifiers'} across ${repeatedRows} entered rows. Compare their statements and accounts before deciding whether they represent separate positions or a duplicated import.` :
+      'I found no repeated instrument identifier among the entered rows with an ISIN.';
+    return answer(`${prefix} I cannot confirm overlap inside different funds from this snapshot.`,
+      `${byInstrument.size} distinct supplied type-and-ISIN pairs compared; ${missingIds} of ${valid.length} rows lack a usable ISIN. ${repeated.length ? `Repeated: ${repeated.slice(0, 3).map(([key, count]) => `${key.split(':')[1]} (${count} rows)`).join(', ')}${repeated.length > 3 ? ', and more' : ''}.` : ''}`,
+      'A repeated ISIN is a review flag, not proof of double counting. Different fund ISINs can still own the same underlying securities; constituent look-through is unverified here.', '#holdings', 'Inspect matching rows');
+  }
+  if (/\b(coverage|complete|missing holdings|all my investments|what.{0,20}missed)\b/.test(input)) {
+    const label = value => ({ all: 'all included', some: 'some included', none: 'none included', unsure: 'unsure' })[value] || 'not answered';
+    return answer(`${lead}mutual-fund coverage is ${label(coverage?.mutualFunds)} and direct-stock coverage is ${label(coverage?.directStocks)}.`,
+      `Used your self-reported coverage answers and ${valid.length} entered holding rows; no broker or fund account was independently checked.`,
+      'EPF, NPS, deposits, physical gold and other assets are outside this holdings review. Compare current source statements before treating its total as complete.', '#holdings', 'Check review coverage');
+  }
   if (/\b(next|priority|start|check first|review first)\b/.test(input)) {
     const first = result.findings?.[0];
     return first ? answer(`${lead}${first.title.toLowerCase()}. ${first.detail}`,
