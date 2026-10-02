@@ -22,6 +22,6 @@ self.onmessage = async event => {
   } catch (error) {
     self.postMessage({ kind: 'cas-result', holdings: [], errors: [error?.name === 'IncorrectPasswordError' ?
       'That password did not open this CAS PDF.' :
-      'This PDF could not be safely read as a supported original CAS. No holdings were added.'] });
+      'This PDF could not be safely read as a supported original CAS. No holdings were added. If it is an NPS or EPF statement, check its latest balance and date and describe that as an Other investment in chat.'] });
   }
 };
