@@ -21,7 +21,7 @@ import { parseHoldingCorrection, prepareHoldingCorrection,
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
   prepareAssistantReserveSave } from './assistant-reserve.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
-import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh } from './assistant-refresh.mjs';
+import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -280,7 +280,9 @@ function renderRefresh() {
   const stale = state.account?.revision !== state.refresh.revision;
   $('#refresh-help').textContent = state.refresh.kind === 'broker' ?
     'Confirm this newer report covers the same account and positions. Unmatched rows will stay out.' :
-    'Confirm this is a complete newer statement for the same investments.';
+    state.refresh.kind === 'cas' ?
+      'Confirm this newer CAS covers the same investment positions. Unmatched rows will stay out.' :
+      'Confirm this is a complete newer statement for the same investments.';
   $('#refresh-summary').textContent = stale ?
     'The confirmed review changed after this report was read. Discard this preview and open the statement again.' :
     state.refresh.description;
@@ -722,6 +724,19 @@ $('#cas-preview').addEventListener('click', async () => {
     if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
     const drafts = prepared.drafts.map(row => normalizedDraft(row));
     if (drafts.some(row => !row)) { say('note', 'A CAS row could not be staged safely. No rows were added.'); return; }
+    if (state.account?.portfolio) {
+      const refresh = prepareAssistantCasRefresh(state.account.portfolio, drafts);
+      if (refresh) {
+        if (refresh.repeated) say('note', refresh.description);
+        else if (refresh.errors.length) say('note', refresh.errors.join(' '));
+        else {
+          state.refresh = { ...refresh, revision: state.account.revision };
+          renderRefresh();
+          say('assistant', 'I found exact scheme matches in a newer CAS. Review each dated update before applying it. Unmatched schemes remain outside this refresh.');
+        }
+        clearFile(); return;
+      }
+    }
     state.drafts = drafts;
     renderDrafts(); say('note', prepared.message); clearFile();
   } catch { say('note', browserOnly ? 'The browser CAS preview failed. Try again or remove the PDF.' :
