@@ -960,6 +960,7 @@ function showImportPreview(holdings, label, notices, performance = []) {
   if (!label.startsWith('Broker ')) $('#broker-map').hidden = true;
   $('#import-preview').dataset.source = label;
   $('#refresh-changes').open = false;
+  $('#replace-impact').open = false;
   renderImportRows();
   $('#import-preview').hidden = false;
   $('#live-status').textContent = `${label} ready to review: ${holdings.length} holdings.`;
@@ -981,6 +982,18 @@ function refreshImportSummary() {
   $('#import-validation').textContent = errors.join(' ');
   $('#confirm-import').disabled = errors.length > 0;
   const canAdd = state.source === 'user' && state.holdings.length > 0;
+  $('#replace-impact').hidden = !canAdd;
+  const replaceList = $('#replace-impact-list');
+  replaceList.replaceChildren();
+  if (canAdd) {
+    const oldTotal = state.holdings.reduce((sum, holding) => sum + Number(holding.value), 0);
+    $('#replace-impact-summary').textContent = `Replace will remove ${state.holdings.length} current ${state.holdings.length === 1 ? 'holding' : 'holdings'} (${rupees(oldTotal)}) and their goal links`;
+    for (const holding of state.holdings) {
+      const item = document.createElement('li');
+      item.textContent = `${holding.name} · ${holding.type} · ${rupees(holding.value)}`;
+      replaceList.append(item);
+    }
+  }
   const mergeButton = $('#merge-import');
   const mergeValidation = $('#merge-validation');
   mergeButton.hidden = !canAdd;
@@ -1232,6 +1245,8 @@ function applyImport(mode) {
     return;
   }
   if (mode === 'add' && (state.source !== 'user' || !state.holdings.length || validateImportMerge(state.holdings, pendingImport).length)) return;
+  if (mode === 'replace' && state.source === 'user' && state.holdings.length &&
+      !window.confirm(`Replace ${state.holdings.length} current ${state.holdings.length === 1 ? 'holding' : 'holdings'} and remove their goal links? This also removes any direct stocks not in the new preview. Download a private backup first if you want to keep this review.`)) return;
   const imported = pendingImport.map(holding => {
     const name = holding.name.trim();
     return { ...holding, name, id: crypto.randomUUID(), exposure: holding.type === 'Stock' ? { [name]: 1 } : null };
