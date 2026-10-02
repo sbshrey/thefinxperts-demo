@@ -285,10 +285,14 @@ function renderCorrection() {
   if (!box) return;
   box.hidden = !state.correction;
   const nav = state.correction?.kind === 'nav';
+  const price = state.correction?.kind === 'price';
   $('#nav-correction-checks').hidden = !nav;
+  $('#price-correction-checks').hidden = !price;
   if (!state.correction) {
     $('#nav-scheme-checked').checked = false;
     $('#nav-units-checked').checked = false;
+    $('#price-security-checked').checked = false;
+    $('#price-shares-checked').checked = false;
     return;
   }
   const stale = state.account?.revision !== state.correction.revision;
@@ -296,10 +300,12 @@ function renderCorrection() {
     'The confirmed review changed after this correction was prepared. Discard it and describe the correction again.' :
     state.correction.description;
   $('#confirm-correction').disabled = state.busy || stale ||
-    (nav && (!$('#nav-scheme-checked').checked || !$('#nav-units-checked').checked));
+    (nav && (!$('#nav-scheme-checked').checked || !$('#nav-units-checked').checked)) ||
+    (price && (!$('#price-security-checked').checked || !$('#price-shares-checked').checked));
 }
 
-for (const selector of ['#nav-scheme-checked', '#nav-units-checked'])
+for (const selector of ['#nav-scheme-checked', '#nav-units-checked',
+  '#price-security-checked', '#price-shares-checked'])
   $(selector).addEventListener('change', renderCorrection);
 
 function renderRefresh() {
@@ -337,8 +343,9 @@ function renderReview() {
   $('#stale-count').textContent = String(stale);
   $('#review-badge').textContent = rows.length ? `${rows.length} confirmed` : 'No holdings yet';
   const hasNavEstimate = state.account?.portfolio?.holdings?.some(row => row.navEstimate);
+  const hasStockEstimate = state.account?.portfolio?.holdings?.some(row => row.stockEstimate);
   $('#date-note').textContent = rows.length ?
-    `Based on supplied values and dates, not live market quotes.${hasNavEstimate ? ' Includes your dated NAV estimate with unchanged units.' : ''}` :
+    `Based on supplied values and dates, not live market quotes.${hasNavEstimate ? ' Includes your dated NAV estimate with unchanged units.' : ''}${hasStockEstimate ? ' Includes your dated stock-price estimate with unchanged shares.' : ''}` :
     'Add a holding to begin. Values are dated, not live quotes.';
   const bars = $('#asset-bars');
   bars.replaceChildren();
@@ -391,7 +398,7 @@ function renderReview() {
     const savedRow = state.account?.portfolio?.holdings?.[index];
     const item = document.createElement('div'); item.className = 'holding-item';
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
-    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.shares ? ` · ${row.shares} reported shares; verify current balance` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
+    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.shares ? ` · ${row.shares} reported shares; verify current balance` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${savedRow?.stockEstimate ? ' · user-entered stock-price estimate; shares assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
     item.append(name, meta); holdings.append(item);
   }
   renderGoalReview();
@@ -1172,6 +1179,8 @@ $('#confirm-correction')?.addEventListener('click', async () => {
   if (state.busy || !correction || !state.account || correction.revision !== state.account.revision) return;
   if (correction.kind === 'nav' &&
       (!$('#nav-scheme-checked').checked || !$('#nav-units-checked').checked)) return;
+  if (correction.kind === 'price' &&
+      (!$('#price-security-checked').checked || !$('#price-shares-checked').checked)) return;
   state.busy = true; renderAccountActions();
   try {
     await writeAccount(correction.portfolio,

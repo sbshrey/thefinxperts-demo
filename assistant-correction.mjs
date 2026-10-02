@@ -2,6 +2,7 @@ import { parseAmount } from './assistant-clarify.mjs';
 import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs';
 import { removeHoldingAllocation } from './goals.mjs';
 import { estimateNavValue, realDate } from './nav-estimate.mjs';
+import { estimateStockValue, validShares } from './stock-estimate.mjs';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const indiaToday = today => new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
@@ -25,6 +26,10 @@ export function parseHoldingCorrection(message, today = new Date()) {
   if (nav) return { kind: 'nav', selector: nav[1].trim(), nav: nav[2], asOf: nav[3] };
   if (/^(?:set|update) nav\b/i.test(input))
     return { error: 'Say “set NAV of holding 1 to ₹125.4321 as of YYYY-MM-DD” using the NAV published for the exact scheme, plan and option.' };
+  const price = /^(?:set|update) price of (.+?) to ₹?([0-9]+(?:\.[0-9]+)?) as of (\d{4}-\d{2}-\d{2})[.!]?$/i.exec(input);
+  if (price) return { kind: 'price', selector: price[1].trim(), price: price[2], asOf: price[3] };
+  if (/^(?:set|update) price\b/i.test(input))
+    return { error: 'Say “set price of holding 1 to ₹125.43 as of YYYY-MM-DD” using a dated price for the exact listed security.' };
   const classify = /^classify (?:holding )?(.+?) as (equity|debt|gold|other|unknown)[.!]?$/i.exec(input);
   if (classify) return { kind: 'classify', selector: classify[1].trim(),
     asset: classify[2].toLowerCase() === 'unknown' ? 'Other' :
@@ -101,7 +106,7 @@ function findRow(holdings, selector) {
 export function prepareHoldingCorrection(saved, command, today = new Date()) {
   if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(saved.goals))
     return { portfolio: null, errors: ['Add a confirmed holding before correcting the review.'] };
-  if (!command || !['update', 'remove', 'cost', 'classify', 'nav'].includes(command.kind) ||
+  if (!command || !['update', 'remove', 'cost', 'classify', 'nav', 'price'].includes(command.kind) ||
       typeof command.selector !== 'string' || !command.selector.trim())
     return { portfolio: null, errors: ['Name the confirmed holding or use its number in Included holdings.'] };
   const match = findRow(saved.holdings, command.selector);
@@ -159,6 +164,25 @@ export function prepareHoldingCorrection(saved, command, today = new Date()) {
     return { portfolio, errors: [],
       description: `Estimate holding ${index + 1}: ${row.name}. ${row.units} statement units × your entered NAV ₹${command.nav} dated ${command.asOf} = ${money(value)}. The earlier statement value ${money(originalValue)} dated ${originalAsOf} stays in your private backup. Check the exact scheme, Direct/Regular plan and Growth/IDCW option at the NAV source, and confirm these units are still your current balance after any transactions. This is a dated estimate, not a verified live account value.`,
       result: `${row.name} now uses your dated NAV estimate of ${money(value)} as of ${command.asOf}; the earlier statement value remains in the private backup. This assumes ${row.units} units are unchanged.` };
+  }
+  if (command.kind === 'price') {
+    if (row.type !== 'Stock' || !validShares(row.shares) || !realDate(row.asOf))
+      return { portfolio: null, errors: ['A dated stock-price estimate needs one directly held stock with a checked share count and dated value. Check the report and current shares first.'] };
+    const value = estimateStockValue(row.shares, command.price);
+    if (value === null || value > 10_000_000_000 || !realDate(command.asOf) ||
+        command.asOf > indiaToday(today) || command.asOf <= row.asOf)
+      return { portfolio: null, errors: ['Use a positive price with up to six decimal places and a real price date newer than this holding’s value date, not after today.'] };
+    const originalValue = row.stockEstimate?.originalValue ?? row.value;
+    const originalAsOf = row.stockEstimate?.originalAsOf ?? row.asOf;
+    portfolio.holdings[index] = { ...row, value, asOf: command.asOf,
+      stockEstimate: { originalValue, originalAsOf, price: command.price, priceAsOf: command.asOf } };
+    delete portfolio.holdings[index].valuationOrigin;
+    const total = portfolio.holdings.reduce((sum, holding) => sum + Number(holding.value), 0);
+    if (!Number.isFinite(total) || total > 1_000_000_000_000)
+      return { portfolio: null, errors: ['The estimated portfolio total would exceed the supported limit.'] };
+    return { portfolio, errors: [],
+      description: `Estimate holding ${index + 1}: ${row.name}. ${row.shares} shares × your entered price ₹${command.price} dated ${command.asOf} = ${money(value)}. The earlier value ${money(originalValue)} dated ${originalAsOf} stays in your private backup. Check the exact listed security, exchange and price date, and confirm these shares are still held after trades, splits or bonuses. This is a dated estimate, not a verified live account value.`,
+      result: `${row.name} now uses your dated stock-price estimate of ${money(value)} as of ${command.asOf}; the earlier value remains in the private backup. This assumes ${row.shares} shares are unchanged.` };
   }
   const date = typeof command.asOf === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(command.asOf) ?
     new Date(`${command.asOf}T00:00:00Z`) : null;
