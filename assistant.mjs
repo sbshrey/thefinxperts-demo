@@ -160,11 +160,14 @@ function renderGoalDraft() {
   const ul = document.createElement('ul');
   const labels = { name: 'Goal', age: 'Your current age', years: 'Years until goal',
     target: 'Target in today’s rupees', monthlyContribution: 'Monthly contribution',
-    returnPct: 'Annual growth assumption', inflationPct: 'Annual inflation assumption' };
+    returnPct: 'Annual growth assumption', inflationPct: 'Annual inflation assumption',
+    targetMix: 'Your chosen goal mix' };
   for (const [key, value] of Object.entries(state.goalFacts)) {
     const item = document.createElement('li');
-    item.textContent = `${labels[key]}: ${['target', 'monthlyContribution'].includes(key) ? money(value) :
-      ['returnPct', 'inflationPct'].includes(key) ? `${value}%` : value}`;
+    item.textContent = `${labels[key]}: ${key === 'targetMix' ? value === null ? 'remove comparison' :
+      Object.entries(value).map(([asset, share]) => `${asset} ${share}%`).join(', ') :
+      ['target', 'monthlyContribution'].includes(key) ? money(value) :
+        ['returnPct', 'inflationPct'].includes(key) ? `${value}%` : value}`;
     ul.append(item);
   }
   list.append(ul);
@@ -261,6 +264,7 @@ function renderGoalReview() {
       `This goal still needs your ${review.missing.join(', ')}. No goal scenario is shown yet.` :
       'The saved goal is unfinished. Confirm its details before using a goal scenario.'));
     root.append(paragraph(`${review.linkedCount} confirmed holding${review.linkedCount === 1 ? '' : 's'} assigned: ${money(review.linkedValue)} in supplied values. These are included in the portfolio total only once.`));
+    if (review.mixPlan) root.append(paragraph(`Your chosen mix is saved: ${Object.entries(review.mixPlan).map(([asset, share]) => `${asset} ${share}%`).join(', ')}. The comparison waits for confirmed goal details.`));
     return;
   }
   const stats = document.createElement('div'); stats.className = 'goal-stats';
@@ -275,6 +279,26 @@ function renderGoalReview() {
   }
   root.append(stats);
   root.append(paragraph(`${review.linkedCount} confirmed holding${review.linkedCount === 1 ? '' : 's'} assigned to this goal; ${review.dateCheckCount} need a valuation-date check. Other confirmed holdings are excluded from these goal figures.`));
+  if (review.mixPlan) {
+    const heading = document.createElement('h4'); heading.textContent = 'Your chosen mix'; root.append(heading);
+    if (review.mixComparison) {
+      const comparison = document.createElement('div'); comparison.className = 'mix-compare';
+      for (const row of review.mixComparison) {
+        const line = document.createElement('p');
+        line.textContent = `${row.asset}: ${row.currentPct.toFixed(1)}% in linked holdings · ${row.plannedPct.toFixed(1)}% you chose · ${Math.abs(row.differencePct).toFixed(1)} percentage points ${row.differencePct >= 0 ? 'above' : 'below'}`;
+        comparison.append(line);
+      }
+      root.append(comparison);
+      root.append(paragraph('This compares dated values and asset labels you supplied. It does not account for fund constituents, tax or transaction costs, and it is not a trade instruction. Say “clear goal mix” to remove the comparison.'));
+    } else {
+      const pause = { no_holdings: 'Link at least one holding to this goal first.',
+        unclassified: 'Classify linked holdings labelled Other from their source before comparing.',
+        valuation_dates: 'Check missing, future or old valuation dates on linked holdings before comparing.',
+        conflicting_identity: 'Check holdings with conflicting labels for the same ISIN before comparing.',
+        fund_house: 'A linked fund-house total needs scheme detail before comparing.' };
+      root.append(paragraph(`Comparison paused. ${pause[review.mixPause] || 'Check the goal and its linked holdings before comparing.'}`));
+    }
+  } else root.append(paragraph('Already chosen a mix for this goal? Say “goal mix 60% equity, 30% debt, 10% gold” to compare your linked holdings. The percentages are yours to choose.'));
   if (portfolio?.goals?.length === 1) {
     const linked = new Set(portfolio.goals[0].linkedIds);
     const unassigned = portfolio.holdings.filter(row => row.id && !linked.has(row.id));
@@ -355,10 +379,11 @@ async function writeAccount(portfolio, conflictMessage) {
 async function aiTurn(message, pdf = null) {
   if (browserOnly) {
     const portfolio = state.account?.portfolio;
+    const holdings = portfolio?.holdings || state.confirmed;
     const goal = portfolio?.goals?.find(item => item.id === portfolio.activeGoalId) ||
       { name: 'My goal', age: null, years: null, target: null, confirmed: false, linkedIds: [] };
-    const result = analyzePortfolio(state.confirmed, goal);
-    const response = answerReviewQuestion(message, { holdings: state.confirmed, goal,
+    const result = analyzePortfolio(holdings, goal, new Date(), portfolio?.reserve, portfolio?.coverage);
+    const response = answerReviewQuestion(message, { holdings, goal,
       source: 'user', coverage: portfolio?.coverage || null, result });
     if (response) say('assistant', `${response.text}\n\nHow I worked this out: ${response.basis}\n\nKeep in mind: ${response.limitation}`);
     else say('assistant', 'Ask about the holdings you entered, or upload a supported CAMS Active Statement or broker report.');
@@ -709,6 +734,8 @@ $('#confirm-goal').addEventListener('click', async () => {
     const goal = prepared.portfolio.goals.find(item => item.id === prepared.portfolio.activeGoalId);
     say('note', goal.confirmed ? `Goal facts ${browserOnly ? 'added to this tab' : 'saved to your account'}. The goal review has been recalculated.` :
       'Goal facts saved as an unfinished draft. Share the remaining details when you are ready.');
+    if (browserOnly && goal.confirmed && !goal.targetMix)
+      say('assistant', 'If you have already chosen an asset mix for this goal, you can say “goal mix 60% equity, 30% debt, 10% gold”. I can compare your linked holdings with it; I cannot choose percentages for you.');
   } catch (error) { say('note', error.message || 'The goal save failed. Your draft is still here.'); }
   finally { state.busy = false; renderGoalDraft(); renderCredits(); renderGoalReview(); }
 });

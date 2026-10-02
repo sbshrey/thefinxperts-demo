@@ -54,6 +54,26 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
 export function parseBrowserGoalFact(message, goal, pending = {}) {
   if (typeof message !== 'string' || !goal) return null;
   const input = message.trim();
+  if (/^clear goal mix[.!]?$/i.test(input)) return { facts: { targetMix: null } };
+  const mixRequest = /^(?:my )?(?:goal|target) mix(?: is)?\s+(.+?)[.!]?$/i.exec(input);
+  if (mixRequest) {
+    const parts = mixRequest[1].split(/\s*(?:,|\band\b)\s*/i).filter(Boolean);
+    const mix = { Equity: 0, Debt: 0, Gold: 0, Other: 0 };
+    const seen = new Set();
+    for (const part of parts) {
+      const match = /^(\d{1,3})%\s+(equity|debt|gold|other)$/i.exec(part.trim());
+      if (!match) return { error: 'Use named percentages, such as “goal mix 60% equity, 30% debt, 10% gold”.' };
+      const asset = match[2][0].toUpperCase() + match[2].slice(1).toLowerCase();
+      const share = Number(match[1]);
+      if (seen.has(asset) || share > 100)
+        return { error: 'Give each asset category once, with a percentage from 0 to 100.' };
+      seen.add(asset);
+      mix[asset] = share;
+    }
+    if (!parts.length || Object.values(mix).reduce((sum, share) => sum + share, 0) !== 100)
+      return { error: 'Your chosen goal mix must total 100%. The site cannot choose a mix for you.' };
+    return { facts: { targetMix: mix } };
+  }
   let field;
   let value;
   let match = /^(?:my age is |i am |age )([0-9]{1,3})(?: years old)?[.!]?$/i.exec(input);

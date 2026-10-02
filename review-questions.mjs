@@ -58,6 +58,27 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     return answer('Add one fund or stock, or import a supported statement, and I can answer from that review.',
       'There are no positive holding values in this tab.',
       'No portfolio calculation is available yet.', '#input-choice', 'Choose an input');
+  if (/\b(?:goal|target|chosen) mix\b|\b(?:mix|allocation)\b.{0,30}\b(?:compare|difference|plan)\b/.test(input)) {
+    if (!goal?.targetMix) return answer('You have not entered a chosen mix for this goal. If you already have one, say “goal mix 60% equity, 30% debt, 10% gold” and confirm it. I cannot choose percentages for you.',
+      'No chosen mix is saved on the selected goal.',
+      'Age and time horizon alone do not establish a suitable allocation.', '#goals', 'Review selected goal');
+    const plan = goal.targetMix;
+    if (!result.mixComparison) {
+      const reason = { goal_details: 'the goal facts are unfinished', no_holdings: 'no holdings are linked to this goal',
+        unclassified: 'linked holdings include an unknown asset category',
+        valuation_dates: 'linked holdings have missing, future or old valuation dates',
+        conflicting_identity: 'one instrument identifier has conflicting labels',
+        fund_house: 'a linked fund-house summary lacks scheme detail' }[result.mixPause] || 'the linked holding details need checking';
+      return answer(`Your chosen mix is Equity ${plan.Equity}%, Debt ${plan.Debt}%, Gold ${plan.Gold}%, Other ${plan.Other}%. The comparison is paused because ${reason}.`,
+        `Selected goal ${goal.name}; comparison status ${result.mixPause || 'unavailable'}.`,
+        'The chosen percentages came from you. This review does not create an allocation or suggest trades.', '#goals', 'Check goal inputs');
+    }
+    const parts = result.mixComparison.map(row =>
+      `${row.asset} ${row.currentPct.toFixed(1)}% entered versus ${row.plannedPct.toFixed(1)}% chosen`);
+    return answer(`For ${goal.name}, ${parts.join('; ')}.`,
+      `${money(result.goalTotal)} of entered value is linked to this goal; each share is its labelled asset value divided by that total.`,
+      'These are supplied dated values and your own chosen percentages. Fund constituents, taxes and transaction costs are not assessed. A difference is a review prompt, not an instruction to trade.', '#goals', 'Review chosen mix');
+  }
   if (/\b(overlap|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
   {
     const byInstrument = new Map();

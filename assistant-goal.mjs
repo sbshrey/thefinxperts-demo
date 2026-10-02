@@ -1,5 +1,6 @@
 import { asVersionTwo } from './assistant-save.mjs';
 import { setHoldingAllocations } from './goals.mjs';
+import { validMixPlan } from './mix-plan.mjs';
 
 const LIMITS = { age: [18, 100], years: [1, 50], target: [1000, 1_000_000_000_000],
   monthlyContribution: [0, 100_000_000], returnPct: [-20, 13], inflationPct: [-5, 15] };
@@ -116,7 +117,7 @@ export function prepareAssistantGoalSave(saved, facts, { newId = () => crypto.ra
   const portfolio = asVersionTwo(saved, newId);
   if (!portfolio) return { portfolio: null, errors: ['This saved review format needs an account check.'] };
   if (!facts || typeof facts !== 'object' || Array.isArray(facts) || !Object.keys(facts).length ||
-      Object.keys(facts).some(key => key !== 'name' && !Object.hasOwn(LIMITS, key)))
+      Object.keys(facts).some(key => key !== 'name' && key !== 'targetMix' && !Object.hasOwn(LIMITS, key)))
     return { portfolio: null, errors: ['No supported goal facts were supplied.'] };
   const goal = portfolio.goals.find(item => item.id === portfolio.activeGoalId);
   if (!goal) return { portfolio: null, errors: ['The selected goal could not be found.'] };
@@ -134,6 +135,11 @@ export function prepareAssistantGoalSave(saved, facts, { newId = () => crypto.ra
         (['age', 'years'].includes(field) && !Number.isInteger(value)))
       return { portfolio: null, errors: [`Check the ${field} value before saving.`] };
     goal[field] = value;
+  }
+  if (Object.hasOwn(facts, 'targetMix')) {
+    if (facts.targetMix === null) delete goal.targetMix;
+    else if (validMixPlan(facts.targetMix)) goal.targetMix = { ...facts.targetMix };
+    else return { portfolio: null, errors: ['Check that your chosen goal mix uses the four asset categories and totals 100%.'] };
   }
   goal.confirmed = goal.age !== null && goal.years !== null && goal.target !== null;
   return { portfolio, errors: [] };
