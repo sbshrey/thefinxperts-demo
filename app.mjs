@@ -1,4 +1,4 @@
-import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs';
+import { analyzePortfolio, sampleHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs';
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { validateImportReview, validateImportMerge, possibleManualDuplicate, isRepeatedActiveStatement, planActiveStatementRefresh } from './import-review.mjs';
@@ -296,6 +296,12 @@ function render() {
     issuer: ['#holdings', 'Review holdings'], plan: ['#holdings', 'Review fund names'],
     funds: ['#holdings', 'Review fund list'], review: ['#holdings', 'Review holdings'],
   };
+  const firstOther = state.holdings.findIndex(holding => holding.asset === 'Other' && holding.granularity !== 'fund_house');
+  const firstDateIssue = state.holdings.findIndex(holding => valuationDateIssue(holding.asOf));
+  const firstSummary = state.holdings.findIndex(holding => holding.granularity === 'fund_house');
+  if (firstOther >= 0) reviewDestinations.classification = [`#holding-${firstOther + 1}`, 'Check first Other holding'];
+  if (firstDateIssue >= 0) reviewDestinations.valuation = [`#holding-${firstDateIssue + 1}`, 'Check first flagged value'];
+  if (firstSummary >= 0) reviewDestinations.summary = [`#holding-${firstSummary + 1}`, 'See fund-house summary'];
   const renderFinding = (finding, index, target) => {
     const article = document.createElement('article');
     article.className = 'finding';
@@ -340,9 +346,10 @@ function render() {
 
   const holdings = $('#holdings-list');
   holdings.replaceChildren();
-  state.holdings.forEach(holding => {
+  state.holdings.forEach((holding, index) => {
     const row = document.createElement('div');
     row.className = 'holding-row';
+    row.id = `holding-${index + 1}`;
     const info = document.createElement('div');
     info.className = 'holding-info';
     const name = document.createElement('strong');
@@ -353,6 +360,25 @@ function render() {
     sourceCategory.className = 'holding-source-category';
     sourceCategory.textContent = holding.statementCategory ?
       `Statement category: ${holding.statementCategory} · broad asset here: ${holding.asset}` : '';
+    const checks = document.createElement('div');
+    checks.className = 'holding-checks';
+    if (holding.asset === 'Other' && holding.granularity !== 'fund_house') {
+      const check = document.createElement('span');
+      check.textContent = 'Check asset category';
+      checks.append(check);
+    }
+    const dateIssue = valuationDateIssue(holding.asOf);
+    if (dateIssue) {
+      const check = document.createElement('span');
+      check.textContent = dateIssue === 'stale' ? 'Value over 90 days old' :
+        dateIssue === 'future' ? 'Date is after today' : 'Valuation date missing';
+      checks.append(check);
+    }
+    if (holding.granularity === 'fund_house') {
+      const check = document.createElement('span');
+      check.textContent = 'Fund-house total only';
+      checks.append(check);
+    }
     const goalLink = document.createElement('label');
     goalLink.className = 'holding-goal-link';
     const goalCheckbox = document.createElement('input');
@@ -568,6 +594,7 @@ function render() {
     update.append(updateTitle, updateForm);
     info.append(name, meta);
     if (holding.statementCategory) info.append(sourceCategory);
+    if (checks.childElementCount) info.append(checks);
     info.append(goalLink);
     if (state.goals.length > 1) info.append(allocation);
     info.append(update);

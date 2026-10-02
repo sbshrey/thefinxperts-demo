@@ -110,12 +110,12 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const todayDate = new Date(`${indiaToday}T00:00:00Z`);
   const staleCutoff = new Date(todayDate);
   staleCutoff.setUTCDate(staleCutoff.getUTCDate() - 90);
-  const missingDates = valid.length - dated.length;
-  const staleDates = dated.filter(date => parseValuationDate(date) < staleCutoff).length;
-  const futureDates = dated.filter(date => parseValuationDate(date) > todayDate).length;
+  const dateIssues = valid.map(holding => valuationDateIssue(holding.asOf, today));
+  const missingDates = dateIssues.filter(issue => issue === 'missing').length;
+  const staleDates = dateIssues.filter(issue => issue === 'stale').length;
+  const futureDates = dateIssues.filter(issue => issue === 'future').length;
   const goalDateCheck = goalHoldings.reduce((check, holding) => {
-    const date = parseValuationDate(holding.asOf);
-    if (!date || date < staleCutoff || date > todayDate) {
+    if (valuationDateIssue(holding.asOf, today)) {
       check.value += Number(holding.value);
       check.count++;
     }
@@ -319,6 +319,18 @@ function parseValuationDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? date : null;
+}
+
+/** A 90-day value check, measured against the calendar date in India. */
+export function valuationDateIssue(asOf, today = new Date()) {
+  const date = parseValuationDate(asOf);
+  if (!date) return 'missing';
+  const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  const todayDate = new Date(`${indiaToday}T00:00:00Z`);
+  if (date > todayDate) return 'future';
+  const staleCutoff = new Date(todayDate);
+  staleCutoff.setUTCDate(staleCutoff.getUTCDate() - 90);
+  return date < staleCutoff ? 'stale' : null;
 }
 
 export function overlapPercent(exposureA, exposureB) {
