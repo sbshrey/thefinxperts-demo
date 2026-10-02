@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#102525">
   <meta name="description" content="How the TheFinxperts portfolio demo handles holdings and statement files.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
   <title>How your data is handled — TheFinxperts</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
@@ -40,7 +41,7 @@
 
       <section aria-labelledby="data-network">
         <h2 id="data-network">Network requests and other services</h2>
-        <p>Your browser requests the review's page, scripts, styles and fonts from GitHub Pages. The review code does not request Google Fonts or another third-party service while you review holdings. It does not put holdings, questions or statement contents in page requests. There is no analytics tracker or advertising code in the public review.</p>
+        <p>Your browser requests the review's page, scripts, styles and fonts from GitHub Pages. The public pages use a content policy that limits scripts and network requests to this site; it does not replace checking the domain and HTTPS before opening a statement. The review code does not request Google Fonts or another third-party service while you review holdings. It does not put holdings, questions or statement contents in page requests. There is no analytics tracker or advertising code in the public review.</p>
         <p>The public review has no Gmail connection, account saving or live market feed. The original CAS option in the guided review parses in the browser and makes no PDF upload request. Its scripts come from this same site. Its automatic feature checks are GET requests to the same site; they do not include a portfolio or PDF.</p>
       </section>
 
