@@ -28,7 +28,10 @@ export function normalizeCasHoldings(document) {
   }
 
   const holdings = [];
+  const byIsin = new Map();
+  const aggregatedIds = new Set();
   let schemeCount = 0;
+  let combinedRows = 0;
   let performanceTransactions = 0;
   let performanceBudgetExceeded = false;
   for (const [folioIndex, folio] of document.folios.entries()) {
@@ -79,7 +82,7 @@ export function normalizeCasHoldings(document) {
       }
       const asset = classifyAsset(scheme.type);
       if (asset === 'Other') notices.push(`${location}: asset category is unclassified and shown as Other.`);
-      holdings.push({
+      const holding = {
         id: `cas-${folioIndex + 1}-${schemeIndex + 1}`,
         name,
         type: 'Mutual fund',
@@ -91,7 +94,33 @@ export function normalizeCasHoldings(document) {
         exposure: null,
         isin: validIsin(scheme.isin) ? scheme.isin : null,
         amfi: validAmfi(scheme.amfi) ? scheme.amfi : null,
-      });
+      };
+      let holdingId = holding.id;
+      const previous = holding.isin ? byIsin.get(holding.isin) : null;
+      if (previous) {
+        const same = value => value?.trim().toLocaleLowerCase('en-IN').replace(/\s+/g, ' ') || null;
+        if (same(previous.row.name) !== same(holding.name) ||
+            same(previous.row.amc) !== same(holding.amc) ||
+            previous.row.asset !== holding.asset || previous.row.asOf !== holding.asOf ||
+            previous.navScaled !== navScaled ||
+            previous.row.amfi && holding.amfi && previous.row.amfi !== holding.amfi ||
+            previous.valuePaise + valuePaise > 1_000_000_000_000n ||
+            previous.units + units > BigInt(Number.MAX_SAFE_INTEGER)) {
+          errors.push(`${location}: repeated ISIN has conflicting scheme or valuation details. Check the original folios before importing.`);
+          continue;
+        }
+        previous.units += units;
+        previous.valuePaise += valuePaise;
+        previous.row.units = formatUnits(previous.units);
+        previous.row.value = Number(previous.valuePaise) / 100;
+        previous.row.amfi ||= holding.amfi;
+        holdingId = previous.row.id;
+        aggregatedIds.add(holdingId);
+        combinedRows++;
+      } else {
+        holdings.push(holding);
+        if (holding.isin) byIsin.set(holding.isin, { row: holding, units, valuePaise, navScaled });
+      }
       if (document.cas_type === 'DETAILED') {
         const transactionCount = Array.isArray(scheme.transactions) ? scheme.transactions.length : 0;
         if (performanceTransactions + transactionCount > MAX_PREVIEW_PERFORMANCE_TRANSACTIONS) {
@@ -99,20 +128,24 @@ export function normalizeCasHoldings(document) {
         } else {
           performanceTransactions += transactionCount;
           const annualPercent = statementXirr(scheme);
-          if (annualPercent !== null) performance.push({ id: holdings.at(-1).id, annualPercent });
+          if (annualPercent !== null) performance.push({ id: holdingId, annualPercent });
         }
       }
-      if (!holdings.at(-1).isin) notices.push(`${location}: ISIN is missing or invalid; scheme matching will need review.`);
+      if (!holding.isin) notices.push(`${location}: ISIN is missing or invalid; scheme matching will need review.`);
     }
     if (schemeCount > 500) break;
   }
   if (!schemeCount && !errors.length) errors.push('The CAS contains no schemes.');
   if (schemeCount && !holdings.length && !errors.length) notices.push('No nonzero holdings were found in this CAS.');
+  if (combinedRows && !errors.length) notices.push(`${combinedRows} matching folio scheme ${combinedRows === 1 ? 'row was' : 'rows were'} combined by exact ISIN and matching valuation details. Separate folio returns are not shown as one return.`);
+  const visiblePerformance = performance.filter(item => !aggregatedIds.has(item.id));
   if (document.cas_type === 'DETAILED' && holdings.length) {
-    notices.push(`${performance.length} of ${holdings.length} current schemes have enough simple, reconciled cash-flow history for an indicative statement-period money-weighted return. Unavailable returns stay unknown.`);
+    notices.push(`${visiblePerformance.length} of ${holdings.length} current schemes have enough simple, reconciled cash-flow history for an indicative statement-period money-weighted return. Unavailable returns stay unknown.`);
     if (performanceBudgetExceeded) notices.push('Some returns were left unavailable because the statement has too many transactions to calculate safely in this preview. Holdings are still shown.');
   }
-  return { holdings: errors.length ? [] : holdings, errors, notices, performance: errors.length ? [] : performance };
+  return { holdings: errors.length ? [] : holdings, errors, notices,
+    combinedRows: errors.length ? 0 : combinedRows,
+    performance: errors.length ? [] : visiblePerformance };
 }
 
 function parseDecimal(value, places) {

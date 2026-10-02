@@ -36,5 +36,7 @@ export function prepareAssistantCasDrafts(result, { local = false, browser = fal
       ...(row.isin ? { isin: row.isin } : {}), ...(row.amc ? { amc: row.amc } : {}),
       ...(row.amfi ? { amfi: row.amfi } : {}), ...(row.units ? { units: row.units } : {}) });
   }
-  return { drafts, errors: [], message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS. ${browser ? 'This browser tab read the PDF and password; neither was sent to a server.' : `The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview.`} Check the rows before confirming.${browser ? '' : ' If you later ask AI about these drafts, their names and values may be sent.'}` };
+  const combined = Number.isInteger(result.combinedRows) && result.combinedRows > 0 &&
+    result.combinedRows <= 500 ? ` ${result.combinedRows} matching folio ${result.combinedRows === 1 ? 'row was' : 'rows were'} combined by exact ISIN and valuation details; check the total against your CAS.` : '';
+  return { drafts, errors: [], message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS.${combined} ${browser ? 'This browser tab read the PDF and password; neither was sent to a server.' : `The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview.`} Check the rows before confirming.${browser ? '' : ' If you later ask AI about these drafts, their names and values may be sent.'}` };
 }

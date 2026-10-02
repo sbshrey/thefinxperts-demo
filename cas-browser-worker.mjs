@@ -24,7 +24,7 @@ self.onmessage = async event => {
     }
     const normalized = normalizeCasHoldings(parsed);
     self.postMessage({ kind: 'cas-result', source: 'CAS', holdings: normalized.holdings,
-      errors: normalized.errors, notices: normalized.notices });
+      errors: normalized.errors, notices: normalized.notices, combinedRows: normalized.combinedRows });
   } catch (error) {
     self.postMessage({ kind: 'cas-result', holdings: [], errors: [error?.name === 'IncorrectPasswordError' ?
       'That password did not open this CAS PDF.' :
