@@ -24,7 +24,7 @@ export function nextDraftQuestion(drafts) {
   }[pending.field];
 }
 
-function parseAmount(message) {
+export function parseAmount(message) {
   const match = /^(?:(?:its?|the|current)\s+)?(?:(?:value|worth)\s+(?:is|of)?\s*)?(?:₹|rs\.?\s*|inr\s*)?([\d,]+(?:\.\d{1,2})?)\s*(k|thousand|lakhs?|lacs?|crores?)?(?:\s*rupees)?\.?$/i.exec(message.trim());
   if (!match) return null;
   if (!/^(?:\d+|\d{1,3}(?:,\d{3})+|\d{1,2}(?:,\d{2})+,\d{3})(?:\.\d{1,2})?$/.test(match[1])) return null;

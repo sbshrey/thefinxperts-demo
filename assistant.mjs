@@ -10,7 +10,7 @@ import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
 import { analyzePortfolio } from './analysis.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
-import { parseBrowserGoalFact, nextBrowserGoalQuestion } from './assistant-local.mjs';
+import { parseBrowserGoalFact, parseBrowserHoldingStatement, nextBrowserGoalQuestion } from './assistant-local.mjs';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -54,6 +54,13 @@ function renderCredits() {
   $('#active-preview').disabled = state.busy;
   $('#remove-file').disabled = state.busy;
   renderAccountActions();
+}
+
+function assistantStatusText() {
+  if (state.capacityReached) return 'AI capacity reached · free checks still work';
+  if (!state.available) return 'AI unavailable · saved review still works';
+  if (state.credits?.remaining === 0) return '5 AI replies used · free checks still work';
+  return 'AI ready';
 }
 
 function renderAccountActions() {
@@ -320,10 +327,13 @@ async function aiTurn(message, pdf = null) {
     else say('assistant', 'Ask about the holdings you entered, or upload a supported CAMS Active Statement or broker report.');
     return;
   }
-  if (!state.available) { say('note', state.capacityReached ?
-    'The free AI service has reached its current capacity. Your credits remain available; your confirmed dashboard still works.' :
-    'The assistant is unavailable for this account. Your confirmed dashboard still works in this tab.'); return; }
-  if (state.credits?.remaining === 0) { say('note', 'Your five free AI credits have been used. Your existing review remains available.'); return; }
+  // The server answers some bounded questions without a provider call or credit.
+  // Let it decide whether this message needs AI, even when the displayed balance
+  // is zero or the provider-wide attempt budget has been reached.
+  if (!state.available && !state.capacityReached) {
+    say('note', 'The assistant is unavailable for this account. Your confirmed dashboard still works in this tab.');
+    return;
+  }
   state.busy = true; $('#send').disabled = true; $('#service-status').textContent = 'Reviewing…';
   try {
     const response = await fetch('/api/assistant', { method: 'POST',
@@ -350,7 +360,7 @@ async function aiTurn(message, pdf = null) {
     }
     renderReview();
   } catch (error) { say('note', error.message || 'The assistant could not answer.'); }
-  finally { state.busy = false; renderCredits(); renderDrafts(); renderGoalDraft(); $('#service-status').textContent = state.capacityReached ? 'Free AI capacity reached' : state.available ? 'AI ready' : 'AI unavailable'; }
+  finally { state.busy = false; renderCredits(); renderDrafts(); renderGoalDraft(); $('#service-status').textContent = assistantStatusText(); }
 }
 
 function clearFile() {
@@ -564,8 +574,22 @@ $('#composer').addEventListener('submit', async event => {
       say('assistant', 'I staged that goal fact for you to check.', nextBrowserGoalQuestion(selected, state.goalFacts));
       return;
     }
+    const holding = parseBrowserHoldingStatement(message);
+    if (holding) {
+      say('user', message); $('#message').value = '';
+      if (holding.error) { say('note', holding.error); return; }
+      if (state.drafts.length) {
+        say('note', 'Confirm or discard the possible holdings already shown before describing another one.');
+        return;
+      }
+      const draft = normalizedDraft(holding.draft);
+      if (!draft) { say('note', 'I could not stage this holding. Please check its name and value.'); return; }
+      state.drafts = [draft]; renderDrafts();
+      say('assistant', 'I staged one possible holding for you to check. It is not in the dashboard yet.',
+        nextDraftQuestion(state.drafts));
+      return;
+    }
   }
-  if (!browserOnly && state.credits?.remaining === 0) { say('note', 'Your five free AI credits have been used. Your existing review remains available.'); return; }
   if (browserOnly && state.file) {
     say('note', 'Read the selected Active Statement with its password in the browser, or remove the file before asking a question. This page does not send PDFs to AI.');
     return;
@@ -720,7 +744,7 @@ $('#clear-review').addEventListener('click', () => {
   if (browserOnly) state.account = { portfolio: null, revision: 0 };
   state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.history = []; clearFile();
   $('#messages').replaceChildren();
-  say('assistant', browserOnly ? 'Attach a CAMS Active Statement or holdings CSV/XLSX to begin. This browser review can then answer factual questions.' :
+  say('assistant', browserOnly ? 'Describe one holding or attach a CAMS Active Statement or holdings report. After you confirm a draft, this browser review can answer factual questions.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
   renderDrafts(); renderGoalDraft(); renderReview();
 });
@@ -735,8 +759,7 @@ if (browserOnly) {
   renderAccountActions();
   if (status?.credits && Number.isInteger(status.credits.remaining)) state.credits = status.credits;
   renderCredits();
-  $('#service-status').textContent = state.capacityReached ? 'Free AI capacity reached' :
-    state.available ? 'AI ready' : 'AI unavailable · CAMS preview still works';
+  $('#service-status').textContent = assistantStatusText();
   if (state.hosted && !state.confirmed.length) {
     try {
       const response = await fetch('/api/portfolio', { cache: 'no-store' });
