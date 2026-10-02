@@ -171,6 +171,19 @@ function nextFundCategoryQuestion(portfolio) {
   return index < 0 ? null : `Holding #${index + 1} is labelled Other. Can you check its individual scheme source for a clear Equity, Debt or Gold category? If so, say “classify holding ${index + 1} as Equity” with the category you found, then confirm it. Otherwise keep it as Other.`;
 }
 
+function nextGoalSetupQuestion(portfolio) {
+  const goal = portfolio?.goals?.find(item => item.id === portfolio.activeGoalId);
+  if (!goal) return null;
+  if (!goal.confirmed)
+    return `For ${goal.name}: ${nextBrowserGoalQuestion(goal)}`;
+  if (portfolio.goals.length === 1 && portfolio.holdings.some(row =>
+    row.id && !goal.linkedIds?.includes(row.id)))
+    return `Some confirmed holdings are not counted toward ${goal.name}. If they all belong to this goal, say “count all holdings toward this goal”. I will ask you to confirm before changing the goal comparison.`;
+  if (!goal.targetMix)
+    return `If you have already chosen an asset mix for ${goal.name}, say “goal mix 60% equity, 30% debt, 10% gold” with your percentages. I can compare them with linked holdings, but cannot choose them for you.`;
+  return 'Ask “What should I check first?” to see the highest-priority factual review item for these holdings and this goal.';
+}
+
 function say(role, text, question = null) {
   const item = document.createElement('div');
   item.className = `message ${role}`;
@@ -485,7 +498,12 @@ function renderGoalReview() {
 }
 
 async function assignGoalHoldings() {
-  if (state.busy || !state.account) return;
+  if (state.busy) return;
+  if (!state.account) { say('note', 'Add and confirm a holding and goal before assigning them.'); return; }
+  if (state.drafts.length || state.goalFacts || state.reserveFacts || state.correction || state.refresh) {
+    say('note', 'Confirm or discard the pending holding, goal, reserve or report change before assigning holdings.');
+    return;
+  }
   const prepared = prepareAssistantGoalAssignment(state.account.portfolio);
   if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
   if (!window.confirm(`Count ${prepared.addedCount} currently unassigned confirmed holding${prepared.addedCount === 1 ? '' : 's'} toward the selected goal? Their value will appear in its comparison.`)) return;
@@ -494,6 +512,10 @@ async function assignGoalHoldings() {
     await writeAccount(prepared.portfolio,
       'The saved review changed in another tab. Check the latest goal and holdings before assigning them.');
     say('note', `${prepared.addedCount} holding${prepared.addedCount === 1 ? '' : 's'} now counted toward the selected goal. The portfolio total has not changed.`);
+    if (browserOnly) {
+      const next = nextGoalSetupQuestion(state.account?.portfolio);
+      if (next) say('assistant', next);
+    }
   } catch (error) { say('note', error.message || 'The goal assignment could not be saved.'); }
   finally { state.busy = false; renderCredits(); renderGoalReview(); renderGoalDraft(); }
 }
@@ -801,6 +823,11 @@ $('#composer').addEventListener('submit', async event => {
   if (state.busy) return;
   const message = $('#message').value.trim();
   if (!message && !state.file) return;
+  if (message && !state.file && /^count all (?:unassigned )?holdings toward (?:this|selected) goal[.!]?$/i.test(message)) {
+    say('user', message); $('#message').value = '';
+    await assignGoalHoldings();
+    return;
+  }
   const goalCommand = message && !state.file ? parseAssistantGoalCommand(message) : null;
   if (goalCommand) {
     say('user', message); $('#message').value = '';
@@ -1012,8 +1039,11 @@ $('#confirm-drafts').addEventListener('click', async () => {
       if (!state.coveragePrompted && !state.account?.portfolio?.coverage) {
         state.coveragePrompted = true;
         say('assistant', 'Before treating this as your full portfolio, have you included all your mutual funds and directly held stocks? You can reply “I included all my mutual funds”, “I included some of my direct stocks”, or “I have no mutual funds”. I will ask you to confirm the answer.');
-      } else if (nextFundCategoryQuestion(state.account?.portfolio))
-        say('assistant', nextFundCategoryQuestion(state.account.portfolio));
+      } else {
+        const next = nextFundCategoryQuestion(state.account?.portfolio) ||
+          nextGoalSetupQuestion(state.account?.portfolio);
+        if (next) say('assistant', next);
+      }
     } catch (error) { say('note', error.message || 'The account save failed. Your drafts are still here.'); }
     finally { state.busy = false; renderDrafts(); renderCredits(); renderGoalReview(); renderGoalDraft(); }
     return;
@@ -1057,8 +1087,10 @@ $('#confirm-goal').addEventListener('click', async () => {
     const goal = prepared.portfolio.goals.find(item => item.id === prepared.portfolio.activeGoalId);
     say('note', goal.confirmed ? `Goal facts ${browserOnly ? 'added to this tab' : 'saved to your account'}. The goal review has been recalculated.` :
       'Goal facts saved as an unfinished draft. Share the remaining details when you are ready.');
-    if (browserOnly && completingGoalSetup && goal.confirmed && !goal.targetMix)
-      say('assistant', 'If you have already chosen an asset mix for this goal, you can say “goal mix 60% equity, 30% debt, 10% gold”. I can compare your linked holdings with it; I cannot choose percentages for you.');
+    if (browserOnly && completingGoalSetup && goal.confirmed) {
+      const next = nextGoalSetupQuestion(state.account?.portfolio);
+      if (next) say('assistant', next);
+    }
   } catch (error) { say('note', error.message || 'The goal save failed. Your draft is still here.'); }
   finally { state.busy = false; renderGoalDraft(); renderCredits(); renderGoalReview(); }
 });
@@ -1099,7 +1131,8 @@ $('#confirm-correction')?.addEventListener('click', async () => {
     state.correction = null;
     say('note', correction.result);
     if (correction.kind === 'classify' || correction.firstCoverageAnswer) {
-      const question = nextFundCategoryQuestion(state.account?.portfolio);
+      const question = nextFundCategoryQuestion(state.account?.portfolio) ||
+        nextGoalSetupQuestion(state.account?.portfolio);
       if (question) say('assistant', question);
     }
   } catch (error) { say('note', error.message || 'The correction could not be saved. Check the preview and try again.'); }

@@ -37,6 +37,19 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       'Names and expense ratios are not independently verified. A plan label alone does not establish current TER, tax, exit load, service value or whether to switch.', '#holdings', 'Check fund plan labels');
   }
 
+  if (/^(?:what should i do(?: next)?|how (?:can|do) i improve (?:my )?(?:portfolio|review|investments?)|where should i start)[?.!]*$/.test(input)) {
+    if (!valid.length) return answer('Start by adding and confirming a current holding from a supported statement or broker report. Then I can show what the entered portfolio contains and what needs checking.',
+      'No confirmed holding value is available for a factual review.',
+      'I cannot choose investments or trades; an import remains a draft until you confirm it.', '#holdings', 'Add a holding');
+    const first = result.findings?.[0];
+    if (first) return answer(`Start with this factual check: ${first.title}. ${first.detail} ${first.question}`,
+      first.basis,
+      `${first.limitation} This check does not select a trade or personal allocation.`, '#review', 'See this review check');
+    return answer('The entered snapshot has no flagged first check. Review its scope, valuation dates, and your selected goal before making a decision.',
+      `${valid.length} confirmed holding ${valid.length === 1 ? 'row' : 'rows'}; ${result.asOfSummary}.`,
+      'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
+  }
+
   if (/\b(buy|sell|switch|redeem|rebalance|rebalancing|optimi[sz](?:e|ation|ing)?|recommend\w*|what should i do|should i hold|which fund|best fund|right mix|ideal mix|suitable|how much should i invest|choose|pick|prefer|better|convert|move)\b/.test(input))
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
