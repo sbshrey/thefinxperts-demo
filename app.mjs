@@ -1737,23 +1737,30 @@ $('#download-review').addEventListener('click', () => {
   $('#backup-status').textContent = 'Review file downloaded. Keep it private; no copy was saved by this page.';
 });
 
+function showRestoreStatus(message) {
+  $('#backup-status').textContent = message;
+  $('#restore-hero-status').textContent = message;
+  $('#restore-hero-status').hidden = !message;
+}
+$('#restore-hero').addEventListener('click', () => $('#restore-review').click());
 $('#restore-shortcut').addEventListener('click', () => $('#restore-review').click());
 $('#restore-review').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
+  showRestoreStatus('');
   try {
     if (file.size > 2_000_000 || !file.name.toLowerCase().endsWith('.json')) throw new Error('Invalid file');
     const parsed = parseReviewBackup(await file.text());
     if (parsed.errors.length) {
-      $('#backup-status').textContent = parsed.errors[0];
+      showRestoreStatus(parsed.errors[0]);
       return;
     }
     if (!window.confirm('Replace the holdings and goals currently in this tab with this review file?')) return;
     applyPortfolio(parsed.portfolio);
-    $('#backup-status').textContent = 'Review restored in this tab. Download a new file after making changes.';
+    showRestoreStatus('Review restored in this tab. Download a new file after making changes.');
     $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch {
-    $('#backup-status').textContent = 'The review file could not be read. Your current view is unchanged.';
+    showRestoreStatus('The review file could not be read. Your current view is unchanged.');
   } finally {
     event.target.value = '';
   }
