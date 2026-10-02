@@ -7,7 +7,13 @@ const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
 const AMFI = /^\d{5,8}$/;
 const TYPES = new Set(['Mutual fund', 'Stock']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
-const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId', 'reserve'];
+const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId', 'reserve', 'coverage'];
+const COVERAGE = new Set(['all', 'some', 'none', 'unsure']);
+function validCoverage(value) {
+  return record(value) && Object.keys(value).length === 2 &&
+    Object.keys(value).every(key => ['mutualFunds', 'directStocks'].includes(key)) &&
+    COVERAGE.has(value.mutualFunds) && COVERAGE.has(value.directStocks);
+}
 const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
@@ -28,6 +34,8 @@ export function buildReviewBackup(state) {
       ...(goal.allocationPct ? { allocationPct: { ...goal.allocationPct } } : {}) })),
     activeGoalId: state.activeGoalId,
     ...(state.reserve ? { reserve: { ...state.reserve } } : {}),
+    ...(state.coverage ? { coverage: { mutualFunds: state.coverage.mutualFunds,
+      directStocks: state.coverage.directStocks } } : {}),
   };
 }
 
@@ -43,7 +51,8 @@ export function parseReviewBackup(text) {
       !Array.isArray(document.holdings) || document.holdings.length > 500 ||
       !Array.isArray(document.goals) || document.goals.length < 1 || document.goals.length > 10 ||
       !isUuid(document.activeGoalId) ||
-      (document.reserve !== undefined && !validReserve(document.reserve))) {
+      (document.reserve !== undefined && !validReserve(document.reserve)) ||
+      (document.coverage !== undefined && !validCoverage(document.coverage))) {
     return invalid('This is not a supported TheFinxperts review file.');
   }
 
@@ -81,6 +90,10 @@ export function parseReviewBackup(text) {
     holdings.push({ ...holding, name: holding.name.trim(), amc: holding.amc?.trim() || null });
   }
   if (total > 1_000_000_000_000) return invalid('The combined portfolio value is too large.');
+  if (document.coverage?.mutualFunds === 'none' && holdings.some(holding => holding.type === 'Mutual fund') ||
+      document.coverage?.directStocks === 'none' && holdings.some(holding => holding.type === 'Stock')) {
+    return invalid('The holdings conflict with the portfolio coverage answers.');
+  }
 
   const goalIds = new Set();
   const assigned = new Map();
@@ -124,7 +137,8 @@ export function parseReviewBackup(text) {
   }
   if (!goalIds.has(document.activeGoalId)) return invalid('The selected goal is missing from the review file.');
   return { portfolio: { version: 2, holdings, goals, activeGoalId: document.activeGoalId,
-    ...(document.reserve ? { reserve: { ...document.reserve } } : {}) }, errors: [] };
+    ...(document.reserve ? { reserve: { ...document.reserve } } : {}),
+    ...(document.coverage ? { coverage: { ...document.coverage } } : {}) }, errors: [] };
 }
 
 function invalid(message) { return { portfolio: null, errors: [message] }; }

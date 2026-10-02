@@ -14,7 +14,8 @@ function demoGoal() {
     returnPct: 0, inflationPct: 0, equityDropPct: 20, confirmed: false, linkedIds: sampleHoldings.map(holding => holding.id) };
 }
 const firstGoal = demoGoal();
-const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals: [firstGoal], activeGoalId: firstGoal.id, goal: firstGoal, reserve: null };
+const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals: [firstGoal], activeGoalId: firstGoal.id, goal: firstGoal, reserve: null, coverage: null };
+const coverageLabel = value => ({ all: 'all included', some: 'some still missing', none: 'none owned', unsure: 'unsure' })[value];
 const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
 const $ = selector => document.querySelector(selector);
 const indiaToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
@@ -169,6 +170,13 @@ function render() {
   $('#portfolio-value').textContent = rupees(result.total);
   $('#portfolio-value-label').textContent = state.source === 'demo' ? 'Example holdings total' : 'Entered holdings total';
   $('#portfolio-scope').hidden = state.source !== 'user' || !state.holdings.length;
+  $('#coverage-summary').hidden = state.source !== 'user' || !state.holdings.length;
+  $('#coverage-details').hidden = state.source !== 'user' || !state.holdings.length;
+  $('#coverage-summary').textContent = state.coverage
+    ? `Your answer: mutual funds ${coverageLabel(state.coverage.mutualFunds)}; direct stocks ${coverageLabel(state.coverage.directStocks)}. This is self reported and has not been verified.`
+    : 'Coverage not checked yet. This snapshot may be partial.';
+  $('#coverage-mutual-funds').value = state.coverage?.mutualFunds || '';
+  $('#coverage-direct-stocks').value = state.coverage?.directStocks || '';
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
   $('#goal-years-value').textContent = needsGoalConfirmation ? 'Goal details needed' : `${state.goal.years} years`;
   $('#age-at-goal').textContent = pauseGoalFigures ? 'Goal figures paused' : `Age ${Number(state.goal.age) + Number(state.goal.years)} at the goal date`;
@@ -564,6 +572,7 @@ function render() {
     remove.textContent = '×';
     remove.addEventListener('click', () => {
       state.holdings = state.holdings.filter(h => h.id !== holding.id);
+      state.coverage = null;
       state.goals = removeHoldingAllocation(state.goals, holding.id);
       state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
       render();
@@ -758,6 +767,7 @@ $('#holding-form').addEventListener('submit', event => {
     ...(isin ? { isin } : {}), exposure: type === 'Stock' ? { [name]: 1 } : null };
   if (state.source === 'demo') clearCurrentReview();
   state.holdings.push(added);
+  state.coverage = null;
   state.goals = setGoalHolding(state.goals, state.activeGoalId, added.id, true);
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   event.target.reset();
@@ -771,11 +781,28 @@ $('#holding-type').addEventListener('change', () => {
   $('#holding-asset').disabled = stock;
 });
 
+$('#coverage-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const mutualFunds = $('#coverage-mutual-funds').value;
+  const directStocks = $('#coverage-direct-stocks').value;
+  if (!['all', 'some', 'none', 'unsure'].includes(mutualFunds) ||
+      !['all', 'some', 'none', 'unsure'].includes(directStocks) ||
+      mutualFunds === 'none' && state.holdings.some(holding => holding.type === 'Mutual fund') ||
+      directStocks === 'none' && state.holdings.some(holding => holding.type === 'Stock')) {
+    $('#coverage-error').textContent = 'Answer both questions and check “I own none” against the holdings above.';
+    return;
+  }
+  $('#coverage-error').textContent = '';
+  state.coverage = { mutualFunds, directStocks };
+  render();
+});
+
 function clearCurrentReview() {
   pendingImport = null;
   pendingPerformance.clear();
   $('#import-preview').hidden = true;
   state.holdings = [];
+  state.coverage = null;
   state.reserve = null;
   fillReserveForm();
   const fromExample = state.source === 'demo';
@@ -839,6 +866,7 @@ $('#reset-demo').addEventListener('click', () => {
   pendingPerformance.clear();
   $('#import-preview').hidden = true;
   state.holdings = structuredClone(sampleHoldings);
+  state.coverage = null;
   state.reserve = null;
   fillReserveForm();
   state.goals = [demoGoal()];
@@ -1250,6 +1278,7 @@ function applyImport(mode) {
     if (refresh.removed.length && !window.confirm(`${refresh.removed.length} existing fund ${refresh.removed.length === 1 ? 'row is' : 'rows are'} absent from this newer statement. Remove those rows and their goal links? Check the statement is complete before continuing.`)) return;
     const added = refresh.added.map(holding => ({ ...holding, id: crypto.randomUUID(), exposure: null }));
     state.holdings = [...refresh.holdings, ...added];
+    state.coverage = null;
     state.goals = refresh.removed.reduce((goals, holding) =>
       removeHoldingAllocation(goals, holding.id), state.goals);
     if (added.length) state.goals = linkAddedHoldings(state.goals, state.activeGoalId, added);
@@ -1278,6 +1307,7 @@ function applyImport(mode) {
     ? linkAddedHoldings(state.goals, state.activeGoalId, imported)
     : relinkAfterReplacingHoldings(state.goals, state.activeGoalId, imported);
   state.holdings = mode === 'add' ? [...state.holdings, ...imported] : imported;
+  state.coverage = null;
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   state.source = 'user';
   if (fromExample) fillGoalForm(state.goal);
@@ -1331,6 +1361,7 @@ function applyPortfolio(portfolio) {
   state.holdings = saved.holdings.map(holding => ({ ...holding,
     exposure: holding.type === 'Stock' ? { [holding.name]: 1 } : null }));
   state.reserve = saved.reserve || null;
+  state.coverage = saved.coverage || null;
   fillReserveForm();
   state.goals = saved.goals;
   state.activeGoalId = saved.activeGoalId;

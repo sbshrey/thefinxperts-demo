@@ -27,6 +27,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     'PORTFOLIO SNAPSHOT',
     `Entered value: ${rupees(result.total)} across ${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`,
     'Scope: only the holdings entered or imported here; check other fund and broker statements before treating this as your full portfolio.',
+    ...(state.coverage ? [`Self reported coverage (unverified): mutual funds ${coverageText(state.coverage.mutualFunds)}; direct stocks ${coverageText(state.coverage.directStocks)}. Other assets such as deposits, EPF and NPS are outside this review.`] : ['Self reported coverage: not answered; this snapshot may be partial.']),
     `Valuation dates: ${result.asOfSummary}`,
     `Asset mix: ${MIX_ASSETS.map(asset => `${asset} ${result.total ? (result.assets[asset] / result.total * 100).toFixed(1) : '0.0'}%`).join(' | ')}`,
     `Fund plan labels from entered names: Regular ${rupees(result.fundPlans.Regular)} | Direct ${rupees(result.fundPlans.Direct)} | unclear ${rupees(result.fundPlans.Unclear)}; current expense ratios not verified`,
@@ -114,4 +115,8 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     'This educational review does not recommend buying, selling or rebalancing a security.',
     'Keep the separate JSON backup if you want to restore this review later.', '');
   return lines.join('\n');
+}
+
+function coverageText(value) {
+  return ({ all: 'all included', some: 'some missing', none: 'none owned', unsure: 'unsure' })[value] || 'unsure';
 }
