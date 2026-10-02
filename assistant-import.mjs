@@ -4,7 +4,52 @@ import { readBrokerWorkbook } from './broker-xlsx-browser.mjs';
 
 const MAX_CHAT_DRAFTS = 30;
 
-function brokerDrafts(rows, source, strictWidth, aiAvailable) {
+const BROKER_METADATA_HEADERS = {
+  type: new Set(['holding type', 'security type', 'instrument type']),
+  asset: new Set(['asset class', 'asset category']),
+  asOf: new Set(['value date', 'valuation date', 'as of date']),
+};
+
+function brokerMetadataColumns(header, reserved) {
+  const found = { type: null, asset: null, asOf: null };
+  for (const [index, cell] of header.entries()) {
+    const label = String(cell ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+    for (const [field, labels] of Object.entries(BROKER_METADATA_HEADERS)) {
+      if (!labels.has(label)) continue;
+      if (reserved.has(index) || found[field] !== null)
+        return { error: `The report has ambiguous ${field === 'asOf' ? 'valuation date' : field} columns. Check the header before importing.` };
+      found[field] = index;
+    }
+  }
+  return found;
+}
+
+function explicitType(value) {
+  const label = String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!label) return 'Other';
+  if (['stock', 'share', 'equity share', 'equity shares', 'direct equity'].includes(label)) return 'Stock';
+  if (['mutual fund', 'mutual funds', 'mf'].includes(label)) return 'Mutual fund';
+  return null;
+}
+
+function explicitAsset(value) {
+  const label = String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!label) return 'Other';
+  return { equity: 'Equity', debt: 'Debt', gold: 'Gold', other: 'Other',
+    mixed: 'Other', hybrid: 'Other', unknown: 'Other' }[label] || null;
+}
+
+function explicitDate(value) {
+  const label = String(value ?? '').trim();
+  if (!label) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(label)) return false;
+  const date = new Date(`${label}T00:00:00Z`);
+  const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  return Number.isFinite(date.valueOf()) && date.toISOString().slice(0, 10) === label && label <= today ? label : false;
+}
+
+/** Stage only fields stated in distinct, compatible broker columns. */
+export function brokerDrafts(rows, source, strictWidth, aiAvailable) {
   const suggested = suggestBrokerColumns(rows);
   if (suggested.name === '' || suggested.value === '' || suggested.name === suggested.value) {
     return { drafts: [], errors: ['I could not identify separate security and current market value columns. Use a broker holdings report with those headings.'] };
@@ -20,9 +65,33 @@ function brokerDrafts(rows, source, strictWidth, aiAvailable) {
   if (result.holdings.some(row => row.name.length > 80)) {
     return { drafts: [], errors: ['A security name exceeds the saved review limit of 80 characters. Use the guided import to check it.'] };
   }
-  return { drafts: result.holdings.map(row => ({ name: row.name, type: 'Other', asset: 'Other',
-    value: row.value, asOf: null, ...(row.isin ? { isin: row.isin } : {}), entryOrigin: source })),
-  errors: [], message: `Found ${result.holdings.length} possible holding${result.holdings.length === 1 ? '' : 's'} in the broker report. The file stayed in this browser. Please confirm each row is a fund or directly held stock; its valuation date remains unknown until you provide one. ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
+  const metadata = brokerMetadataColumns(rows[suggested.headerIndex],
+    new Set([suggested.name, suggested.value, suggested.isin].filter(value => value !== '').map(Number)));
+  if (metadata.error) return { drafts: [], errors: [metadata.error] };
+  const dataRows = rows.slice(suggested.headerIndex + 1).map((row, offset) => ({ row, number: suggested.headerIndex + offset + 2 }))
+    .filter(({ row }) => Array.isArray(row) && row.some(cell => cell != null && String(cell).trim() !== '') &&
+      !/^(?:grand )?total$/i.test(String(row[Number(suggested.name)] ?? '').trim()));
+  if (dataRows.length !== result.holdings.length || dataRows.some(({ row }, index) =>
+    String(row[Number(suggested.name)] ?? '').trim() !== result.holdings[index].name))
+    return { drafts: [], errors: ['The report rows could not be matched to the parsed holdings. Check the file before importing.'] };
+  const drafts = [];
+  for (const [index, holding] of result.holdings.entries()) {
+    const { row, number } = dataRows[index];
+    const type = metadata.type === null ? 'Other' : explicitType(row[metadata.type]);
+    const asset = metadata.asset === null ? 'Other' : explicitAsset(row[metadata.asset]);
+    const asOf = metadata.asOf === null ? null : explicitDate(row[metadata.asOf]);
+    if (type === null || asset === null || asOf === false || type === 'Stock' && asset !== 'Other' && asset !== 'Equity') {
+      return { drafts: [], errors: [`Report row ${number}: check the holding type, asset class and ISO valuation date (YYYY-MM-DD). Unsupported or conflicting labels cannot be imported.`] };
+    }
+    drafts.push({ name: holding.name, type, asset: type === 'Stock' ? 'Equity' : asset,
+      value: holding.value, asOf, ...(holding.isin ? { isin: holding.isin } : {}), entryOrigin: source });
+  }
+  const typed = drafts.filter(row => row.type !== 'Other').length;
+  const dated = drafts.filter(row => row.asOf).length;
+  const metadataNote = metadata.type !== null || metadata.asset !== null || metadata.asOf !== null ?
+    `Used explicit report fields for ${typed} type${typed === 1 ? '' : 's'} and ${dated} valuation date${dated === 1 ? '' : 's'}; check every row. Missing fields remain unknown.` :
+    'Please confirm each row is a fund or directly held stock; its valuation date remains unknown until you provide one.';
+  return { drafts, errors: [], message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the broker report. The file stayed in this browser. ${metadataNote} ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
 }
 
 /** Prepare unconfirmed chat rows from supported CSV or XLSX exports without an upload. */
