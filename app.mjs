@@ -1116,7 +1116,7 @@ $('#preview-active').addEventListener('click', async () => {
     $('#active-password').disabled = false;
     $('#active-file').value = '';
     button.disabled = false;
-    button.textContent = 'Preview fund-house totals';
+    button.textContent = 'Preview statement';
   }
 });
 

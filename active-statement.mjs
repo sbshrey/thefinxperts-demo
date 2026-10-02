@@ -1,7 +1,8 @@
 /**
  * Read the HTML attachment embedded in some CAMS Active Statement PDFs.
  * This deliberately never evaluates its scripts or retains investor and folio fields.
- * The statement is an AMC-level snapshot, not a scheme-level CAS.
+ * The issuer's statement has scheme detail; this importer uses it only when
+ * every detected row can be reconciled without running statement scripts.
  */
 export function parseActiveStatementHtml(html) {
   const errors = [];
@@ -45,6 +46,15 @@ export function parseActiveStatementHtml(html) {
   if (!matched) errors.push('No fund-house summary rows were found in the statement.');
   if (errors.length) return { holdings: [], errors: errors.slice(0, 5), notices: [] };
 
+  const schemes = parseSchemeRows(html, rows, asOf);
+  if (schemes.holdings) {
+    return { holdings: schemes.holdings, errors: [], notices: [
+      'Individual scheme rows reconcile to the fund-house summary in this statement. Scheme names, units and values are still unverified statement data; ISINs and underlying fund constituents remain unknown.',
+      'Equity and non-equity labels are inferred only from the statement summary where the arithmetic gives one unique answer. Non-equity stays Other until its debt, gold or other category is checked.',
+    ] };
+  }
+  if (schemes.detected) notices.unshift('Scheme rows could not be fully reconciled, so only fund-house totals are shown.');
+
   const holdings = [];
   for (const [amc, values] of rows) {
     for (const [asset, paise] of [['Equity', values.equity], ['Other', values.other]]) {
@@ -58,6 +68,81 @@ export function parseActiveStatementHtml(html) {
   if (holdings.reduce((sum, holding) => sum + holding.value, 0) > 1_000_000_000_000)
     errors.push('The combined statement value is too large.');
   return { holdings: errors.length ? [] : holdings, errors, notices };
+}
+
+/** Parse a narrow, observed CAMS scheme-row template as text, never as JavaScript. */
+function parseSchemeRows(html, summaries, asOf) {
+  const fail = () => ({ detected: true, holdings: null });
+  const lines = html.split(/\r?\n/);
+  const groups = new Map();
+  let code = null;
+  let codeLine = -100;
+  let detected = 0;
+  for (let index = 0; index < lines.length - 1; index++) {
+    const assignment = /^\s*amc_code\s*=\s*'([A-Za-z0-9]{1,12})';/.exec(lines[index]);
+    if (assignment) { code = assignment[1]; codeLine = index; }
+    const line = lines[index];
+    if (!line.includes('document.writeln') || !line.includes('repApos(') ||
+        !/\+\s*broker\s*\+/.test(line)) continue;
+    detected++;
+    if (detected > 200 || !code || index - codeLine > 40 ||
+        !lines[index + 1].includes('document.writeln')) return fail();
+    const schemeMatch = /repApos\("([^"\r\n]+)"\)/.exec(line);
+    const fragments = [...(line + lines[index + 1]).matchAll(/'(?:\\.|[^'\\])*'/g)]
+      .map(match => match[0].slice(1, -1));
+    const cells = [...fragments.join('').matchAll(/<td\b[^>]*>(.*?)<\/td>/g)]
+      .map(match => cleanText(match[1]));
+    if (!schemeMatch || cells.length !== 8 || cells[1] || cells[0].length > 30)
+      return fail();
+    const name = cleanText(schemeMatch[1]);
+    const units = numericString(cells[3], 6, true);
+    const nav = numericString(cells[4], 6, true);
+    const valuePaise = amountPaise(cells[5]);
+    if (!name || name.length > 200 || units === null || !nav || valuePaise === null ||
+        (valuePaise > 0 && (Number(units) === 0 || Number(nav) === 0)) ||
+        Math.abs(Number(units) * Number(nav) - valuePaise / 100) > Math.max(1, valuePaise / 10_000_000))
+      return fail();
+    if (!groups.has(code)) groups.set(code, []);
+    if (valuePaise > 0) groups.get(code).push({ name, units, valuePaise });
+  }
+  if (!detected) return { detected: false, holdings: null };
+  const positiveSummaries = [...summaries].map(([amc, values]) => ({ amc, ...values,
+    total: values.equity + values.other })).filter(item => item.total > 0);
+  const positiveGroups = [...groups.values()].filter(items => items.length);
+  if (positiveGroups.length !== positiveSummaries.length) return fail();
+
+  const used = new Set();
+  const holdings = [];
+  for (const items of positiveGroups) {
+    if (items.length > 16) return fail();
+    const total = items.reduce((sum, item) => sum + item.valuePaise, 0);
+    const matches = positiveSummaries.filter(item => Math.abs(item.total - total) <= 100);
+    if (matches.length !== 1 || used.has(matches[0].amc)) return fail();
+    const summary = matches[0];
+    used.add(summary.amc);
+    let uniqueMask = null;
+    for (let mask = 0; mask < 2 ** items.length; mask++) {
+      let equity = 0;
+      for (let part = 0; part < items.length; part++) if (mask & (1 << part)) equity += items[part].valuePaise;
+      if (Math.abs(equity - summary.equity) <= 100) {
+        if (uniqueMask !== null) return fail();
+        uniqueMask = mask;
+      }
+    }
+    if (uniqueMask === null) return fail();
+    items.forEach((item, part) => holdings.push({
+      id: `active-scheme-${holdings.length + 1}`, name: item.name, type: 'Mutual fund',
+      asset: uniqueMask & (1 << part) ? 'Equity' : 'Other', value: item.valuePaise / 100,
+      asOf, amc: summary.amc, isin: null, amfi: null, units: item.units, exposure: null,
+    }));
+  }
+  return { detected: true, holdings: holdings.length && used.size === positiveSummaries.length ? holdings : null };
+}
+
+function numericString(raw, maxDecimals, allowZero = false) {
+  const value = raw.replace(/,/g, '');
+  if (!new RegExp(`^(?:0|[1-9]\\d{0,9})(?:\\.\\d{1,${maxDecimals}})?$`).test(value)) return null;
+  return Number(value) > 0 || (allowZero && Number(value) === 0) ? value : null;
 }
 
 function amountPaise(raw) {
