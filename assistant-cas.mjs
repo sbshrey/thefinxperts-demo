@@ -8,7 +8,7 @@ function validDate(value) {
 }
 
 /** Accept only the normalized, identity-free result from the private CAS endpoint. */
-export function prepareAssistantCasDrafts(result, { local = false } = {}) {
+export function prepareAssistantCasDrafts(result, { local = false, browser = false } = {}) {
   if (!result || !Array.isArray(result.holdings) || !Array.isArray(result.errors) || result.errors.length)
     return { drafts: [], errors: result?.errors?.length ? result.errors.slice(0, 5) : ['The CAS preview was incomplete.'] };
   if (result.source != null && !['CAS', 'Demat CAS'].includes(result.source))
@@ -36,5 +36,5 @@ export function prepareAssistantCasDrafts(result, { local = false } = {}) {
       ...(row.isin ? { isin: row.isin } : {}), ...(row.amc ? { amc: row.amc } : {}),
       ...(row.amfi ? { amfi: row.amfi } : {}), ...(row.units ? { units: row.units } : {}) });
   }
-  return { drafts, errors: [], message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS. The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview. Check the rows before confirming. If you later ask AI about these drafts, their names and values may be sent.` };
+  return { drafts, errors: [], message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS. ${browser ? 'This browser tab read the PDF and password; neither was sent to a server.' : `The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview.`} Check the rows before confirming.${browser ? '' : ' If you later ask AI about these drafts, their names and values may be sent.'}` };
 }

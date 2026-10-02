@@ -1,4 +1,5 @@
 import { previewActiveStatementFile } from './active-statement-pdf.mjs';
+import { previewBrowserCas } from './cas-browser.mjs';
 import { prepareAssistantSave, findAssistantOverlap } from './assistant-save.mjs';
 import { buildAssistantGoalReview, buildAssistantReviewChecks } from './assistant-review.mjs';
 import { goalShare } from './goals.mjs';
@@ -112,6 +113,8 @@ const casStatusPromise = browserOnly ? Promise.resolve(false) : fetch('/api/cas/
     return state.casAvailable;
   })
   .catch(() => false);
+if (browserOnly) $('#cas-description').textContent =
+  'Read an original CAMS or KFintech mutual-fund CAS in this browser tab. The PDF and password stay here; confirm every holding before using it. This uses no AI credit.';
 
 function renderCredits() {
   const label = $('#credit-balance');
@@ -660,8 +663,13 @@ function stageActiveStatement(parsed) {
 
 async function offerUnsupportedPdf(file, parsed, allowAi = true) {
   if (browserOnly) {
-    say('note', `${parsed.errors[0] || 'This PDF could not be read in this browser.'} Try a CAMS Active Statement or a holdings CSV/XLSX. An original CAS PDF needs the private service.`);
-    clearFile(); return;
+    state.file = file;
+    setFileLabel('PDF selected · not sent');
+    $('#active-option').hidden = true;
+    $('#cas-option').hidden = false;
+    $('#pdf-consent-label').hidden = true;
+    say('note', `${parsed.errors[0] || 'This PDF is not a supported CAMS Active Statement.'} If it is an original CAMS or KFintech mutual-fund CAS, enter its password if needed and choose “Read as CAS in browser”.`);
+    return;
   }
   const casAvailable = await casStatusPromise;
   if (!/\.pdf$/i.test(file.name) || file.size > (casAvailable ? 15_000_000 : 4_000_000)) {
@@ -694,24 +702,30 @@ $('#active-preview').addEventListener('click', async () => {
 });
 
 $('#cas-preview').addEventListener('click', async () => {
-  if (state.busy || !state.file || !state.casAvailable) return;
+  if (state.busy || !state.file || (!state.casAvailable && !browserOnly)) return;
   const password = $('#cas-password').value;
-  if (!password) { say('note', 'Enter this original CAS PDF’s password to read it privately.'); return; }
-  state.busy = true; renderCredits(); setFileLabel('Reading the selected CAS with the signed-in server…');
+  if (!password && !browserOnly) { say('note', 'Enter this original CAS PDF’s password to read it privately.'); return; }
+  state.busy = true; renderCredits(); setFileLabel(browserOnly ?
+    'Reading the selected CAS in this browser…' : 'Reading the selected CAS with the signed-in server…');
   try {
-    const response = await fetch('/api/cas/preview', { method: 'POST', headers: {
-      'Content-Type': 'application/json', 'X-Thefinxperts-Intent': 'cas-preview',
-      ...(state.casLocal ? { 'X-Thefinxperts-Local': '1' } : {}),
-    }, body: JSON.stringify({ pdf: await encodedPdf(state.file), password }) });
-    const result = await response.json();
-    if (!response.ok && result.error) { say('note', result.error); return; }
-    const prepared = prepareAssistantCasDrafts(result, { local: state.casLocal });
+    let result;
+    if (browserOnly) result = await previewBrowserCas(state.file, password);
+    else {
+      const response = await fetch('/api/cas/preview', { method: 'POST', headers: {
+        'Content-Type': 'application/json', 'X-Thefinxperts-Intent': 'cas-preview',
+        ...(state.casLocal ? { 'X-Thefinxperts-Local': '1' } : {}),
+      }, body: JSON.stringify({ pdf: await encodedPdf(state.file), password }) });
+      result = await response.json();
+      if (!response.ok && result.error) { say('note', result.error); return; }
+    }
+    const prepared = prepareAssistantCasDrafts(result, { local: state.casLocal, browser: browserOnly });
     if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
     const drafts = prepared.drafts.map(row => normalizedDraft(row));
     if (drafts.some(row => !row)) { say('note', 'A CAS row could not be staged safely. No rows were added.'); return; }
     state.drafts = drafts;
     renderDrafts(); say('note', prepared.message); clearFile();
-  } catch { say('note', 'The private CAS preview failed. Try again or remove the PDF.'); }
+  } catch { say('note', browserOnly ? 'The browser CAS preview failed. Try again or remove the PDF.' :
+    'The private CAS preview failed. Try again or remove the PDF.'); }
   finally { $('#cas-password').value = ''; state.busy = false; renderCredits(); renderDrafts();
     if (state.file) setFileLabel('PDF selected · not sent to AI'); }
 });
@@ -756,9 +770,11 @@ $('#upload').addEventListener('change', async event => {
     state.file = file;
     setFileLabel('Password-protected PDF selected · not sent');
     $('#active-option').hidden = false;
-    $('#cas-option').hidden = !(await casStatusPromise);
+    $('#cas-option').hidden = !(browserOnly || await casStatusPromise);
     $('#pdf-consent-label').hidden = true;
-    say('note', 'Enter the PDF password in a masked field to try the browser preview. For an original CAS, signed-in private reading is available when enabled.');
+    say('note', browserOnly ?
+      'Enter the PDF password in a masked field. You can try the CAMS Active Statement preview or read an original CAMS/KFintech mutual-fund CAS in this browser tab.' :
+      'Enter the PDF password in a masked field to try the browser preview. For an original CAS, signed-in private reading is available when enabled.');
     return;
   }
   if (stageActiveStatement(parsed)) return;
