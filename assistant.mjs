@@ -6,7 +6,7 @@ import { goalShare } from './goals.mjs';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
   parseAssistantEmergencyFunding } from './assistant-goal.mjs';
-import { clarifyDrafts, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs';
+import { clarifyDrafts, classifyDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs';
 import { previewAssistantImport } from './assistant-import.mjs';
 import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
 import { analyzePortfolio } from './analysis.mjs';
@@ -195,9 +195,9 @@ function renderDrafts() {
   $('#draft-list').replaceChildren();
   if (!state.drafts.length) return;
   const list = document.createElement('ul');
-  for (const row of state.drafts) {
+  for (const [index, row] of state.drafts.entries()) {
     const item = document.createElement('li');
-    item.textContent = `${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}`;
+    item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}`;
     list.append(item);
   }
   $('#draft-list').append(list);
@@ -816,6 +816,16 @@ $('#composer').addEventListener('submit', async event => {
     return;
   }
   if (message && !state.file && state.drafts.length) {
+    const batch = classifyDraftsByNumbers(state.drafts, message);
+    if (batch) {
+      say('user', message); $('#message').value = '';
+      if (batch.error) say('note', batch.error);
+      else {
+        state.drafts = batch.drafts; renderDrafts();
+        say('assistant', `Drafts ${batch.numbers.map(number => `#${number}`).join(', ')} are labelled ${batch.asset}. Check every row against its individual scheme source before confirming. Saved holdings have not changed.`, batch.nextQuestion);
+      }
+      return;
+    }
     const skipped = skipDraftFromMessage(state.drafts, message);
     if (skipped) {
       say('user', message); $('#message').value = '';

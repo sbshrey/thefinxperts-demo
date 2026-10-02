@@ -19,6 +19,10 @@ export function nextDraftQuestion(drafts) {
   const pending = focus(drafts);
   if (!pending) return null;
   const name = drafts[pending.index].name;
+  const unknownFunds = drafts.filter(row => row.type === 'Mutual fund' &&
+    row.granularity !== 'fund_house' && row.asset === 'Other' && !row.assetChecked).length;
+  if (pending.field === 'asset' && unknownFunds > 1)
+    return `${unknownFunds} fund categories are unknown. Check each individual scheme source, then say “classify drafts 1-3 as Equity” or “classify drafts 1, 4 as Debt” using the numbered rows. You can leave any category unknown and still confirm.`;
   return {
     type: `Is “${name}” a mutual fund or a directly held stock?`,
     value: `What is the current value in rupees of “${name}”? Reply with an amount such as ₹50,000.`,
@@ -27,6 +31,35 @@ export function nextDraftQuestion(drafts) {
       `Optional: is “${name}” an Equity, Debt or Gold fund? Reply with one category, or “mixed/unknown” and I will keep its category unknown. You can also confirm it as unknown.`,
     asOf: `Optional: what date was the value of “${name}” checked? Reply YYYY-MM-DD, or confirm without a date.`,
   }[pending.field];
+}
+
+/** Label only explicitly numbered, individual mutual-fund drafts after source checking. */
+export function classifyDraftsByNumbers(drafts, message) {
+  if (!Array.isArray(drafts) || !drafts.length || typeof message !== 'string') return null;
+  if (!/^classify drafts?\b/i.test(message.trim())) return null;
+  const match = /^classify drafts?\s+([\d,\s-]+)\s+as\s+(equity|debt|gold|other|unknown)[.!]?$/i.exec(message.trim());
+  const help = 'Use numbered rows, for example “classify drafts 1-3 as Equity” or “classify drafts 1, 4 as Debt”, after checking each scheme source.';
+  if (!match) return { error: help };
+  const numbers = new Set();
+  for (const part of match[1].split(',')) {
+    const item = /^(\d{1,2})(?:\s*-\s*(\d{1,2}))?$/.exec(part.trim());
+    if (!item) return { error: help };
+    const start = Number(item[1]);
+    const end = item[2] ? Number(item[2]) : start;
+    if (start < 1 || end < start || end > drafts.length || end - start > 29)
+      return { error: 'One or more draft numbers are outside the current list. Check the numbered rows and try again.' };
+    for (let number = start; number <= end; number++) numbers.add(number);
+  }
+  if (!numbers.size) return { error: help };
+  const selected = [...numbers].sort((a, b) => a - b);
+  if (selected.some(number => drafts[number - 1].type !== 'Mutual fund' ||
+      drafts[number - 1].granularity === 'fund_house'))
+    return { error: 'Only individual mutual-fund schemes can be classified in this batch. No draft was changed.' };
+  const asset = match[2].toLowerCase() === 'unknown' ? 'Other' :
+    match[2][0].toUpperCase() + match[2].slice(1).toLowerCase();
+  const revised = drafts.map((row, index) => numbers.has(index + 1) ?
+    { ...row, asset, assetChecked: true } : row);
+  return { drafts: revised, numbers: selected, asset, nextQuestion: nextDraftQuestion(revised) };
 }
 
 export function parseAmount(message) {
