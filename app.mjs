@@ -959,6 +959,7 @@ function showImportPreview(holdings, label, notices, performance = []) {
   $('#cas-performance-note').hidden = label !== 'CAS';
   if (!label.startsWith('Broker ')) $('#broker-map').hidden = true;
   $('#import-preview').dataset.source = label;
+  $('#refresh-changes').open = false;
   renderImportRows();
   $('#import-preview').hidden = false;
   $('#live-status').textContent = `${label} ready to review: ${holdings.length} holdings.`;
@@ -991,6 +992,9 @@ function refreshImportSummary() {
     planActiveStatementRefresh(state.holdings, pendingImport) : null;
   $('#refresh-statement').hidden = !refresh;
   $('#refresh-explanation').hidden = !refresh;
+  $('#refresh-changes').hidden = !refresh;
+  const changeList = $('#refresh-change-list');
+  changeList.replaceChildren();
   if (refresh) {
     $('#refresh-statement').textContent = refresh.added.length || refresh.removed.length ?
       'Update funds from this statement' : 'Refresh matched funds';
@@ -998,6 +1002,21 @@ function refreshImportSummary() {
       `${refresh.added.length} new fund ${refresh.added.length === 1 ? 'row' : 'rows'} will be added; ` +
       `${refresh.removed.length} fund ${refresh.removed.length === 1 ? 'row' : 'rows'} absent from the newer statement will be removed. ` +
       'Direct stocks and links for matched funds stay in place. New funds link to the selected goal.';
+    const change = message => {
+      const row = document.createElement('li');
+      row.textContent = message;
+      changeList.append(row);
+    };
+    for (const holding of refresh.removed)
+      change(`Absent: ${holding.name} · ${rupees(holding.value)} as of ${holding.asOf}. This row and its goal links will be removed.`);
+    for (const holding of refresh.added)
+      change(`New: ${holding.name} · ${rupees(holding.value)} as of ${holding.asOf}. This row will link to the selected goal.`);
+    const oldById = new Map(state.holdings.map(holding => [holding.id, holding]));
+    for (const holding of refresh.holdings.filter(item => item.type === 'Mutual fund')) {
+      const old = oldById.get(holding.id);
+      const units = old.units && holding.units ? ` · units ${old.units} → ${holding.units}` : '';
+      change(`Matched: ${holding.name} · ${rupees(old.value)} as of ${old.asOf} → ${rupees(holding.value)} as of ${holding.asOf}${units}. Goal links stay in place.`);
+    }
   }
 }
 
