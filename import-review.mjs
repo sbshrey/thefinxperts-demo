@@ -55,6 +55,9 @@ export function validateImportMerge(existing, incoming) {
     for (const current of existing) {
       if (added.isin && current.isin && added.isin === current.isin)
         return [`Holding ${index + 1}: this ISIN already appears in your review. Check the two sources before adding it.`];
+      if (added.type === 'Mutual fund' && current.type === 'Mutual fund' &&
+          added.amfi && current.amfi && added.amfi === current.amfi)
+        return [`Holding ${index + 1}: this AMFI scheme code already appears in your review. Check the two sources before adding it.`];
       const sameName = typeof added.name === 'string' && typeof current.name === 'string' &&
         added.name.trim().toLocaleLowerCase('en-IN') === current.name.trim().toLocaleLowerCase('en-IN');
       if (sameName && added.type === current.type)
