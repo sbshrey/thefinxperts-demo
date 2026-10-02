@@ -183,10 +183,12 @@ function render() {
   $('#portfolio-value-label').textContent = state.source === 'demo' ? 'Example holdings total' : 'Entered holdings total';
   $('#portfolio-scope').hidden = state.source !== 'user' || !state.holdings.length;
   $('#coverage-summary').hidden = state.source !== 'user' || !state.holdings.length;
+  $('#coverage-quick-check').hidden = state.source !== 'user' || !state.holdings.length;
   $('#coverage-details').hidden = state.source !== 'user' || !state.holdings.length;
   $('#coverage-summary').textContent = state.coverage
     ? `Your answer: mutual funds ${coverageLabel(state.coverage.mutualFunds)}; direct stocks ${coverageLabel(state.coverage.directStocks)}. This is self reported and has not been verified.`
     : 'Coverage not checked yet. This snapshot may be partial.';
+  $('#coverage-quick-check').textContent = state.coverage ? 'Update what is included →' : 'Check what is included →';
   $('#coverage-mutual-funds').value = state.coverage?.mutualFunds || '';
   $('#coverage-direct-stocks').value = state.coverage?.directStocks || '';
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
@@ -841,6 +843,12 @@ $('#holding-type').addEventListener('change', () => {
   const stock = $('#holding-type').value === 'Stock';
   $('#holding-asset').value = stock ? 'Equity' : '';
   $('#holding-asset').disabled = stock;
+});
+
+$('#coverage-quick-check').addEventListener('click', () => {
+  $('#coverage-details').open = true;
+  $('#coverage-details').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('#coverage-mutual-funds').focus({ preventScroll: true });
 });
 
 $('#coverage-form').addEventListener('submit', event => {
