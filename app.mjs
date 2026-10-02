@@ -176,7 +176,8 @@ let hasSavedPortfolio = false;
 let accountRevision = null;
 let creatingGoal = false;
 let inputMode = 'manual';
-let casAvailable = false;
+let casAvailable = true;
+let casMode = 'browser';
 
 function selectGoal(id) {
   const selected = state.goals.find(goal => goal.id === id);
@@ -1577,14 +1578,12 @@ $('#preview-active').addEventListener('click', async () => {
 fetch('/api/cas/status', { cache: 'no-store' }).then(response => response.ok ? response.json() : null)
   .then(info => {
     if (info?.local === true) {
-      casAvailable = true;
-      $('#choose-cas').hidden = false;
+      casMode = 'local';
       showInputMode(inputMode);
       $('#cas-eyebrow').textContent = 'LOCAL CAS PREVIEW';
       $('#cas-description').textContent = 'The PDF and password go only to the preview server on this computer. They are not saved in project files or sent to the hosted service. Review the extracted holdings before replacing the example.';
     } else if (info?.available === true) {
-      casAvailable = true;
-      $('#choose-cas').hidden = false;
+      casMode = 'private';
       showInputMode(inputMode);
       $('#cas-eyebrow').textContent = 'PRIVATE CAS PREVIEW';
       $('#cas-description').textContent = 'Your signed-in server processes the PDF and password for this request. It returns a holdings preview and does not save the original PDF or password. Review every row before replacing your entries.';
@@ -1599,24 +1598,36 @@ $('#preview-cas').addEventListener('click', async () => {
   $('#cas-error').textContent = '';
   const file = $('#cas-file').files?.[0];
   const password = $('#cas-password').value;
-  if (!file || !file.name.toLowerCase().endsWith('.pdf') || file.size > 15_000_000 || !password) {
-    $('#cas-error').textContent = 'Choose an original PDF smaller than 15 MB and enter its password.';
+  if (!file || !file.name.toLowerCase().endsWith('.pdf') || file.size > 15_000_000 ||
+      (casMode !== 'browser' && !password)) {
+    $('#cas-error').textContent = 'Choose an original PDF smaller than 15 MB and enter its password if required.';
     return;
   }
   const button = $('#preview-cas');
   button.disabled = true;
-  button.textContent = 'Reading locally…';
+  button.textContent = casMode === 'browser' ? 'Reading in this browser…' : 'Reading privately…';
+  let keepFile = false;
   try {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    let binary = '';
-    for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
-    const response = await fetch('/api/cas/preview', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Local': '1', 'X-Thefinxperts-Intent': 'cas-preview' },
-      body: JSON.stringify({ pdf: btoa(binary), password }),
-    });
-    const result = await response.json();
-    if (!response.ok || result.errors?.length || !Array.isArray(result.holdings)) {
+    let result;
+    let responseOk = true;
+    if (casMode === 'browser') {
+      const { previewBrowserCas } = await import('./cas-browser.mjs');
+      result = await previewBrowserCas(file, password);
+    } else {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+      const response = await fetch('/api/cas/preview', {
+        method: 'POST', headers: { 'Content-Type': 'application/json',
+          'X-Thefinxperts-Local': '1', 'X-Thefinxperts-Intent': 'cas-preview' },
+        body: JSON.stringify({ pdf: btoa(binary), password }),
+      });
+      responseOk = response.ok;
+      result = await response.json();
+    }
+    if (!responseOk || result.errors?.length || !Array.isArray(result.holdings)) {
       $('#cas-error').textContent = result.errors?.slice(0, 5).join(' ') || result.error || 'The CAS could not be read.';
+      keepFile = casMode === 'browser' && /password did not open/i.test($('#cas-error').textContent);
       return;
     }
     showImportPreview(result.holdings, result.source || 'CAS', result.notices || [], result.performance || []);
@@ -1624,7 +1635,7 @@ $('#preview-cas').addEventListener('click', async () => {
     $('#cas-error').textContent = 'The CAS preview failed. Try again later.';
   } finally {
     $('#cas-password').value = '';
-    $('#cas-file').value = '';
+    if (!keepFile) $('#cas-file').value = '';
     button.disabled = false;
     button.textContent = 'Preview CAS holdings';
   }
