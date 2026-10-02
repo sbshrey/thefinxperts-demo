@@ -7,13 +7,14 @@ function micros(text) {
 }
 
 /** Paise rounded half up from exact six-place unit and NAV strings. */
-export function estimateNavValue(units, nav) {
+export function estimateUnitValue(units, nav) {
   if (typeof units !== 'string' || !UNIT.test(units) || !/[1-9]/.test(units) ||
       typeof nav !== 'string' || !NAV.test(nav) || !/[1-9]/.test(nav)) return null;
   const paise = (micros(units) * micros(nav) + 5_000_000_000n) / 10_000_000_000n;
   if (paise <= 0n || paise > 1_000_000_000_000n) return null;
   return Number(paise) / 100;
 }
+export const estimateNavValue = estimateUnitValue;
 
 export function validNavEstimate(holding, today) {
   const estimate = holding?.navEstimate;

@@ -30,6 +30,9 @@ export function validateImportReview(holdings) {
         !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/.test(holding.units) ||
         !/[1-9]/.test(holding.units) || holding.type !== 'Mutual fund' || holding.granularity === 'fund_house'))
       errors.push(`Holding ${row}: check the scheme units.`);
+    if (holding.shares != null && (holding.type !== 'Stock' || typeof holding.shares !== 'string' ||
+        !/^[1-9]\d{0,8}$/.test(holding.shares)))
+      errors.push(`Holding ${row}: check the direct-stock share count.`);
     if (holding.statementCategory != null &&
         (typeof holding.statementCategory !== 'string' ||
          !/^[A-Za-z][A-Za-z0-9 &/().,+-]{0,79}$/.test(holding.statementCategory) ||

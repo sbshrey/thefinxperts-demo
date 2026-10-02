@@ -2,6 +2,7 @@ import { validMixPlan } from './mix-plan.mjs';
 import { validReserve } from './reserve.mjs';
 import { ENTRY_ORIGINS } from './entry-origin.mjs';
 import { validNavEstimate } from './nav-estimate.mjs';
+import { validShares, validStockEstimate } from './stock-estimate.mjs';
 const MAX_BYTES = 2_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
@@ -15,7 +16,7 @@ function validCoverage(value) {
     Object.keys(value).every(key => ['mutualFunds', 'directStocks'].includes(key)) &&
     COVERAGE.has(value.mutualFunds) && COVERAGE.has(value.directStocks);
 }
-const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin', 'navEstimate'];
+const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin', 'navEstimate', 'shares', 'stockEstimate'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
@@ -31,6 +32,8 @@ export function buildReviewBackup(state) {
       ...(holding.expenseRatioPct !== undefined ? { expenseRatioPct: holding.expenseRatioPct,
         expenseRatioAsOf: holding.expenseRatioAsOf } : {}),
       ...(holding.navEstimate ? { navEstimate: { ...holding.navEstimate } } : {}),
+      ...(holding.shares ? { shares: holding.shares } : {}),
+      ...(holding.stockEstimate ? { stockEstimate: { ...holding.stockEstimate } } : {}),
     })),
     goals: state.goals.map(goal => ({ ...goal, linkedIds: [...goal.linkedIds],
       ...(goal.allocationPct ? { allocationPct: { ...goal.allocationPct } } : {}) })),
@@ -83,6 +86,8 @@ export function parseReviewBackup(text) {
           holding.type !== 'Mutual fund' || holding.granularity === 'fund_house')) ||
         (holding.expenseRatioPct === undefined && holding.expenseRatioAsOf !== undefined) ||
         (holding.navEstimate !== undefined && !validNavEstimate(holding, indiaToday())) ||
+        (holding.shares !== undefined && (holding.type !== 'Stock' || !validShares(holding.shares))) ||
+        (holding.stockEstimate !== undefined && !validStockEstimate(holding, indiaToday())) ||
         (holding.type === 'Stock' && (holding.asset !== 'Equity' || holding.amc || holding.amfi)) ||
         (holding.granularity != null && (holding.granularity !== 'fund_house' || holding.type !== 'Mutual fund' ||
           !holding.amc || holding.isin || holding.amfi))) {

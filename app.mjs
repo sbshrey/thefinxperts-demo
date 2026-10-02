@@ -10,6 +10,7 @@ import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
 import { contextNeedsReview } from './market-context.mjs';
 import { estimateNavValue } from './nav-estimate.mjs';
+import { estimateStockValue, validShares } from './stock-estimate.mjs';
 import { chooseNextReviewStep } from './next-step.mjs';
 
 function demoGoal() {
@@ -34,6 +35,90 @@ function validEnteredDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > indiaToday()) return false;
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function createDatedUnitWorksheet(holding) {
+  const fund = holding.type === 'Mutual fund';
+  const count = fund ? holding.units : holding.shares;
+  const prior = fund ? holding.navEstimate : holding.stockEstimate;
+  if (state.source !== 'user' || !count || !holding.asOf ||
+      (fund && holding.granularity === 'fund_house')) return null;
+  const originalValue = prior?.originalValue ?? holding.value;
+  const originalDate = prior?.originalAsOf ?? holding.asOf;
+  const priceKey = fund ? 'nav' : 'price';
+  const dateKey = fund ? 'navAsOf' : 'priceAsOf';
+  const unitName = fund ? 'units' : 'shares';
+  const estimateValue = fund ? estimateNavValue : estimateStockValue;
+  const worksheet = document.createElement('details');
+  worksheet.className = 'holding-update nav-worksheet';
+  const title = document.createElement('summary');
+  title.textContent = fund ? 'Estimate value from a newer NAV' : 'Estimate value from a newer stock price';
+  const form = document.createElement('form');
+  const intro = document.createElement('p');
+  intro.className = 'form-hint';
+  intro.textContent = fund ?
+    `Original statement: ${count} units, ${rupees(originalValue)} as of ${originalDate}. Check the NAV for this exact scheme, Direct/Regular plan and Growth/IDCW option with the AMC. NAV is dated, not a live price.` :
+    `Earlier entered value: ${count} shares, ${rupees(originalValue)} as of ${originalDate}. Check a dated price for the exact listed security and exchange. Splits, bonuses or trades may change your share count.`;
+  const priceLabel = document.createElement('label');
+  priceLabel.textContent = fund ? 'NAV per unit (₹)' : 'Price per share (₹)';
+  const priceInput = document.createElement('input');
+  priceInput.type = 'text'; priceInput.inputMode = 'decimal'; priceInput.maxLength = 16;
+  priceInput.placeholder = fund ? 'e.g. 125.4321' : 'e.g. 123.45';
+  priceInput.value = prior?.[priceKey] || '';
+  priceLabel.append(priceInput);
+  const dateLabel = document.createElement('label');
+  dateLabel.textContent = fund ? 'Published NAV date' : 'Date of this share price';
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date'; dateInput.max = indiaToday();
+  dateInput.value = prior?.[dateKey] || '';
+  dateLabel.append(dateInput);
+  const confirmation = text => {
+    const label = document.createElement('label');
+    label.className = 'nav-confirm';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    label.append(input, document.createTextNode(` ${text}`));
+    return { label, input };
+  };
+  const identity = confirmation(fund ? 'I checked the exact scheme, plan and option.' :
+    'I checked the exact listed security and its price date.');
+  const balance = confirmation(fund ? 'I checked that these units are still my current balance.' :
+    'I checked my current shares after any trades, splits or bonuses.');
+  const preview = document.createElement('p');
+  preview.className = 'form-hint'; preview.setAttribute('role', 'status');
+  const updatePreview = () => {
+    const value = estimateValue(count, priceInput.value.trim());
+    preview.textContent = value === null ? `Enter a positive ${fund ? 'NAV' : 'share price'} with up to six decimal places.` :
+      `${count} ${unitName} × ₹${priceInput.value.trim()} = ${rupees(value)}. Earlier value: ${rupees(originalValue)} on ${originalDate}. This assumes the ${unitName} are unchanged.`;
+  };
+  priceInput.addEventListener('input', updatePreview);
+  updatePreview();
+  const error = document.createElement('p');
+  error.className = 'form-error'; error.setAttribute('role', 'alert');
+  const apply = document.createElement('button');
+  apply.type = 'submit'; apply.className = 'text-button';
+  apply.textContent = 'Use this dated estimate in my review';
+  form.append(intro, priceLabel, dateLabel, identity.label, balance.label, preview, error, apply);
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    const price = priceInput.value.trim();
+    const priceAsOf = dateInput.value;
+    const value = estimateValue(count, price);
+    if (value === null || !priceAsOf || !validEnteredDate(priceAsOf) || priceAsOf <= originalDate ||
+        !identity.input.checked || !balance.input.checked) {
+      error.textContent = `Enter a valid newer ${fund ? 'NAV' : 'share price'} and date, then confirm the exact instrument and current ${unitName}.`;
+      return;
+    }
+    state.holdings = state.holdings.map(item => item.id === holding.id ? {
+      ...item, value, asOf: priceAsOf,
+      ...(fund ? { navEstimate: { originalValue, originalAsOf: originalDate, nav: price, navAsOf: priceAsOf } } :
+        { stockEstimate: { originalValue, originalAsOf: originalDate, price, priceAsOf } }),
+    } : item);
+    render();
+    $('#live-status').textContent = `${holding.name}: dated ${fund ? 'NAV' : 'stock-price'} estimate applied. The earlier value remains in the private review backup.`;
+  });
+  worksheet.append(title, form);
+  return worksheet;
 }
 let pendingImport = null;
 let pendingPerformance = new Map();
@@ -379,7 +464,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const sourceCategory = document.createElement('small');
     sourceCategory.className = 'holding-source-category';
     sourceCategory.textContent = holding.statementCategory ?
@@ -476,6 +561,7 @@ function render() {
     valueInput.inputMode = 'decimal';
     valueInput.min = '1';
     valueInput.max = '10000000000';
+    valueInput.step = 'any';
     valueInput.required = true;
     valueInput.value = holding.value;
     valueLabel.append(valueInput);
@@ -486,6 +572,16 @@ function render() {
     dateInput.max = indiaToday();
     dateInput.value = holding.asOf || '';
     dateLabel.append(dateInput);
+    let sharesInput = null;
+    let sharesLabel = null;
+    if (holding.type === 'Stock') {
+      sharesLabel = document.createElement('label');
+      sharesLabel.textContent = 'Shares held (optional)';
+      sharesInput = document.createElement('input');
+      sharesInput.type = 'text'; sharesInput.inputMode = 'numeric'; sharesInput.maxLength = 9;
+      sharesInput.value = holding.shares || '';
+      sharesLabel.append(sharesInput);
+    }
     const assetLabel = document.createElement('label');
     assetLabel.textContent = 'Asset category';
     const assetInput = document.createElement('select');
@@ -560,7 +656,9 @@ function render() {
     updateButton.type = 'submit';
     updateButton.className = 'text-button';
     updateButton.textContent = 'Save holding changes';
-    updateForm.append(valueLabel, dateLabel, assetLabel, assetHint);
+    updateForm.append(valueLabel, dateLabel);
+    if (sharesLabel) updateForm.append(sharesLabel);
+    updateForm.append(assetLabel, assetHint);
     if (isinLabel) updateForm.append(isinLabel, isinHint);
     if (ratioLabel) updateForm.append(ratioLabel, ratioDateLabel, ratioHint);
     updateForm.append(updateError, updateButton);
@@ -572,6 +670,7 @@ function render() {
       const isin = isinInput?.value.trim().toUpperCase() || '';
       const expenseRatio = expenseRatioInput?.value.trim() || '';
       const expenseDate = expenseDateInput?.value || '';
+      const shares = sharesInput?.value.trim() || '';
       if (!Number.isFinite(value) || value <= 0 || value > 1e10 || !validEnteredDate(asOf)) {
         updateError.textContent = 'Enter a positive value and a valid date no later than today.';
         return;
@@ -585,6 +684,10 @@ function render() {
         updateError.textContent = 'Check the 12-character ISIN against your statement, or leave it blank.';
         return;
       }
+      if (shares && !validShares(shares)) {
+        updateError.textContent = 'Enter a positive whole share count of at most nine digits, or leave it blank.';
+        return;
+      }
       if (expenseRatioInput && ((expenseRatio !== '' && (!Number.isFinite(Number(expenseRatio)) ||
           Number(expenseRatio) < 0 || Number(expenseRatio) > 10 || !expenseDate || !validEnteredDate(expenseDate))) ||
           (expenseRatio === '' && expenseDate))) {
@@ -596,6 +699,11 @@ function render() {
         updateError.textContent = 'After changing scheme details, enter a newly checked value and date before saving.';
         return;
       }
+      if (holding.stockEstimate && (shares !== (holding.shares || '') || isin !== (holding.isin || '')) &&
+          value === holding.value && (asOf || null) === (holding.asOf || null)) {
+        updateError.textContent = 'After changing shares or security details, enter a newly checked value and date before saving.';
+        return;
+      }
       state.holdings = state.holdings.map(item => {
         if (item.id !== holding.id) return item;
         const identifierChanged = isinInput && isin !== (item.isin || '');
@@ -603,6 +711,12 @@ function render() {
           ...((asset !== item.asset || (identifierChanged && item.type === 'Mutual fund')) ? { exposure: null } : {}) };
         if (value !== item.value || (asOf || null) !== (item.asOf || null) || asset !== item.asset || identifierChanged)
           delete updated.navEstimate;
+        if (value !== item.value || (asOf || null) !== (item.asOf || null) || identifierChanged ||
+            shares !== (item.shares || '')) delete updated.stockEstimate;
+        if (sharesInput) {
+          if (shares) updated.shares = shares;
+          else delete updated.shares;
+        }
         if (identifierChanged) delete updated.statementCategory;
         if (isinInput) {
           if (isin) updated.isin = isin;
@@ -623,82 +737,13 @@ function render() {
       render();
     });
     update.append(updateTitle, updateForm);
-    let navWorksheet = null;
-    if (state.source === 'user' && holding.type === 'Mutual fund' && holding.units && holding.granularity !== 'fund_house' &&
-        (holding.navEstimate?.originalAsOf || holding.asOf)) {
-      navWorksheet = document.createElement('details');
-      navWorksheet.className = 'holding-update nav-worksheet';
-      const navTitle = document.createElement('summary');
-      navTitle.textContent = 'Estimate value from a newer NAV';
-      const navForm = document.createElement('form');
-      const originalValue = holding.navEstimate?.originalValue ?? holding.value;
-      const originalDate = holding.navEstimate?.originalAsOf ?? holding.asOf;
-      const navIntro = document.createElement('p');
-      navIntro.className = 'form-hint';
-      navIntro.textContent = `Statement: ${holding.units} units, ${rupees(originalValue)} as of ${originalDate}. Check the latest NAV for this exact scheme, Direct/Regular plan and Growth/IDCW option with the AMC. NAV is dated, not a live price.`;
-      const navLabel = document.createElement('label');
-      navLabel.textContent = 'NAV per unit (₹)';
-      const navInput = document.createElement('input');
-      navInput.type = 'text'; navInput.inputMode = 'decimal'; navInput.maxLength = 16;
-      navInput.placeholder = 'e.g. 125.4321';
-      navInput.value = holding.navEstimate?.nav || '';
-      navLabel.append(navInput);
-      const navDateLabel = document.createElement('label');
-      navDateLabel.textContent = 'Published NAV date';
-      const navDateInput = document.createElement('input');
-      navDateInput.type = 'date'; navDateInput.max = indiaToday();
-      navDateInput.value = holding.navEstimate?.navAsOf || '';
-      navDateLabel.append(navDateInput);
-      const matchLabel = document.createElement('label');
-      matchLabel.className = 'nav-confirm';
-      const matchCheck = document.createElement('input');
-      matchCheck.type = 'checkbox';
-      matchLabel.append(matchCheck, document.createTextNode(' I checked the exact scheme, plan and option.'));
-      const unitsLabel = document.createElement('label');
-      unitsLabel.className = 'nav-confirm';
-      const unitsCheck = document.createElement('input');
-      unitsCheck.type = 'checkbox';
-      unitsLabel.append(unitsCheck, document.createTextNode(' I checked that these units are still my current balance.'));
-      const navPreview = document.createElement('p');
-      navPreview.className = 'form-hint';
-      navPreview.setAttribute('role', 'status');
-      const preview = () => {
-        const value = estimateNavValue(holding.units, navInput.value.trim());
-        navPreview.textContent = value === null ? 'Enter a positive NAV with up to six decimal places.' :
-          `${holding.units} units × ₹${navInput.value.trim()} = ${rupees(value)}. Statement value: ${rupees(originalValue)} on ${originalDate}. This does not account for any unit changes.`;
-      };
-      navInput.addEventListener('input', preview);
-      preview();
-      const navError = document.createElement('p');
-      navError.className = 'form-error'; navError.setAttribute('role', 'alert');
-      const applyNav = document.createElement('button');
-      applyNav.type = 'submit'; applyNav.className = 'text-button';
-      applyNav.textContent = 'Use this dated estimate in my review';
-      navForm.append(navIntro, navLabel, navDateLabel, matchLabel, unitsLabel, navPreview, navError, applyNav);
-      navForm.addEventListener('submit', event => {
-        event.preventDefault();
-        const nav = navInput.value.trim();
-        const navAsOf = navDateInput.value;
-        const value = estimateNavValue(holding.units, nav);
-        if (value === null || !validEnteredDate(navAsOf) || !navAsOf || navAsOf <= originalDate ||
-            !matchCheck.checked || !unitsCheck.checked) {
-          navError.textContent = 'Enter a valid newer NAV and date, then confirm the exact fund and current units.';
-          return;
-        }
-        state.holdings = state.holdings.map(item => item.id === holding.id ? {
-          ...item, value, asOf: navAsOf,
-          navEstimate: { originalValue, originalAsOf: originalDate, nav, navAsOf },
-        } : item);
-        render();
-        $('#live-status').textContent = `${holding.name}: dated NAV estimate applied. The statement value remains in the private review backup.`;
-      });
-      navWorksheet.append(navTitle, navForm);
-    }
+    const unitWorksheet = createDatedUnitWorksheet(holding);
     info.append(name, meta);
-    if (holding.navEstimate) {
+    const priorEstimate = holding.navEstimate || holding.stockEstimate;
+    if (priorEstimate) {
       const earlier = document.createElement('small');
       earlier.className = 'holding-source-category';
-      earlier.textContent = `Earlier statement: ${rupees(holding.navEstimate.originalValue)} on ${holding.navEstimate.originalAsOf || 'unknown'}. Current review uses your NAV estimate, not a verified live balance.`;
+      earlier.textContent = `Earlier value: ${rupees(priorEstimate.originalValue)} on ${priorEstimate.originalAsOf}. Current review uses your entered ${holding.navEstimate ? 'NAV' : 'stock-price'} estimate, not a verified live balance.`;
       info.append(earlier);
     }
     if (holding.statementCategory) info.append(sourceCategory);
@@ -706,7 +751,7 @@ function render() {
     info.append(goalLink);
     if (state.goals.length > 1) info.append(allocation);
     info.append(update);
-    if (navWorksheet) info.append(navWorksheet);
+    if (unitWorksheet) info.append(unitWorksheet);
     const amount = document.createElement('strong');
     amount.className = 'holding-amount';
     amount.textContent = rupees(holding.value);
@@ -893,6 +938,7 @@ $('#holding-form').addEventListener('submit', event => {
   const asset = $('#holding-asset').value;
   const type = $('#holding-type').value;
   const isin = $('#holding-isin').value.trim().toUpperCase();
+  const shares = $('#holding-shares').value.trim();
   if (!['Equity', 'Debt', 'Gold', 'Other'].includes(asset)) {
     $('#holding-error').textContent = 'Choose the fund asset category, or choose Other / not sure if you need to check it later.';
     $('#holding-asset').focus();
@@ -907,6 +953,10 @@ $('#holding-form').addEventListener('submit', event => {
     $('#holding-error').textContent = 'Check the 12-character ISIN against your statement, or leave it blank.';
     return;
   }
+  if (type === 'Stock' && shares && !validShares(shares)) {
+    $('#holding-error').textContent = 'Enter a positive whole share count of at most nine digits, or leave it blank.';
+    return;
+  }
   if (type === 'Mutual fund' && state.source === 'user' &&
       state.holdings.some(holding => holding.type === 'Mutual fund' && holding.granularity === 'fund_house')) {
     $('#holding-error').textContent = 'This review already has fund-house totals that could include this fund. Replace those totals with a detailed CAS, or remove them before adding individual funds.';
@@ -914,7 +964,8 @@ $('#holding-form').addEventListener('submit', event => {
   }
   $('#holding-error').textContent = '';
   const added = { id: crypto.randomUUID(), name, type, asset, value, asOf: asOf || null, entryOrigin: 'manual',
-    ...(isin ? { isin } : {}), exposure: type === 'Stock' ? { [name]: 1 } : null };
+    ...(isin ? { isin } : {}), ...(type === 'Stock' && shares ? { shares } : {}),
+    exposure: type === 'Stock' ? { [name]: 1 } : null };
   if (state.source === 'user') {
     if (state.holdings.length >= 500 || state.holdings.reduce((sum, holding) => sum + holding.value, value) > 1e12) {
       $('#holding-error').textContent = 'This review has reached its holding count or total value limit.';
@@ -930,6 +981,7 @@ $('#holding-form').addEventListener('submit', event => {
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   event.target.reset();
   $('#holding-asset').disabled = false;
+  $('#stock-shares-field').hidden = true;
   render();
 });
 
@@ -937,6 +989,8 @@ $('#holding-type').addEventListener('change', () => {
   const stock = $('#holding-type').value === 'Stock';
   $('#holding-asset').value = stock ? 'Equity' : '';
   $('#holding-asset').disabled = stock;
+  $('#stock-shares-field').hidden = !stock;
+  if (!stock) $('#holding-shares').value = '';
 });
 
 $('#coverage-quick-check').addEventListener('click', () => {
