@@ -18,6 +18,16 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       'This snapshot may omit funds or stocks you own. Check it against current statements.';
   const answer = (text, basis, limitation, href = '#holdings', action = 'Check my holdings') =>
     ({ text, basis, limitation, href, action });
+  const goalName = typeof goal?.name === 'string' ? goal.name.trim().toLocaleLowerCase('en-IN') : '';
+  const namedGoal = goalName && new RegExp(`(?:^|\\W)${goalName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|\\W)`).test(input);
+  const goalScopeRequested = /\bgoal\b/.test(input) || namedGoal;
+  const unavailableGoalScope = () => goal?.confirmed !== true ? answer(
+    'Confirm the selected goal’s age, target amount and time horizon before using its assigned mix or concentration.',
+    `Selected goal ${goal?.name || 'unnamed'} is unfinished.`,
+    'The whole portfolio and the selected goal may contain different amounts.', '#goal-form', 'Confirm goal details') :
+    !result.goalTotal ? answer('No entered holdings are assigned to this goal yet. Link holdings before comparing its mix or largest position.',
+      `Selected goal ${goal.name}; assigned value ₹0.`,
+      'The whole portfolio and the selected goal may contain different amounts.', '#holdings', 'Link a holding') : null;
 
   const planQuestion = /\b(?:regular|direct)\s+plans?\b/.test(input) &&
     /^(?:which|what|how many|how much|do i|show|list)\b/.test(input);
@@ -222,7 +232,17 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `${money(result.goalTotal)} linked value for ${scenario.years} years; ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and ${money(scenario.monthlyContribution)} added at each month’s end. Target in today’s rupees: ${money(goal.target)}.`,
       `This fixed-assumption arithmetic is not a forecast or an instruction to invest that amount. Taxes, fees, losses and unentered holdings may change the outcome. ${coverageNote}`, '#goals', 'Review goal scenario');
   }
-  if (/\b(goal|target|gap|horizon|retirement|future)\b/.test(input)) {
+  if (goalScopeRequested && /\b(?:mix|equity|debt|gold|asset|allocation)\b/.test(input)) {
+    const unavailable = unavailableGoalScope();
+    if (unavailable) return unavailable;
+    const assets = result.goalAssets;
+    const total = result.goalTotal;
+    return answer(`For ${goal.name}, the assigned value is Equity ${money(assets.Equity)} (${percent(assets.Equity, total)}), Debt ${money(assets.Debt)} (${percent(assets.Debt, total)}), Gold ${money(assets.Gold)} (${percent(assets.Gold, total)}), and Other ${money(assets.Other)} (${percent(assets.Other, total)}).`,
+      `Divided each asset-labelled share assigned to ${goal.name} by ${money(total)} linked value across ${result.goalHoldingCount} holding ${result.goalHoldingCount === 1 ? 'row' : 'rows'}.`,
+      `These are supplied dated values and labels, not verified fund constituents or a suitable allocation. ${result.goalDateCheck.count} linked ${result.goalDateCheck.count === 1 ? 'value needs' : 'values need'} a date check.`, '#goals', 'Review assigned holdings');
+  }
+  if (/\b(goal|target|gap|horizon|retirement|future)\b/.test(input) &&
+      !/\b(?:biggest|largest|concentrat(?:ion|ed|e|ing)?|top holding|single holding|diversif(?:y|ied|ication)?)\b/.test(input)) {
     if (source === 'user' && goal?.confirmed === false)
       return answer('Enter and confirm the selected goal’s age, target amount, and time horizon before using its gap or scenario.',
         `The selected goal ${goal?.name || ''} is unfinished.`,
@@ -245,6 +265,10 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
         'A fund name or plan label alone is not an expense ratio.', '#holdings', 'Check fund details');
   }
   if (/\b(diversif(?:y|ied|ication)?|spread across assets)\b/.test(input)) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
     const selectedGoal = goal?.confirmed === true && result.goalTotal > 0;
     const total = selectedGoal ? result.goalTotal : result.total;
     const assets = selectedGoal ? result.goalAssets : result.assets;
@@ -267,13 +291,20 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       selectedGoal ? '#goals' : '#holdings', selectedGoal ? 'Review this goal' : 'Inspect holdings');
   }
   if (/\b(biggest|largest|concentrat(?:ion|ed|e|ing)?|top holding|single holding)\b/.test(input)) {
-    const top = result.topPositions;
+    const selectedGoal = Boolean(goalScopeRequested);
+    if (selectedGoal) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const top = selectedGoal ? result.topGoalPositions : result.topPositions;
+    const total = selectedGoal ? result.goalTotal : result.total;
     const largest = top[0];
     const topValue = top.reduce((sum, position) => sum + position.value, 0);
-    const additional = top.length > 1 ? ` The largest ${top.length} entered positions together are ${money(topValue)}, or ${percent(topValue, result.total)}. They are ${top.map(position => `${position.name} ${percent(position.value, result.total)}`).join('; ')}.` : '';
-    return answer(`${lead}${largest.name} is the largest entered position at ${money(largest.value)}, or ${percent(largest.value, result.total)} of the entered total.${additional}`,
-      `${money(largest.value)} ÷ ${money(result.total)} entered total; ${largest.granularity === 'fund_house' ? 'the largest position is a fund-house summary' : largest.entries > 1 ? `${largest.entries} rows with the same supplied ISIN form the largest position` : 'the largest position is one entered row'}. Exact matching supplied ISINs and fund-house summary names are grouped; unidentified rows stay separate. ${result.asOfSummary}.`,
-      `One fund can contain many securities. These shares do not measure verified company concentration or tell you what to trade. ${coverageNote}`, '#holdings', 'Inspect this holding');
+    const scope = selectedGoal ? `${goal.name}’s assigned value` : 'the entered total';
+    const additional = top.length > 1 ? ` The largest ${top.length} entered positions together are ${money(topValue)}, or ${percent(topValue, total)}. They are ${top.map(position => `${position.name} ${percent(position.value, total)}`).join('; ')}.` : '';
+    return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}${largest.name} is the largest entered position at ${money(largest.value)}, or ${percent(largest.value, total)} of ${scope}.${additional}`,
+      `${money(largest.value)} ÷ ${money(total)} ${scope}; ${largest.granularity === 'fund_house' ? 'the largest position is a fund-house summary' : largest.entries > 1 ? `${largest.entries} rows with the same supplied ISIN form the largest position` : 'the largest position is one entered row'}. Exact matching supplied ISINs and fund-house summary names are grouped; unidentified rows stay separate. ${result.asOfSummary}.`,
+      `One fund can contain many securities. These shares do not measure verified company concentration or tell you what to trade. ${coverageNote}`, selectedGoal ? '#goals' : '#holdings', 'Inspect this holding');
   }
   if (/\b(mix|equity|debt|gold|asset|allocation|diversif)\b/.test(input))
     return answer(`${lead}the entered mix is Equity ${percent(result.assets.Equity, result.total)}, Debt ${percent(result.assets.Debt, result.total)}, Gold ${percent(result.assets.Gold, result.total)}, and Other ${percent(result.assets.Other, result.total)}.`,
