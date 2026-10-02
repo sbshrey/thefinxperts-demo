@@ -13,6 +13,7 @@ import { parseReviewBackup } from './review-backup.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
 import { parseBrowserGoalFact, parseBrowserHoldingStatement, nextBrowserGoalQuestion } from './assistant-local.mjs';
 import { parseHoldingCorrection, prepareHoldingCorrection } from './assistant-correction.mjs';
+import { prepareAssistantActiveRefresh } from './assistant-refresh.mjs';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -53,7 +54,7 @@ async function saveDeviceReview(portfolio) {
 }
 const state = { confirmed: [], drafts: [], history: [], file: null, busy: false, available: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
-  goalFacts: null, goalDraftGoalId: null, correction: null, casAvailable: false, casLocal: false,
+  goalFacts: null, goalDraftGoalId: null, correction: null, refresh: null, casAvailable: false, casLocal: false,
   capacityReached: false };
 const casStatusPromise = browserOnly ? Promise.resolve(false) : fetch('/api/cas/status', { cache: 'no-store' })
   .then(response => response.ok ? response.json() : null)
@@ -111,6 +112,7 @@ function renderAccountActions() {
   if (localDownload) localDownload.disabled = state.busy || !saved;
   renderDeviceActions();
   renderCorrection();
+  renderRefresh();
 }
 
 function say(role, text, question = null) {
@@ -188,6 +190,22 @@ function renderCorrection() {
     'The confirmed review changed after this correction was prepared. Discard it and describe the correction again.' :
     state.correction.description;
   $('#confirm-correction').disabled = state.busy || stale;
+}
+
+function renderRefresh() {
+  const box = $('#refresh-draft');
+  if (!box) return;
+  box.hidden = !state.refresh;
+  if (!state.refresh) return;
+  const stale = state.account?.revision !== state.refresh.revision;
+  $('#refresh-summary').textContent = stale ?
+    'The confirmed review changed after this report was read. Discard this preview and open the statement again.' :
+    state.refresh.description;
+  const changes = $('#refresh-changes'); changes.replaceChildren();
+  if (!stale) for (const change of state.refresh.changes) {
+    const item = document.createElement('li'); item.textContent = change; changes.append(item);
+  }
+  $('#confirm-refresh').disabled = state.busy || stale;
 }
 
 function renderReview() {
@@ -505,6 +523,19 @@ function stageActiveStatement(parsed) {
     clearFile();
     return true;
   }
+  const existingFunds = state.account?.portfolio?.holdings?.filter(row => row.type === 'Mutual fund') || [];
+  if (existingFunds.some(row => row.entryOrigin === 'active_statement')) {
+    const prepared = prepareAssistantActiveRefresh(state.account.portfolio, drafts);
+    if (prepared.repeated) say('note', prepared.description);
+    else if (prepared.errors.length) say('note', prepared.errors.join(' '));
+    else {
+      state.refresh = { ...prepared, revision: state.account.revision };
+      renderRefresh();
+      say('assistant', 'I found a newer CAMS snapshot. Review every updated, added and absent fund row before applying it. The dashboard has not changed yet.');
+    }
+    clearFile();
+    return true;
+  }
   state.drafts = drafts;
   renderDrafts();
   const summaries = state.drafts.filter(row => row.granularity === 'fund_house').length;
@@ -574,9 +605,12 @@ $('#cas-preview').addEventListener('click', async () => {
 $('#upload').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
+  if (state.refresh) { say('note', 'Apply or discard the pending statement refresh before opening another report.'); clearFile(); return; }
+  if (state.correction) { say('note', 'Apply or discard the pending holding correction before opening another report.'); clearFile(); return; }
   if (state.drafts.length && !window.confirm('Replace the unconfirmed holdings already in this chat with this report?')) {
     clearFile(); return;
   }
+  if (state.drafts.length) { state.drafts = []; renderDrafts(); }
   if (/\.(?:csv|xlsx)$/i.test(file.name)) {
     state.busy = true; renderCredits();
     setFileLabel('Reading selected report in this browser…');
@@ -817,6 +851,22 @@ $('#discard-correction')?.addEventListener('click', () => {
   state.correction = null; renderCorrection(); say('note', 'The proposed correction was discarded. Your confirmed review did not change.');
 });
 
+$('#confirm-refresh')?.addEventListener('click', async () => {
+  const refresh = state.refresh;
+  if (state.busy || !refresh || !state.account || refresh.revision !== state.account.revision) return;
+  state.busy = true; renderAccountActions();
+  try {
+    await writeAccount(refresh.portfolio,
+      'The saved review changed in another tab. Discard this statement preview and open the report again.');
+    state.refresh = null;
+    say('note', refresh.result);
+  } catch (error) { say('note', error.message || 'The statement refresh could not be saved. Check the preview and try again.'); }
+  finally { state.busy = false; renderAccountActions(); }
+});
+$('#discard-refresh')?.addEventListener('click', () => {
+  state.refresh = null; renderRefresh(); say('note', 'The statement refresh was discarded. Your confirmed review did not change.');
+});
+
 $('#export-saved').addEventListener('click', async () => {
   if (state.busy || !state.account?.portfolio) return;
   state.busy = true; renderAccountActions();
@@ -853,7 +903,7 @@ $('#delete-saved').addEventListener('click', async () => {
       throw new Error('The saved review changed in another tab. Check the latest holdings and confirm deletion again.');
     }
     if (!response.ok) throw new Error('The saved review could not be deleted. Try again later.');
-    state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.history = []; clearFile();
+    state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.history = []; clearFile();
     acceptAccount({ portfolio: null, revision: 0 });
     renderDrafts(); renderGoalDraft();
     $('#messages').replaceChildren();
@@ -864,7 +914,7 @@ $('#delete-saved').addEventListener('click', async () => {
 });
 
 $('#new-chat').addEventListener('click', () => {
-  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.history = []; clearFile();
+  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.history = []; clearFile();
   $('#messages').replaceChildren();
   say('assistant', state.confirmed.length ?
     `I still have ${state.confirmed.length} confirmed holding${state.confirmed.length === 1 ? '' : 's'} in this tab. What would you like to understand next?` :
@@ -883,7 +933,7 @@ $('#clear-review').addEventListener('click', () => {
     return;
   }
   if (browserOnly) state.account = { portfolio: null, revision: 0 };
-  state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.history = []; clearFile();
+  state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.history = []; clearFile();
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Describe one holding or attach a CAMS Active Statement or holdings report. After you confirm a draft, this browser review can answer factual questions.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
@@ -935,7 +985,7 @@ $('#restore-tab-file')?.addEventListener('change', async event => {
   catch { say('note', 'The selected review file could not be read. Try another copy.'); return; }
   if (parsed.errors.length) { say('note', parsed.errors[0]); return; }
   if (state.account?.portfolio && !window.confirm('Replace the review in this tab with the selected file?')) return;
-  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null;
+  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null;
   acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
   await saveDeviceReview(parsed.portfolio);
   renderDrafts(); renderGoalDraft();
@@ -975,7 +1025,7 @@ $('#device-review-form')?.addEventListener('submit', async event => {
       if (parsed.errors.length) throw new Error('The saved review is damaged or uses an unsupported format.');
       if (state.account?.portfolio && !window.confirm('Replace the current tab review with the saved device review?')) return;
       devicePassphrase = passphrase;
-      state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null;
+      state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null;
       acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
       renderDrafts(); renderGoalDraft();
       say('note', `Unlocked ${state.confirmed.length} holding${state.confirmed.length === 1 ? '' : 's'} from this device. Check the dates before using this review.`);
