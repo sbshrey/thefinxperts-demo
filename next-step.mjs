@@ -1,4 +1,5 @@
 import { valuationDateIssue } from './analysis.mjs';
+import { goalShare } from './goals.mjs';
 
 /** Choose one concrete next action for the selected goal, without scoring suitability. */
 export function chooseNextReviewStep({ source, holdings, goal, coverage }, today = new Date()) {
@@ -6,6 +7,13 @@ export function chooseNextReviewStep({ source, holdings, goal, coverage }, today
   if (goal?.confirmed !== true) return {
     kind: 'goal', href: '#goal-form', label: 'Enter goal details →',
     text: 'Add your age, goal amount and time horizon to see figures for this goal.',
+  };
+  const linkedIndices = Array.isArray(goal?.linkedIds) ?
+    holdings.flatMap((holding, index) => goalShare(goal, holding.id) > 0 ? [index] : []) :
+    holdings.map((_, index) => index);
+  if (!linkedIndices.length) return {
+    kind: 'assignment', href: '#holdings', label: 'Link a holding to this goal →',
+    text: 'No entered holding is assigned to the selected goal. Choose which holdings count toward it before reading its gap or mix.',
   };
   if (!coverage) return {
     kind: 'coverage', href: '#coverage-details', label: 'Check what is included →',
@@ -16,18 +24,18 @@ export function chooseNextReviewStep({ source, holdings, goal, coverage }, today
     kind: 'scope', href: '#input-choice', label: 'Add or check a source →',
     text: 'Your coverage answer says this snapshot may be incomplete. Compare another current fund or broker report.',
   };
-  const dated = holdings.findIndex(holding => valuationDateIssue(holding.asOf, today));
+  const dated = linkedIndices.find(index => valuationDateIssue(holdings[index].asOf, today)) ?? -1;
   if (dated >= 0) return {
     kind: 'valuation', href: `#holding-${dated + 1}`, label: 'Check the first dated value →',
     text: 'At least one holding has a missing, future or over-90-day value date. Check it before interpreting the mix for this goal.',
   };
-  const unknown = holdings.findIndex(holding => holding.asset === 'Other' &&
-    holding.type !== 'Other investment' && holding.granularity !== 'fund_house');
+  const unknown = linkedIndices.find(index => holdings[index].asset === 'Other' &&
+    holdings[index].type !== 'Other investment' && holdings[index].granularity !== 'fund_house') ?? -1;
   if (unknown >= 0) return {
     kind: 'classification', href: `#holding-${unknown + 1}`, label: 'Check the first fund category →',
     text: 'An individual holding is still labelled Other. Check its source before comparing Equity, Debt and Gold shares.',
   };
-  if (holdings.some(holding => holding.granularity === 'fund_house')) return {
+  if (linkedIndices.some(index => holdings[index].granularity === 'fund_house')) return {
     kind: 'detail', href: '#input-choice', label: 'Check scheme details →',
     text: 'A fund-house total may contain several schemes. A detailed statement will make the fund part of this review clearer.',
   };
