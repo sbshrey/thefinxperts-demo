@@ -728,7 +728,7 @@ async function offerUnsupportedPdf(file, parsed, allowAi = true) {
     $('#active-option').hidden = true;
     $('#cas-option').hidden = false;
     $('#pdf-consent-label').hidden = true;
-    say('note', `${parsed.errors[0] || 'This PDF is not a supported CAMS Active Statement.'} If it is an original CAMS or KFintech mutual-fund CAS, enter its password if needed and choose “Read as CAS in browser”.`);
+    say('note', `${parsed.errors[0] || 'This PDF is not a supported CAMS Active Statement.'} If it is an original CAMS, KFintech, NSDL or CDSL CAS, enter its password if needed and choose “Read as CAS in browser”.`);
     return;
   }
   const casAvailable = await casStatusPromise;
@@ -751,7 +751,7 @@ function stageCasResult(result) {
   if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return false; }
   const drafts = prepared.drafts.map(row => normalizedDraft(row));
   if (drafts.some(row => !row)) { say('note', 'A CAS row could not be staged safely. No rows were added.'); return false; }
-  if (state.account?.portfolio) {
+  if (result.source !== 'Demat CAS' && state.account?.portfolio) {
     const refresh = prepareAssistantCasRefresh(state.account.portfolio, drafts);
     if (refresh) {
       if (refresh.repeated) say('note', refresh.description);
@@ -855,7 +855,7 @@ $('#upload').addEventListener('change', async event => {
     $('#cas-option').hidden = !(browserOnly || await casStatusPromise);
     $('#pdf-consent-label').hidden = true;
     say('note', browserOnly ?
-      'Enter the PDF password once and choose “Read statement”. This browser will try a CAMS Active Statement and an original mutual-fund CAS without sending the PDF or password.' :
+      'Enter the PDF password once and choose “Read statement”. This browser will try a CAMS Active Statement and supported CAMS, KFintech, NSDL or CDSL CAS without sending the PDF or password.' :
       'Enter the PDF password in a masked field to try the browser preview. For an original CAS, signed-in private reading is available when enabled.');
     return;
   }
@@ -1270,7 +1270,7 @@ $('#new-chat').addEventListener('click', () => {
   $('#messages').replaceChildren();
   say('assistant', state.confirmed.length ?
     `I still have ${state.confirmed.length} confirmed holding${state.confirmed.length === 1 ? '' : 's'} in this tab. What would you like to understand next?` :
-    browserOnly ? 'Choose Upload for a CAMS statement, mutual-fund CAS or broker report. I’ll show possible holdings to confirm before answering questions.' :
+    browserOnly ? 'Choose Upload for a CAMS statement, supported CAS or broker report. I’ll show possible holdings to confirm before answering questions.' :
       'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
   renderDrafts(); renderGoalDraft(); renderReserveDraft(); renderReview();
 });
@@ -1289,7 +1289,7 @@ $('#clear-review').addEventListener('click', () => {
   state.reserveFacts = null; state.reserveDraftRevision = null;
   state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; clearFile();
   $('#messages').replaceChildren();
-  say('assistant', browserOnly ? 'Choose Upload for a CAMS statement, mutual-fund CAS or broker report. I’ll show possible holdings to confirm before answering questions. You can also describe one holding.' :
+  say('assistant', browserOnly ? 'Choose Upload for a CAMS statement, supported CAS or broker report. I’ll show possible holdings to confirm before answering questions. You can also describe one holding.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
   renderDrafts(); renderGoalDraft(); renderReserveDraft(); renderReview();
 });

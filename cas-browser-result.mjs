@@ -1,0 +1,14 @@
+import { normalizeCasHoldings } from './cas-adapter.mjs';
+
+/** Keep only reviewed holdings and count-safe messages across the worker boundary. */
+export function normalizeBrowserCasResult(parsed) {
+  if (!['CAMS', 'KFINTECH', 'NSDL', 'CDSL'].includes(parsed?.file_type))
+    return { kind: 'cas-result', holdings: [], errors: [
+      'This browser import supports original CAMS, KFintech, NSDL or CDSL CAS PDFs only.',
+    ] };
+  const normalized = normalizeCasHoldings(parsed);
+  return { kind: 'cas-result', source: normalized.source ||
+    (['NSDL', 'CDSL'].includes(parsed.file_type) ? 'Demat CAS' : 'CAS'),
+    holdings: normalized.holdings, errors: normalized.errors,
+    notices: normalized.notices, combinedRows: normalized.combinedRows };
+}

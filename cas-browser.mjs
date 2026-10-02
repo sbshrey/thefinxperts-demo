@@ -1,4 +1,4 @@
-/** Parse an original mutual-fund CAS inside a bounded, disposable browser worker. */
+/** Parse a supported original CAS inside a bounded, disposable browser worker. */
 export async function previewBrowserCas(file, password = '') {
   if (!file || !/\.pdf$/i.test(file.name) || file.size < 5 || file.size > 15_000_000)
     return { holdings: [], errors: ['Choose an original CAS PDF smaller than 15 MB.'] };
