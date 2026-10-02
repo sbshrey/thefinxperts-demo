@@ -1,6 +1,7 @@
 import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs';
 import { compareMixPlan } from './mix-plan.mjs';
 import { goalShare } from './goals.mjs';
+import { reserveMonths } from './reserve.mjs';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -12,7 +13,7 @@ export const sampleHoldings = [
   { id: 'bank-stock', name: 'Example Bank', type: 'Stock', asset: 'Equity', value: 70000, exposure: { 'Example Bank': 1 }, asOf: '2026-09-30' },
 ];
 
-export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 }, today = new Date()) {
+export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 }, today = new Date(), reserve = null) {
   const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
   const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
   const valid = holdings.filter(h => Number.isFinite(Number(h.value)) && Number(h.value) > 0);
@@ -161,6 +162,26 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       limitation: 'Ninety days is a prompt to recheck entered values, not a market-data freshness rule.' });
   }
 
+  const monthsOfEssentials = reserveMonths(reserve);
+  if (validGoal && goalTotal > 0 && goal.emergencyFunding === 'separate' && monthsOfEssentials === 0) {
+    findings.push({ key: 'reserve', tone: 'amber', label: 'Check your answers',
+      title: 'Your separate reserve answer needs a second look',
+      detail: 'You selected separate accessible money for unexpected expenses, but entered ₹0 outside this portfolio. Check which answer reflects your situation before relying on the goal plan.',
+      question: 'Is there accessible money outside these holdings that you want to include in the reserve check?',
+      basis: `Entered ${rupees(reserve.accessibleMoney)} accessible money ÷ ${rupees(reserve.monthlyEssentials)} monthly essentials = 0 months; selected the separate-money answer for this goal.`,
+      limitation: 'Only your entries are compared. Bank balances, income stability, insurance, debts and access to money are not verified.' });
+  }
+  if (validGoal && goalTotal > 0 && ['goal_holdings', 'unsure'].includes(goal.emergencyFunding)) {
+    const mayUseGoal = goal.emergencyFunding === 'goal_holdings';
+    findings.push({ key: 'emergency', tone: 'amber', label: 'Money needed sooner',
+      title: 'Check how unexpected expenses affect this goal',
+      detail: mayUseGoal ? 'You said you may need holdings linked to this goal for an unexpected essential expense. Consider how using them early would change the goal plan.' :
+        'You are unsure where money for an unexpected essential expense would come from. Check this before relying on the goal scenario.',
+      question: 'Where would money for an unexpected essential expense come from without disrupting this goal?',
+      basis: `Used your answer about unexpected essential expenses for this goal; ${rupees(goalTotal)} of entered holdings is linked to it.${monthsOfEssentials === null ? '' : ` Separately entered accessible money covers ${monthsOfEssentials.toFixed(1)} months of essentials at the amounts you supplied.`}`,
+      limitation: 'This answer does not verify accessible savings, income, obligations or the size and timing of an emergency. It is not a risk profile or a recommendation to move money.' });
+  }
+
   const mixComparison = validGoal && goalTotal > 0 && !goalDateCheck.count &&
     !conflictingIsins && !goalHoldings.some(holding => holding.granularity === 'fund_house')
     ? compareMixPlan(goalAssets, goalTotal, goal.targetMix) : null;
@@ -175,17 +196,6 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       question: 'Does the mix you entered still reflect what you want for this goal?',
       basis: `${rupees(goalAssets[row.asset])} labelled ${row.asset} ÷ ${rupees(goalTotal)} linked to this goal = ${row.currentPct.toFixed(1)}%; your entered mix assigns ${row.plannedPct.toFixed(1)}% to ${row.asset}. The largest difference is shown when it reaches 10 percentage points.`,
       limitation: 'This compares entered asset labels with your own mix. The 10-point trigger is a review prompt, not an allocation rule or a trade recommendation. Fund constituents, taxes and transaction costs are not assessed.' });
-  }
-
-  if (validGoal && goalTotal > 0 && ['goal_holdings', 'unsure'].includes(goal.emergencyFunding)) {
-    const mayUseGoal = goal.emergencyFunding === 'goal_holdings';
-    findings.push({ key: 'emergency', tone: 'amber', label: 'Money needed sooner',
-      title: 'Check how unexpected expenses affect this goal',
-      detail: mayUseGoal ? 'You said you may need holdings linked to this goal for an unexpected essential expense. Consider how using them early would change the goal plan.' :
-        'You are unsure where money for an unexpected essential expense would come from. Check this before relying on the goal scenario.',
-      question: 'Where would money for an unexpected essential expense come from without disrupting this goal?',
-      basis: `Used your answer about unexpected essential expenses for this goal; ${rupees(goalTotal)} of entered holdings is linked to it.`,
-      limitation: 'This answer does not verify accessible savings, income, obligations or the size and timing of an emergency. It is not a risk profile or a recommendation to move money.' });
   }
 
   if (validGoal && goalTotal > 0 && years <= 5 && goalEquityPct >= 60) {

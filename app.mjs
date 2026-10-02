@@ -6,13 +6,14 @@ import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalSha
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, compareMixPlan, validMixPlan } from './mix-plan.mjs';
+import { validReserve, reserveMonths } from './reserve.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
     returnPct: 0, inflationPct: 0, equityDropPct: 20, confirmed: false, linkedIds: sampleHoldings.map(holding => holding.id) };
 }
 const firstGoal = demoGoal();
-const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals: [firstGoal], activeGoalId: firstGoal.id, goal: firstGoal };
+const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals: [firstGoal], activeGoalId: firstGoal.id, goal: firstGoal, reserve: null };
 const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
 const $ = selector => document.querySelector(selector);
 const indiaToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
@@ -68,6 +69,32 @@ function fillMixForm(goal) {
   for (const asset of MIX_ASSETS) $(`#mix-${asset.toLowerCase()}`).value = goal.targetMix?.[asset] ?? '';
   $('#mix-plan-error').textContent = '';
 }
+
+function fillReserveForm() {
+  $('#monthly-essentials').value = state.reserve?.monthlyEssentials ?? '';
+  $('#accessible-money').value = state.reserve?.accessibleMoney ?? '';
+  $('#reserve-error').textContent = '';
+}
+
+$('#reserve-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const monthlyEssentials = $('#monthly-essentials').value.trim();
+  const accessibleMoney = $('#accessible-money').value.trim();
+  const reserve = { monthlyEssentials: Number(monthlyEssentials), accessibleMoney: Number(accessibleMoney) };
+  if (!monthlyEssentials || !accessibleMoney || !validReserve(reserve)) {
+    $('#reserve-error').textContent = 'Enter positive monthly essentials and accessible money of zero or more.';
+    return;
+  }
+  state.reserve = reserve;
+  $('#reserve-error').textContent = '';
+  render();
+});
+
+$('#clear-reserve').addEventListener('click', () => {
+  state.reserve = null;
+  fillReserveForm();
+  render();
+});
 
 function renderMixPlan(result, pauseGoalFigures) {
   const container = $('#mix-plan-result');
@@ -131,7 +158,12 @@ function render() {
   syncGoalSelector();
   const needsGoalConfirmation = state.source !== 'demo' && state.goal.confirmed === false;
   const pauseGoalFigures = needsGoalConfirmation;
-  const result = analyzePortfolio(state.holdings, pauseGoalFigures ? { ...state.goal, years: 0, target: 0 } : state.goal);
+  const result = analyzePortfolio(state.holdings, pauseGoalFigures ? { ...state.goal, years: 0, target: 0 } : state.goal,
+    new Date(), state.reserve);
+  $('#reserve-check').hidden = state.source !== 'user';
+  const months = reserveMonths(state.reserve);
+  $('#reserve-result').textContent = months === null ? 'Add both amounts to see months of essential spending covered.' :
+    `${rupees(state.reserve.accessibleMoney)} outside entered holdings ÷ ${rupees(state.reserve.monthlyEssentials)} monthly essentials = ${months.toFixed(1)} months. This does not establish an adequate reserve; income stability, debt, dependants and insurance are not assessed.`;
   renderMixPlan(result, pauseGoalFigures);
   $('#portfolio-value').textContent = rupees(result.total);
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
@@ -245,7 +277,7 @@ function render() {
   const reviewDestinations = {
     identity: ['#holdings', 'Review holding labels'], summary: ['#input-choice', 'See import choices'],
     valuation: ['#holdings', 'Check entered values'], 'chosen-mix': ['#mix-plan-details', 'Compare my chosen mix'],
-    emergency: ['#goal-form', 'Review goal context'],
+    emergency: ['#goal-form', 'Review goal context'], reserve: ['#reserve-check', 'Check accessible money'],
     horizon: ['#goal-form', 'Explore goal timing'], position: ['#holdings', 'Review linked holdings'],
     issuer: ['#holdings', 'Review holdings'], plan: ['#holdings', 'Review fund names'],
     funds: ['#holdings', 'Review fund list'], review: ['#holdings', 'Review holdings'],
@@ -740,6 +772,8 @@ function clearCurrentReview() {
   pendingPerformance.clear();
   $('#import-preview').hidden = true;
   state.holdings = [];
+  state.reserve = null;
+  fillReserveForm();
   const fromExample = state.source === 'demo';
   state.goals = state.goals.map(({ allocationPct: ignored, ...goal }) => ({ ...goal, linkedIds: [],
     ...(fromExample ? { age: null, years: null, target: null, confirmed: false } : {}) }));
@@ -795,20 +829,22 @@ function startOwnReview() {
 $('#start-own-review').addEventListener('click', startOwnReview);
 $('#start-own-review-inline').addEventListener('click', startOwnReview);
 $('#reset-demo').addEventListener('click', () => {
-  if (state.source !== 'demo' && state.holdings.length &&
-      !window.confirm('Replace your current holdings and goals with the fictional example? Download a review file first if you want to keep them.')) return;
+  if (state.source !== 'demo' && (state.holdings.length || state.reserve) &&
+      !window.confirm('Replace your current holdings, goals and reserve context with the fictional example? Download a review file first if you want to keep them.')) return;
   pendingImport = null;
   pendingPerformance.clear();
   $('#import-preview').hidden = true;
   state.holdings = structuredClone(sampleHoldings);
+  state.reserve = null;
+  fillReserveForm();
   state.goals = [demoGoal()];
   state.source = 'demo';
   selectGoal(state.goals[0].id);
   showInputMode('manual');
 });
 $('#clear-all').addEventListener('click', () => {
-  if (state.source !== 'demo' && state.holdings.length &&
-      !window.confirm('Clear all holdings and goal links in this tab? Download a review file first if you want to keep them.')) return;
+  if (state.source !== 'demo' && (state.holdings.length || state.reserve) &&
+      !window.confirm('Clear all holdings, goal links and reserve context in this tab? Download a review file first if you want to keep them.')) return;
   clearCurrentReview();
   showInputMode('manual');
 });
@@ -1204,6 +1240,8 @@ function applyPortfolio(portfolio) {
   const saved = parsed.portfolio;
   state.holdings = saved.holdings.map(holding => ({ ...holding,
     exposure: holding.type === 'Stock' ? { [holding.name]: 1 } : null }));
+  state.reserve = saved.reserve || null;
+  fillReserveForm();
   state.goals = saved.goals;
   state.activeGoalId = saved.activeGoalId;
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);

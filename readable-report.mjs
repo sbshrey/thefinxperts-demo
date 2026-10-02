@@ -1,6 +1,7 @@
 import { analyzePortfolio } from './analysis.mjs';
 import { MIX_ASSETS, compareMixPlan } from './mix-plan.mjs';
 import { goalShare, summarizeGoalCoverage } from './goals.mjs';
+import { reserveMonths } from './reserve.mjs';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -13,7 +14,8 @@ export function buildReadableReport(state, preparedAt = new Date()) {
       !(preparedAt instanceof Date) || Number.isNaN(preparedAt.getTime())) return null;
   const goal = state.goals.find(item => item.id === state.activeGoalId);
   if (!goal) return null;
-  const result = analyzePortfolio(state.holdings, goal, preparedAt);
+  const result = analyzePortfolio(state.holdings, goal, preparedAt, state.reserve);
+  const monthsOfEssentials = reserveMonths(state.reserve);
   const goalCoverage = summarizeGoalCoverage(state.goals, state.activeGoalId, state.holdings);
   const fundHouseOther = state.holdings.some(holding => holding.granularity === 'fund_house' && holding.asset === 'Other');
   const lines = [
@@ -42,6 +44,10 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Linked value needing a valuation-date check: ${rupees(result.goalDateCheck.value)} across ${result.goalDateCheck.count} holdings (missing, future or over 90 days old; entered values remain unverified)`,
     `Current gap before growth, inflation or tax: ${rupees(result.goalGap ?? 0)}`,
   ];
+  if (monthsOfEssentials !== null) lines.push('', 'SEPARATE RESERVE CONTEXT',
+    `Accessible money outside entered holdings: ${rupees(state.reserve.accessibleMoney)}`,
+    `Monthly essential spending: ${rupees(state.reserve.monthlyEssentials)}`,
+    `Coverage arithmetic: ${monthsOfEssentials.toFixed(1)} months of essentials. This money is not added to portfolio or goal values. Adequacy, access, income stability, debts and insurance are not assessed.`);
   if (goal.emergencyFunding) {
     const answer = { separate: 'I have separate accessible money', goal_holdings: 'I may use holdings linked to this goal',
       unsure: 'I am unsure' }[goal.emergencyFunding];

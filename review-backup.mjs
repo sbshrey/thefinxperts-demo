@@ -1,11 +1,12 @@
 import { validMixPlan } from './mix-plan.mjs';
+import { validReserve } from './reserve.mjs';
 const MAX_BYTES = 2_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
 const AMFI = /^\d{5,8}$/;
 const TYPES = new Set(['Mutual fund', 'Stock']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
-const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId'];
+const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId', 'reserve'];
 const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'expenseRatioPct', 'expenseRatioAsOf'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
@@ -23,6 +24,7 @@ export function buildReviewBackup(state) {
     goals: state.goals.map(goal => ({ ...goal, linkedIds: [...goal.linkedIds],
       ...(goal.allocationPct ? { allocationPct: { ...goal.allocationPct } } : {}) })),
     activeGoalId: state.activeGoalId,
+    ...(state.reserve ? { reserve: { ...state.reserve } } : {}),
   };
 }
 
@@ -37,7 +39,10 @@ export function parseReviewBackup(text) {
   if (!exactKeys(document, TOP_KEYS) || document.version !== 2 ||
       !Array.isArray(document.holdings) || document.holdings.length > 500 ||
       !Array.isArray(document.goals) || document.goals.length < 1 || document.goals.length > 10 ||
-      !isUuid(document.activeGoalId)) return invalid('This is not a supported TheFinxperts review file.');
+      !isUuid(document.activeGoalId) ||
+      (document.reserve !== undefined && !validReserve(document.reserve))) {
+    return invalid('This is not a supported TheFinxperts review file.');
+  }
 
   const holdingIds = new Set();
   let total = 0;
@@ -109,7 +114,8 @@ export function parseReviewBackup(text) {
       ...(goal.allocationPct ? { allocationPct: { ...goal.allocationPct } } : {}) });
   }
   if (!goalIds.has(document.activeGoalId)) return invalid('The selected goal is missing from the review file.');
-  return { portfolio: { version: 2, holdings, goals, activeGoalId: document.activeGoalId }, errors: [] };
+  return { portfolio: { version: 2, holdings, goals, activeGoalId: document.activeGoalId,
+    ...(document.reserve ? { reserve: { ...document.reserve } } : {}) }, errors: [] };
 }
 
 function invalid(message) { return { portfolio: null, errors: [message] }; }
