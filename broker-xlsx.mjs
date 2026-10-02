@@ -71,11 +71,12 @@ export function suggestBrokerColumns(rows) {
 }
 
 /** Normalize only confirmed name, current market value and optional ISIN columns. */
-export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf, { strictWidth = false } = {}) {
+export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
+  { strictWidth = false, allowUnknownDate = false } = {}) {
   const errors = [];
   const notices = ['Choose Stock or Mutual fund and verify the asset category for every row before replacing your holdings.'];
   if (!Array.isArray(rows) || !Number.isInteger(headerIndex) || headerIndex < 0 || headerIndex >= rows.length ||
-      !/^(?:\d{4})-(?:\d{2})-(?:\d{2})$/.test(asOf) || !realDate(asOf))
+      !(allowUnknownDate && asOf === null) && (!/^(?:\d{4})-(?:\d{2})-(?:\d{2})$/.test(asOf) || !realDate(asOf)))
     return { holdings: [], errors: ['Choose the header row and the report valuation date.'], notices: [] };
   const header = rows[headerIndex];
   if (!Array.isArray(header) || !Number.isInteger(columns.name) || !Number.isInteger(columns.value) ||

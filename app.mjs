@@ -12,6 +12,7 @@ import { contextNeedsReview } from './market-context.mjs';
 import { estimateNavValue } from './nav-estimate.mjs';
 import { estimateStockValue, validShares } from './stock-estimate.mjs';
 import { chooseNextReviewStep } from './next-step.mjs';
+import { answerReviewQuestion } from './review-questions.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -19,9 +20,34 @@ function demoGoal() {
 }
 const firstGoal = demoGoal();
 const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals: [firstGoal], activeGoalId: firstGoal.id, goal: firstGoal, reserve: null, coverage: null };
+let lastReviewQuestion = '';
+let currentReviewResult = null;
 const coverageLabel = value => ({ all: 'all included', some: 'some still missing', none: 'none owned', unsure: 'unsure' })[value];
 const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
 const $ = selector => document.querySelector(selector);
+function renderReviewAnswer() {
+  const response = answerReviewQuestion(lastReviewQuestion, { holdings: state.holdings,
+    goal: state.goal, source: state.source, coverage: state.coverage,
+    result: currentReviewResult });
+  $('#review-question-answer').hidden = !response;
+  if (!response) return;
+  $('#review-answer-text').textContent = response.text;
+  $('#review-answer-basis').textContent = response.basis;
+  $('#review-answer-limit').textContent = response.limitation;
+  $('#review-answer-link').href = response.href;
+  $('#review-answer-link').textContent = `${response.action} →`;
+}
+$('#review-question-form').addEventListener('submit', event => {
+  event.preventDefault();
+  lastReviewQuestion = $('#review-question').value.trim();
+  renderReviewAnswer();
+});
+for (const prompt of document.querySelectorAll('[data-review-question]')) {
+  prompt.addEventListener('click', () => {
+    $('#review-question').value = prompt.dataset.reviewQuestion;
+    $('#review-question-form').requestSubmit();
+  });
+}
 $('#context-goal-link').addEventListener('click', () => { $('#goal-assumptions').open = true; });
 $('#deeper-review').open = window.matchMedia('(min-width: 800px)').matches;
 const indiaToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
@@ -261,6 +287,8 @@ function render() {
   const pauseGoalFigures = needsGoalConfirmation;
   const result = analyzePortfolio(state.holdings, pauseGoalFigures ? { ...state.goal, years: 0, target: 0 } : state.goal,
     new Date(), state.reserve, state.source === 'user' ? state.coverage : null);
+  currentReviewResult = result;
+  renderReviewAnswer();
   const nextStep = chooseNextReviewStep(state);
   $('#review-next-action').hidden = !nextStep;
   if (nextStep) {
@@ -1691,7 +1719,14 @@ async function initAccount() {
     if (accountPortfolioAccess) {
       fetch('/api/assistant/status', { cache: 'no-store' })
         .then(response => response.ok ? response.json() : null)
-        .then(status => { if (status?.available === true) $('#assistant-link').hidden = false; })
+        .then(status => {
+          if (status?.available !== true) return;
+          const link = $('#assistant-link');
+          if (Number.isInteger(status.credits?.remaining)) {
+            link.textContent = `Ask assistant · ${status.credits.remaining} free`;
+          }
+          link.hidden = false;
+        })
         .catch(() => { /* The browser-only review remains usable without AI. */ });
     }
     accountEnrollment = accountAuthenticated && !accountPortfolioAccess &&
