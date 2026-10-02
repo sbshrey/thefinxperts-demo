@@ -8,6 +8,7 @@ import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
+import { contextNeedsReview } from './market-context.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -21,6 +22,11 @@ const $ = selector => document.querySelector(selector);
 $('#context-goal-link').addEventListener('click', () => { $('#goal-assumptions').open = true; });
 $('#deeper-review').open = window.matchMedia('(min-width: 800px)').matches;
 const indiaToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+if (contextNeedsReview($('#market-context-card').dataset.nextReview, indiaToday())) {
+  $('#market-context-title').textContent = 'Earlier public data to recheck';
+  $('#market-context-status').textContent = 'This August update may have been superseded. Check the latest MoSPI CPI tables before revisiting your goal assumption.';
+  $('#market-context-status').classList.add('needs-review');
+}
 function validEnteredDate(value) {
   if (!value) return true;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > indiaToday()) return false;
