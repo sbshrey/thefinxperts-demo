@@ -156,6 +156,12 @@ function renderAccountActions() {
   renderRefresh();
 }
 
+function nextFundCategoryQuestion(portfolio) {
+  const index = portfolio?.holdings?.findIndex(row => row.type === 'Mutual fund' &&
+    row.granularity !== 'fund_house' && row.asset === 'Other') ?? -1;
+  return index < 0 ? null : `Holding #${index + 1} is labelled Other. Can you check its individual scheme source for a clear Equity, Debt or Gold category? If so, say “classify holding ${index + 1} as Equity” with the category you found, then confirm it. Otherwise keep it as Other.`;
+}
+
 function say(role, text, question = null) {
   const item = document.createElement('div');
   item.className = `message ${role}`;
@@ -316,7 +322,7 @@ function renderReview() {
   } else for (const [index, row] of rows.entries()) {
     const item = document.createElement('div'); item.className = 'holding-item';
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
-    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
+    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
     item.append(name, meta); holdings.append(item);
   }
   renderGoalReview();
@@ -789,7 +795,7 @@ $('#composer').addEventListener('submit', async event => {
     }
     const prepared = prepareHoldingCorrection(state.account.portfolio, correction);
     if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
-    state.correction = { ...prepared, revision: state.account.revision };
+    state.correction = { ...prepared, kind: correction.kind, revision: state.account.revision };
     renderCorrection();
     say('assistant', 'I prepared this change to your confirmed review. Check the holding and supplied facts in the preview, then choose “Apply correction” or discard it.');
     return;
@@ -803,7 +809,8 @@ $('#composer').addEventListener('submit', async event => {
     }
     const prepared = prepareCoverageAnswer(state.account?.portfolio, coverageAnswer);
     if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
-    state.correction = { ...prepared, revision: state.account.revision };
+    state.correction = { ...prepared, kind: 'coverage',
+      firstCoverageAnswer: !state.account?.portfolio?.coverage, revision: state.account.revision };
     renderCorrection();
     say('assistant', 'I staged your coverage answer. Check it against current statements, then apply or discard it.');
     return;
@@ -883,7 +890,8 @@ $('#confirm-drafts').addEventListener('click', async () => {
       if (!state.coveragePrompted && !state.account?.portfolio?.coverage) {
         state.coveragePrompted = true;
         say('assistant', 'Before treating this as your full portfolio, have you included all your mutual funds and directly held stocks? You can reply “I included all my mutual funds”, “I included some of my direct stocks”, or “I have no mutual funds”. I will ask you to confirm the answer.');
-      }
+      } else if (nextFundCategoryQuestion(state.account?.portfolio))
+        say('assistant', nextFundCategoryQuestion(state.account.portfolio));
     } catch (error) { say('note', error.message || 'The account save failed. Your drafts are still here.'); }
     finally { state.busy = false; renderDrafts(); renderCredits(); renderGoalReview(); renderGoalDraft(); }
     return;
@@ -944,6 +952,10 @@ $('#confirm-correction')?.addEventListener('click', async () => {
       'The saved review changed in another tab. Check the latest holdings, discard this correction and describe it again.');
     state.correction = null;
     say('note', correction.result);
+    if (correction.kind === 'classify' || correction.firstCoverageAnswer) {
+      const question = nextFundCategoryQuestion(state.account?.portfolio);
+      if (question) say('assistant', question);
+    }
   } catch (error) { say('note', error.message || 'The correction could not be saved. Check the preview and try again.'); }
   finally { state.busy = false; renderAccountActions(); }
 });

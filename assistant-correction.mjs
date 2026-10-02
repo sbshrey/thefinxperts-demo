@@ -20,6 +20,12 @@ export function parseHoldingCorrection(message, today = new Date()) {
   }
   if (/^(?:set|update) invested amount\b/i.test(input))
     return { error: 'Say “set invested amount of NAME to ₹40,000 checked YYYY-MM-DD”. Use the holding number if its name appears more than once.' };
+  const classify = /^classify (?:holding )?(.+?) as (equity|debt|gold|other|unknown)[.!]?$/i.exec(input);
+  if (classify) return { kind: 'classify', selector: classify[1].trim(),
+    asset: classify[2].toLowerCase() === 'unknown' ? 'Other' :
+      classify[2][0].toUpperCase() + classify[2].slice(1).toLowerCase() };
+  if (/^classify\b/i.test(input))
+    return { error: 'Say “classify holding 1 as Equity”, Debt, Gold or Other after checking the scheme source. Use the holding number when names repeat.' };
   const update = /^(?:update|change|correct) (?:value of )?(.+?) (?:value )?to (.+?) as of (\d{4}-\d{2}-\d{2})[.!]?$/i.exec(input);
   if (update) {
     const value = parseAmount(update[2]);
@@ -90,7 +96,7 @@ function findRow(holdings, selector) {
 export function prepareHoldingCorrection(saved, command, today = new Date()) {
   if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(saved.goals))
     return { portfolio: null, errors: ['Add a confirmed holding before correcting the review.'] };
-  if (!command || !['update', 'remove', 'cost'].includes(command.kind) ||
+  if (!command || !['update', 'remove', 'cost', 'classify'].includes(command.kind) ||
       typeof command.selector !== 'string' || !command.selector.trim())
     return { portfolio: null, errors: ['Name the confirmed holding or use its number in Included holdings.'] };
   const match = findRow(saved.holdings, command.selector);
@@ -103,6 +109,18 @@ export function prepareHoldingCorrection(saved, command, today = new Date()) {
     delete portfolio.coverage;
     const linkedGoals = saved.goals.filter(goal => goal.linkedIds?.includes(row.id)).map(goal => goal.name);
     return { portfolio, errors: [], description: `Remove holding ${index + 1}: ${row.name} · ${money(row.value)} · ${row.asOf || 'date missing'} from this review. Nothing is traded. ${linkedGoals.length ? `It will also stop counting toward ${linkedGoals.join(', ')}. ` : ''}${saved.coverage ? 'The self-reported coverage answer will be cleared.' : ''}`, result: `${row.name} removed from the confirmed review. Its goal links were cleared.${saved.coverage ? ' The coverage answer was also cleared.' : ''}` };
+  }
+  if (command.kind === 'classify') {
+    if (row.type !== 'Mutual fund' || row.granularity === 'fund_house')
+      return { portfolio: null, errors: ['Only an individual mutual-fund scheme can be classified here. A fund-house total or other investment needs more source detail.'] };
+    if (!['Equity', 'Debt', 'Gold', 'Other'].includes(command.asset))
+      return { portfolio: null, errors: ['Choose Equity, Debt, Gold or Other only after checking the scheme source.'] };
+    if (row.asset === command.asset)
+      return { portfolio: null, errors: ['This fund already has that asset category.'] };
+    portfolio.holdings[index].asset = command.asset;
+    return { portfolio, errors: [],
+      description: `Classify holding ${index + 1}: ${row.name} from ${row.asset} to ${command.asset}. Check the individual scheme's current source classification before applying. Its entered value, valuation date, instrument details and goal links stay the same; the asset and goal mix will be recalculated. This is your label, not an independently verified allocation.`,
+      result: `${row.name} is now labelled ${command.asset} from your checked source. The entered value and goal links did not change; asset and goal mix were recalculated.` };
   }
   if (command.kind === 'cost') {
     if (!['Mutual fund', 'Stock'].includes(row.type) || row.granularity === 'fund_house')
