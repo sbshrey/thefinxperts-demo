@@ -147,6 +147,14 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const fundHouseSummaries = new Set(valid.filter(holding => holding.granularity === 'fund_house')
     .map(holding => holding.amc?.toLocaleLowerCase('en-IN')).filter(Boolean));
   const conflictingIsins = [...isinClassifications.values()].filter(classifications => classifications.size > 1).length;
+  const goalIsinClassifications = new Map();
+  for (const holding of goalHoldings) {
+    if (typeof holding.isin !== 'string' || !/^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin)) continue;
+    const labels = goalIsinClassifications.get(holding.isin) || new Set();
+    labels.add(`${holding.type}|${holding.asset}`);
+    goalIsinClassifications.set(holding.isin, labels);
+  }
+  const goalIdentityConflict = [...goalIsinClassifications.values()].some(labels => labels.size > 1);
   if (conflictingIsins) {
     findings.push({ key: 'identity', tone: 'amber', label: 'Data quality', title: 'Check conflicting labels',
       detail: `${conflictingIsins} ISIN ${conflictingIsins === 1 ? 'appears' : 'appear'} with different holding types or asset categories. Recheck those rows before interpreting concentration or goal mix.`,
@@ -207,9 +215,12 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       limitation: 'This answer does not verify accessible savings, income, obligations or the size and timing of an emergency. It is not a risk profile or a recommendation to move money.' });
   }
 
-  const mixComparison = validGoal && goalTotal > 0 && !goalDateCheck.count &&
-    !conflictingIsins && !goalHoldings.some(holding => holding.granularity === 'fund_house')
-    ? compareMixPlan(goalAssets, goalTotal, goal.targetMix) : null;
+  const mixComparisonPause = !goal.targetMix ? 'no_mix' : !validGoal ? 'goal_details' :
+    !goalTotal ? 'no_holdings' : goalAssets.Other > 0 ? 'unclassified' :
+      goalDateCheck.count ? 'valuation_dates' : goalIdentityConflict ? 'conflicting_identity' :
+        goalHoldings.some(holding => holding.granularity === 'fund_house') ? 'fund_house' : null;
+  const mixComparison = mixComparisonPause === null ? compareMixPlan(goalAssets, goalTotal, goal.targetMix) : null;
+  const mixPause = mixComparisonPause || (mixComparison ? null : 'invalid_mix');
   const largestMixDifference = mixComparison?.reduce((largest, row) =>
     !largest || Math.abs(row.differencePct) > Math.abs(largest.differencePct) ? row : largest, null);
   if (largestMixDifference && Math.abs(largestMixDifference.differencePct) >= 10) {
@@ -280,7 +291,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
 
   return {
     total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
-    goalDateCheck,
+    goalDateCheck, mixComparison, mixPause,
     largestGoalPosition,
     largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, fundCost, amcCoveredValue, asOfSummary,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,

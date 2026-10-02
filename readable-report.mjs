@@ -1,5 +1,5 @@
 import { analyzePortfolio } from './analysis.mjs';
-import { MIX_ASSETS, compareMixPlan } from './mix-plan.mjs';
+import { MIX_ASSETS } from './mix-plan.mjs';
 import { goalShare, summarizeGoalCoverage } from './goals.mjs';
 import { reserveMonths } from './reserve.mjs';
 import { entryOriginText } from './entry-origin.mjs';
@@ -77,13 +77,18 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     lines.push('This comparison is not a formal risk profile or a suitability assessment; actual losses may differ.');
   }
 
-  const mix = goal.targetMix ? compareMixPlan(result.goalAssets, result.goalTotal, goal.targetMix) : null;
+  const mix = result.mixComparison;
   if (goal.targetMix) {
     lines.push('', 'YOUR CHOSEN MIX FOR THIS GOAL');
-    if (result.goalAssets.Other > 0) {
+    if (result.mixPause === 'unclassified') {
       lines.push(`Comparison paused: ${rupees(result.goalAssets.Other)} of linked holdings is labelled Other. Check its asset category against a detailed statement or scheme information before interpreting debt or gold gaps.`);
     } else if (!mix) {
-      lines.push('Assign valid holdings to this goal before comparing your chosen mix.');
+      lines.push({
+        valuation_dates: 'Comparison paused: check linked holding values with missing, future or over-90-day valuation dates before comparing your chosen mix.',
+        conflicting_identity: 'Comparison paused: rows sharing an ISIN have conflicting type or asset labels. Correct them before comparing your chosen mix.',
+        fund_house: 'Comparison paused: a linked fund-house total is not an individual scheme. Check a detailed statement before comparing your chosen mix.',
+        no_holdings: 'Assign valid holdings to this goal before comparing your chosen mix.',
+      }[result.mixPause] || 'Confirm the goal details and chosen percentages before comparing your mix.');
     } else {
       for (const row of mix) {
         lines.push(`${row.asset}: current ${row.currentPct.toFixed(1)}% | chosen ${row.plannedPct.toFixed(1)}% | ${row.differencePct >= 0 ? '+' : ''}${row.differencePct.toFixed(1)} percentage points`);

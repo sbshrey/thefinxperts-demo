@@ -6,7 +6,7 @@ import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalSha
 import { entryOriginFromImport, entryOriginText } from './entry-origin.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { buildReadableReport } from './readable-report.mjs';
-import { MIX_ASSETS, compareMixPlan, validMixPlan } from './mix-plan.mjs';
+import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
 
 function demoGoal() {
@@ -110,13 +110,17 @@ function renderMixPlan(result, pauseGoalFigures) {
     container.textContent = 'Confirm this goal and clear any fictional holdings before comparing your chosen mix.';
     return;
   }
-  if (result.goalAssets.Other > 0) {
-    container.textContent = `${rupees(result.goalAssets.Other)} of holdings linked to this goal is labelled Other. Check those holdings against a detailed statement or scheme information before comparing the chosen mix; debt and gold gaps would be unreliable.`;
-    return;
-  }
-  const rows = compareMixPlan(result.goalAssets, result.goalTotal, state.goal.targetMix);
+  const rows = result.mixComparison;
   if (!rows) {
-    container.textContent = 'Assign holdings to this goal to see the comparison.';
+    container.textContent = {
+      no_holdings: 'Assign holdings to this goal to see the comparison.',
+      valuation_dates: 'Comparison paused: check the linked holding values with missing, future or over-90-day valuation dates first.',
+      conflicting_identity: 'Comparison paused: holdings sharing an ISIN have conflicting type or asset labels. Correct them before comparing your chosen mix.',
+      fund_house: 'Comparison paused: a linked fund-house total is not an individual scheme. Check a detailed statement before comparing your chosen mix.',
+      invalid_mix: 'Check that your chosen percentages total 100% before comparing.',
+    }[result.mixPause] || (result.mixPause === 'unclassified' ?
+      `${rupees(result.goalAssets.Other)} of holdings linked to this goal is labelled Other. Check those holdings against a detailed statement or scheme information before comparing the chosen mix; debt and gold gaps would be unreliable.` :
+      'Confirm the goal details before comparing your chosen mix.');
     return;
   }
   const headings = document.createElement('div');
