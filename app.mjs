@@ -18,6 +18,7 @@ const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals
 const coverageLabel = value => ({ all: 'all included', some: 'some still missing', none: 'none owned', unsure: 'unsure' })[value];
 const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
 const $ = selector => document.querySelector(selector);
+$('#deeper-review').open = window.matchMedia('(min-width: 800px)').matches;
 const indiaToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
 function validEnteredDate(value) {
   if (!value) return true;
