@@ -3,7 +3,8 @@ import { setHoldingAllocations } from './goals.mjs';
 import { validMixPlan } from './mix-plan.mjs';
 
 const LIMITS = { age: [18, 100], years: [1, 50], target: [1000, 1_000_000_000_000],
-  monthlyContribution: [0, 100_000_000], returnPct: [-20, 13], inflationPct: [-5, 15] };
+  monthlyContribution: [0, 100_000_000], returnPct: [-20, 13], inflationPct: [-5, 15],
+  equityDropPct: [0, 60], affordableLoss: [0, 10_000_000_000], tolerableLoss: [0, 10_000_000_000] };
 const normalized = value => value.trim().toLocaleLowerCase('en-IN').replace(/\s+/g, ' ');
 const cleanName = value => value.trim().replace(/^[“"']|[”"']$/g, '').trim().replace(/\.$/, '').trim();
 

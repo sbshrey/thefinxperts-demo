@@ -79,6 +79,25 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `${money(result.goalTotal)} of entered value is linked to this goal; each share is its labelled asset value divided by that total.`,
       'These are supplied dated values and your own chosen percentages. Fund constituents, taxes and transaction costs are not assessed. A difference is a review prompt, not an instruction to trade.', '#goals', 'Review chosen mix');
   }
+  if (/\b(?:equity|stock market).{0,25}\b(?:fall(?:s|en)?|drop(?:s|ped)?)\b|\b(?:stress test|hypothetical loss)\b/.test(input)) {
+    if (goal?.equityDropPct === undefined) return answer('Choose a hypothetical equity fall first, such as “equity fall 25%”, then confirm it. I will apply it once to the entered Equity value linked to this goal.',
+      'No investor-chosen equity fall is saved for the selected goal.',
+      'The example is not a market prediction, personal risk score or recommendation.', '#goals', 'Choose a hypothetical fall');
+    const pause = { goal_details: 'the goal details are unfinished', no_holdings: 'no holdings are linked to this goal',
+      valuation_dates: 'linked values have missing, future or old dates',
+      unclassified: 'a linked holding has an unknown asset category',
+      fund_house: 'a linked fund-house total lacks scheme detail' }[result.stressPause];
+    if (result.stressPause) return answer(`The ${goal.equityDropPct}% equity-fall calculation is paused because ${pause || 'the inputs need checking'}.`,
+      `Selected goal ${goal.name}; stress status ${result.stressPause}.`,
+      'Check the source values and labels before interpreting a hypothetical loss.', '#goals', 'Check linked holdings');
+    const shock = result.shock;
+    const limits = result.lossLimits;
+    const checks = [limits?.affordable ? `You said you could cover ${money(limits.affordable.limit)}; this loss ${limits.affordable.excess ? `exceeds it by ${money(limits.affordable.excess)}` : 'does not exceed it'}.` : null,
+      limits?.tolerable ? `You said you could tolerate ${money(limits.tolerable.limit)}; this loss ${limits.tolerable.excess ? `exceeds it by ${money(limits.tolerable.excess)}` : 'does not exceed it'}.` : null].filter(Boolean).join(' ');
+    return answer(`If linked Equity value fell ${shock.dropPct}% once, the entered loss would be ${money(shock.loss)}, leaving ${money(shock.valueAfterLoss)} assigned to ${goal.name} and a ${money(shock.gapAfterLoss)} gap to today’s goal cost. ${checks}`.trim(),
+      `${money(result.goalAssets.Equity)} linked Equity value × ${shock.dropPct}% = ${money(shock.loss)}; ${money(result.goalTotal)} assigned value minus that loss = ${money(shock.valueAfterLoss)}.`,
+      'One-time arithmetic from supplied dated values, holding other assets fixed. It excludes future growth, contributions, inflation and tax; actual losses could be larger. It is not a risk score or trade instruction.', '#goals', 'Review stress check');
+  }
   if (/\b(overlap|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
   {
     const byInstrument = new Map();

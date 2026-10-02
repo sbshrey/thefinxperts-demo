@@ -161,13 +161,14 @@ function renderGoalDraft() {
   const labels = { name: 'Goal', age: 'Your current age', years: 'Years until goal',
     target: 'Target in today’s rupees', monthlyContribution: 'Monthly contribution',
     returnPct: 'Annual growth assumption', inflationPct: 'Annual inflation assumption',
-    targetMix: 'Your chosen goal mix' };
+    targetMix: 'Your chosen goal mix', equityDropPct: 'Hypothetical equity fall',
+    affordableLoss: 'Loss you could cover', tolerableLoss: 'Loss you could tolerate' };
   for (const [key, value] of Object.entries(state.goalFacts)) {
     const item = document.createElement('li');
     item.textContent = `${labels[key]}: ${key === 'targetMix' ? value === null ? 'remove comparison' :
       Object.entries(value).map(([asset, share]) => `${asset} ${share}%`).join(', ') :
-      ['target', 'monthlyContribution'].includes(key) ? money(value) :
-        ['returnPct', 'inflationPct'].includes(key) ? `${value}%` : value}`;
+      ['target', 'monthlyContribution', 'affordableLoss', 'tolerableLoss'].includes(key) ? money(value) :
+        ['returnPct', 'inflationPct', 'equityDropPct'].includes(key) ? `${value}%` : value}`;
     ul.append(item);
   }
   list.append(ul);
@@ -299,6 +300,25 @@ function renderGoalReview() {
       root.append(paragraph(`Comparison paused. ${pause[review.mixPause] || 'Check the goal and its linked holdings before comparing.'}`));
     }
   } else root.append(paragraph('Already chosen a mix for this goal? Say “goal mix 60% equity, 30% debt, 10% gold” to compare your linked holdings. The percentages are yours to choose.'));
+  const stressHeading = document.createElement('h4'); stressHeading.textContent = 'What if equity fell?'; root.append(stressHeading);
+  if (review.stressPause === 'no_assumption') {
+    root.append(paragraph('Choose a hypothetical fall by saying “equity fall 25%”. This is a one-time calculation, not a prediction.'));
+    if (review.lossInputs.affordable !== undefined || review.lossInputs.tolerable !== undefined)
+      root.append(paragraph(`Your saved loss amounts: could cover ${review.lossInputs.affordable === undefined ? 'not entered' : money(review.lossInputs.affordable)}; could tolerate ${review.lossInputs.tolerable === undefined ? 'not entered' : money(review.lossInputs.tolerable)}. Choose a hypothetical fall to compare them.`));
+  } else if (review.stressPause) {
+    const pause = { no_holdings: 'Link a holding to this goal first.',
+      valuation_dates: 'Check missing, future or old dates on linked holdings first.',
+      unclassified: 'Classify linked holdings labelled Other from their source first.',
+      fund_house: 'A linked fund-house total needs scheme detail first.' };
+    root.append(paragraph(`Stress calculation paused. ${pause[review.stressPause] || 'Check the goal and its linked holdings first.'}`));
+  } else {
+    const shock = review.shock;
+    root.append(paragraph(`If linked Equity holdings fell ${shock.dropPct}% once: their entered value would fall by ${money(shock.loss)}; assigned value would be ${money(shock.valueAfterLoss)}; the gap to today’s goal cost would be ${money(shock.gapAfterLoss)}. Other asset values are held fixed in this illustration.`));
+    const { affordable, tolerable, capacityGap } = review.lossLimits;
+    if (affordable || tolerable) root.append(paragraph(`${affordable ? `You said you could cover ${money(affordable.limit)}; this loss ${affordable.excess > 0 ? `exceeds that by ${money(affordable.excess)}` : 'does not exceed it'}. ` : ''}${tolerable ? `You said you could tolerate ${money(tolerable.limit)}; this loss ${tolerable.excess > 0 ? `exceeds that by ${money(tolerable.excess)}` : 'does not exceed it'}. ` : ''}${capacityGap !== null ? `Your tolerable amount is ${money(capacityGap)} above the amount you said you could cover; check whether that could delay the goal or essential spending. ` : ''}These are your own amounts, not a risk score.`));
+    else root.append(paragraph('Optional: say “loss I can cover ₹50,000” or “loss I can tolerate ₹50,000” to compare this example with your own amounts.'));
+    root.append(paragraph('This uses supplied dated values and asset labels. It excludes future growth, contributions, inflation, taxes and changes in other assets; actual losses could be larger.'));
+  }
   if (portfolio?.goals?.length === 1) {
     const linked = new Set(portfolio.goals[0].linkedIds);
     const unassigned = portfolio.holdings.filter(row => row.id && !linked.has(row.id));

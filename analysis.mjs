@@ -130,6 +130,11 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const shock = calculateEquityShockScenario(goalTotal, goalEquityValue, target, Number(goal.equityDropPct ?? 20));
   const shockContinuation = scenario && shock?.loss > 0 ? calculateGoalScenario(shock.valueAfterLoss, goal) : null;
   const lossLimits = shock ? compareEnteredLossLimits(shock.loss, goal) : null;
+  const stressPause = goal.equityDropPct === undefined ? 'no_assumption' : !validGoal ? 'goal_details' :
+    !goalTotal ? 'no_holdings' : goalDateCheck.count ? 'valuation_dates' :
+      goalAssets.Other > 0 ? 'unclassified' :
+        goalHoldings.some(holding => holding.granularity === 'fund_house') ? 'fund_house' :
+          shock ? null : 'invalid';
   const equityPct = total ? (assets.Equity / total) * 100 : 0;
   const findings = [];
   const incompleteTypes = [
@@ -299,7 +304,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     unrealizedChange,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,
-    scenario, shock, shockContinuation, lossLimits,
+    scenario, shock, shockContinuation, lossLimits, stressPause,
     findings: findings.slice(0, 3), additionalFindings: findings.slice(3),
   };
 }

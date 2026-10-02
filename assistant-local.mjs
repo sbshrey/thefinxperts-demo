@@ -74,6 +74,22 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
       return { error: 'Your chosen goal mix must total 100%. The site cannot choose a mix for you.' };
     return { facts: { targetMix: mix } };
   }
+  const fallRequest = /^(?:test )?(?:equity fall|equity drop)(?: of)?\s+(.+?)[.!]?$/i.exec(input);
+  if (fallRequest) {
+    const percentage = /^(\d{1,2}(?:\.\d{1,2})?)%$/.exec(fallRequest[1].trim());
+    const value = Number(percentage?.[1]);
+    if (!percentage || value < 0 || value > 60)
+      return { error: 'Choose a hypothetical equity fall from 0% to 60%, such as “equity fall 25%”.' };
+    return { facts: { equityDropPct: value } };
+  }
+  const limitRequest = /^loss i can (cover|tolerate)\s+(.+?)[.!]?$/i.exec(input);
+  if (limitRequest) {
+    const raw = limitRequest[2].trim();
+    const value = /^(?:₹\s*)?0$/.test(raw) ? 0 : parseAmount(raw);
+    if (value === null || value > 10_000_000_000)
+      return { error: 'Enter an amount in rupees for the loss you can cover or tolerate, such as “loss I can cover ₹50,000”.' };
+    return { facts: { [limitRequest[1].toLowerCase() === 'cover' ? 'affordableLoss' : 'tolerableLoss']: value } };
+  }
   let field;
   let value;
   let match = /^(?:my age is |i am |age )([0-9]{1,3})(?: years old)?[.!]?$/i.exec(input);

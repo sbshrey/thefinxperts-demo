@@ -19,6 +19,9 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
     linkedValue: result.goalTotal, linkedCount: result.goalHoldingCount, gapToday: result.goalGap,
     dateCheckCount: result.goalDateCheck.count, scenario: result.scenario,
     mixPlan: goal.targetMix || null, mixComparison: result.mixComparison, mixPause: result.mixPause,
+    stressPause: result.stressPause, shock: result.stressPause === null ? result.shock : null,
+    lossLimits: result.stressPause === null ? result.lossLimits : null,
+    lossInputs: { affordable: goal.affordableLoss, tolerable: goal.tolerableLoss },
     assumptions: { monthlyContribution: goal.monthlyContribution, returnPct: goal.returnPct,
       inflationPct: goal.inflationPct },
     findings: [...result.findings, ...result.additionalFindings].slice(0, 2).map(item => ({
