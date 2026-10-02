@@ -177,12 +177,21 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       answer('Check your statement coverage and the dates of entered values before using this as a complete portfolio picture.',
         `${valid.length} entered holdings; ${result.asOfSummary}.`, coverageNote, '#holdings', 'Check holdings');
   }
-  if (/\b(as.?of|dated?|stale|recent|refresh|old values?)\b/.test(input)) {
-    const issues = valid.map(row => valuationDateIssue(row.asOf, today));
-    const missing = issues.filter(issue => issue === 'missing').length;
-    const stale = issues.filter(issue => issue === 'stale').length;
-    const future = issues.filter(issue => issue === 'future').length;
-    return answer(`${lead}${missing} holdings lack a date, ${stale} are dated over 90 days ago, and ${future} have future dates. ${result.asOfSummary}.`,
+  if (/\b(as.?of|dated?|stale|outdated|recent|refresh\w*|old values?)\b/.test(input) ||
+      /\b(?:values?|holdings?) need(?:s)? (?:an? )?updat\w*\b/.test(input)) {
+    const issues = valid.map(row => ({ row, issue: valuationDateIssue(row.asOf, today),
+      number: holdings.indexOf(row) + 1 }));
+    const count = issue => issues.filter(item => item.issue === issue).length;
+    const missing = count('missing');
+    const stale = count('stale');
+    const future = count('future');
+    const needingCheck = issues.filter(item => item.issue);
+    const first = needingCheck.slice(0, 5).map(({ row, issue, number }) =>
+      `#${number} ${row.name} (${issue === 'missing' ? 'date missing' :
+        `${row.asOf}; ${issue === 'future' ? 'future date' : 'over 90 days old'}`})`);
+    const list = first.length ? ` Check ${first.join('; ')}${needingCheck.length > first.length ?
+      `; and ${needingCheck.length - first.length} more flagged ${needingCheck.length - first.length === 1 ? 'row' : 'rows'}` : ''}.` : '';
+    return answer(`${lead}${missing} ${missing === 1 ? 'holding lacks' : 'holdings lack'} a date, ${stale} ${stale === 1 ? 'is' : 'are'} dated over 90 days ago, and ${future} ${future === 1 ? 'has a' : 'have'} future ${future === 1 ? 'date' : 'dates'}.${list} ${result.asOfSummary}.`,
       `Compared the dates on ${valid.length} entered holdings with today's date in India; the 90-day threshold is a review prompt.`,
       'A dated entry is not a verified live quote. Refresh values from the original source.', '#holdings', 'Check dated values');
   }
