@@ -191,8 +191,8 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
         `${row.asOf}; ${issue === 'future' ? 'future date' : 'over 90 days old'}`})`);
     const list = first.length ? ` Check ${first.join('; ')}${needingCheck.length > first.length ?
       `; and ${needingCheck.length - first.length} more flagged ${needingCheck.length - first.length === 1 ? 'row' : 'rows'}` : ''}.` : '';
-    return answer(`${lead}${missing} ${missing === 1 ? 'holding lacks' : 'holdings lack'} a date, ${stale} ${stale === 1 ? 'is' : 'are'} dated over 90 days ago, and ${future} ${future === 1 ? 'has a' : 'have'} future ${future === 1 ? 'date' : 'dates'}.${list} ${result.asOfSummary}.`,
-      `Compared the dates on ${valid.length} entered holdings with today's date in India; the 90-day threshold is a review prompt.`,
+    return answer(`${lead}${missing} ${missing === 1 ? 'holding lacks' : 'holdings lack'} a date, ${stale} ${stale === 1 ? 'is' : 'are'} dated over 90 days ago, and ${future} ${future === 1 ? 'has a' : 'have'} future ${future === 1 ? 'date' : 'dates'}.${list} ${String(result.asOfSummary).replace(/\.$/, '')}.`,
+      `Compared the dates on ${valid.length} entered ${valid.length === 1 ? 'holding' : 'holdings'} with today's date in India; the 90-day threshold is a review prompt.`,
       'A dated entry is not a verified live quote. Refresh values from the original source.', '#holdings', 'Check dated values');
   }
   if (/\b(goal|target|gap|horizon|retirement|future)\b/.test(input)) {
