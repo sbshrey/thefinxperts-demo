@@ -457,6 +457,7 @@ function render() {
   const reviewDestinations = {
     scope: ['#coverage-details', 'Check snapshot coverage'],
     identity: ['#holdings', 'Review holding labels'], summary: ['#input-choice', 'See import choices'],
+    'goal-access': ['#holdings', 'Check linked holding access'],
     classification: ['#holdings', 'Check asset categories'],
     valuation: ['#holdings', 'Check entered values'], 'chosen-mix': ['#mix-plan-details', 'Compare my chosen mix'],
     emergency: ['#goal-form', 'Review goal context'], reserve: ['#reserve-check', 'Check accessible money'],
@@ -467,9 +468,13 @@ function render() {
   const firstOther = state.holdings.findIndex(holding => holding.asset === 'Other' && holding.granularity !== 'fund_house');
   const firstDateIssue = state.holdings.findIndex(holding => valuationDateIssue(holding.asOf));
   const firstSummary = state.holdings.findIndex(holding => holding.granularity === 'fund_house');
+  const firstGoalAccess = state.holdings.findIndex(holding =>
+    holding.type === 'Other investment' && goalShare(state.goal, holding.id) > 0);
   if (firstOther >= 0) reviewDestinations.classification = [`#holding-${firstOther + 1}`, 'Check first Other holding'];
   if (firstDateIssue >= 0) reviewDestinations.valuation = [`#holding-${firstDateIssue + 1}`, 'Check first flagged value'];
   if (firstSummary >= 0) reviewDestinations.summary = [`#holding-${firstSummary + 1}`, 'See fund-house summary'];
+  if (firstGoalAccess >= 0) reviewDestinations['goal-access'] =
+    [`#holding-${firstGoalAccess + 1}`, 'Check linked holding access'];
   const renderFinding = (finding, index, target) => {
     const article = document.createElement('article');
     article.className = 'finding';

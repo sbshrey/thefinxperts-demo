@@ -29,6 +29,11 @@ export function chooseNextReviewStep({ source, holdings, goal, coverage }, today
     kind: 'valuation', href: `#holding-${dated + 1}`, label: 'Check the first dated value →',
     text: 'At least one holding has a missing, future or over-90-day value date. Check it before interpreting the mix for this goal.',
   };
+  const access = linkedIndices.find(index => holdings[index].type === 'Other investment') ?? -1;
+  if (access >= 0) return {
+    kind: 'access', href: `#holding-${access + 1}`, label: 'Check a linked holding →',
+    text: 'A manually valued investment is linked to this goal. Check its maturity or withdrawal terms against the goal date, then review whether it should stay assigned.',
+  };
   const unknown = linkedIndices.find(index => holdings[index].asset === 'Other' &&
     holdings[index].type !== 'Other investment' && holdings[index].granularity !== 'fund_house') ?? -1;
   if (unknown >= 0) return {
