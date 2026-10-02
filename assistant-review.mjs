@@ -18,10 +18,12 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
   const missingAssumptions = ['monthlyContribution', 'returnPct', 'inflationPct']
     .filter(field => goal.assumptionsChecked?.[field] !== true);
   const scenarioStatus = missingAssumptions.length ? 'assumptions' :
-    result.goalDateCheck.count ? 'valuation_dates' : result.scenario ? 'ready' : 'invalid';
+    result.goalDateCheck.count ? 'valuation_dates' : result.goalAccessCheck.count ? 'access_uncertain' :
+      result.scenario ? 'ready' : 'invalid';
   return { kind: 'confirmed', name: goal.name, years: goal.years, target: goal.target,
     linkedValue: result.goalTotal, linkedCount: result.goalHoldingCount, gapToday: result.goalGap,
-    dateCheckCount: result.goalDateCheck.count, scenario: scenarioStatus === 'ready' ? result.scenario : null,
+    dateCheckCount: result.goalDateCheck.count, accessCheck: result.goalAccessCheck,
+    scenario: scenarioStatus === 'ready' ? result.scenario : null,
     scenarioStatus, missingAssumptions,
     mixPlan: goal.targetMix || null, mixComparison: result.mixComparison, mixPause: result.mixPause,
     stressPause: result.stressPause, shock: result.stressPause === null ? result.shock : null,

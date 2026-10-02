@@ -84,6 +84,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     const plan = goal.targetMix;
     if (!result.mixComparison) {
       const reason = { goal_details: 'the goal facts are unfinished', no_holdings: 'no holdings are linked to this goal',
+        other_investment: 'a linked other investment has no verified asset split',
         unclassified: 'linked holdings include an unknown asset category',
         valuation_dates: 'linked holdings have missing, future or old valuation dates',
         conflicting_identity: 'one instrument identifier has conflicting labels',
@@ -104,6 +105,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       'The example is not a market prediction, personal risk score or recommendation.', '#goals', 'Choose a hypothetical fall');
     const pause = { goal_details: 'the goal details are unfinished', no_holdings: 'no holdings are linked to this goal',
       valuation_dates: 'linked values have missing, future or old dates',
+      access_uncertain: 'access to a linked other investment at the goal date has not been checked',
       unclassified: 'a linked holding has an unknown asset category',
       fund_house: 'a linked fund-house total lacks scheme detail' }[result.stressPause];
     if (result.stressPause) return answer(`The ${goal.equityDropPct}% equity-fall calculation is paused because ${pause || 'the inputs need checking'}.`,
@@ -169,7 +171,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
         coverageNote, '#holdings', 'Link holdings');
     return answer(`${lead}${money(result.goalTotal)} is assigned to ${goal.name} against your ${money(goal.target)} target today. The simple gap is ${money(result.goalGap)}.`,
       `${money(goal.target)} target minus ${money(result.goalTotal)} assigned value; ${result.goalHoldingCount} linked holdings. ${result.asOfSummary}.`,
-      'This comparison excludes future growth, inflation, taxes, and holdings outside the selected goal. It does not check when NPS, EPF or deposits can be accessed. It uses entered values, not live prices.', '#goals', 'Review selected goal');
+      'This gross comparison excludes future growth, inflation, taxes, and holdings outside the selected goal. Access to linked other investments at the goal date has not been checked. It uses entered values, not live prices.', '#goals', 'Review selected goal');
   }
   if (/\b(fees?|expense ratio|\bter\b|fund costs?)\b/.test(input)) {
     const cost = result.fundCost;

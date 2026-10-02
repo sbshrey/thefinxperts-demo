@@ -353,6 +353,8 @@ function renderGoalReview() {
   }
   root.append(stats);
   root.append(paragraph(`${review.linkedCount} confirmed holding${review.linkedCount === 1 ? '' : 's'} assigned to this goal; ${review.dateCheckCount} need a valuation-date check. Other confirmed holdings are excluded from these goal figures.`));
+  if (review.accessCheck.count) root.append(paragraph(
+    `${money(review.accessCheck.value)} in manually entered other investments is linked to this goal. The gap today includes that gross value; access at the goal date has not been checked.`));
   if (review.mixPlan) {
     const heading = document.createElement('h4'); heading.textContent = 'Your chosen mix'; root.append(heading);
     if (review.mixComparison) {
@@ -366,6 +368,7 @@ function renderGoalReview() {
       root.append(paragraph('This compares dated values and asset labels you supplied. It does not account for fund constituents, tax or transaction costs, and it is not a trade instruction. Say “clear goal mix” to remove the comparison.'));
     } else {
       const pause = { no_holdings: 'Link at least one holding to this goal first.',
+        other_investment: 'Linked NPS, EPF, deposit or other manual savings have no verified asset split; compare only what their source confirms.',
         unclassified: 'Classify linked holdings labelled Other from their source before comparing.',
         valuation_dates: 'Check missing, future or old valuation dates on linked holdings before comparing.',
         conflicting_identity: 'Check holdings with conflicting labels for the same ISIN before comparing.',
@@ -381,6 +384,7 @@ function renderGoalReview() {
   } else if (review.stressPause) {
     const pause = { no_holdings: 'Link a holding to this goal first.',
       valuation_dates: 'Check missing, future or old dates on linked holdings first.',
+      access_uncertain: 'Check when linked other investments can be used for this goal first.',
       unclassified: 'Classify linked holdings labelled Other from their source first.',
       fund_house: 'A linked fund-house total needs scheme detail first.' };
     root.append(paragraph(`Stress calculation paused. ${pause[review.stressPause] || 'Check the goal and its linked holdings first.'}`));
@@ -409,6 +413,8 @@ function renderGoalReview() {
     root.append(paragraph(`Future illustration paused until you confirm your ${review.missingAssumptions.map(field => names[field]).join(', ')}. In chat, use “monthly contribution ₹5,000”, “growth assumption 0%” and “inflation assumption 0%” with values you choose. A zero is valid when you deliberately choose it.`));
   } else if (review.scenarioStatus === 'valuation_dates') {
     root.append(paragraph('Future illustration paused until the linked holding dates are checked. Refresh missing, future or old values from their source.'));
+  } else if (review.scenarioStatus === 'access_uncertain') {
+    root.append(paragraph('Future illustration paused while linked other investments have no checked access date. Check the product terms and unlink them if they should not fund this goal.'));
   } else if (review.scenario) root.append(paragraph(
     `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Your confirmed assumptions: ${money(review.assumptions.monthlyContribution)}/month, ${review.assumptions.returnPct}% annual growth and ${review.assumptions.inflationPct}% inflation. This is arithmetic, not a forecast.`));
 }

@@ -25,6 +25,9 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     return share ? [{ ...holding, value: Number(holding.value) * share / 100 }] : [];
   }) : valid;
   const goalTotal = goalHoldings.reduce((sum, holding) => sum + Number(holding.value), 0);
+  const goalAccessCheck = goalHoldings.filter(holding => holding.type === 'Other investment')
+    .reduce((check, holding) => ({ count: check.count + 1, value: check.value + Number(holding.value) }),
+      { count: 0, value: 0 });
   const largestGoalPosition = largestPositionByIsin(goalHoldings);
   const goalEquityValue = goalHoldings.filter(holding => holding.asset === 'Equity')
     .reduce((sum, holding) => sum + Number(holding.value), 0);
@@ -126,17 +129,27 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const years = Number(goal.years);
   const target = Number(goal.target);
   const validGoal = Number.isFinite(years) && years > 0 && Number.isFinite(target) && target > 0;
-  const scenario = calculateGoalScenario(goalTotal, goal);
-  const shock = calculateEquityShockScenario(goalTotal, goalEquityValue, target, Number(goal.equityDropPct ?? 20));
+  const scenario = goalAccessCheck.count ? null : calculateGoalScenario(goalTotal, goal);
+  const shock = goalAccessCheck.count ? null :
+    calculateEquityShockScenario(goalTotal, goalEquityValue, target, Number(goal.equityDropPct ?? 20));
   const shockContinuation = scenario && shock?.loss > 0 ? calculateGoalScenario(shock.valueAfterLoss, goal) : null;
   const lossLimits = shock ? compareEnteredLossLimits(shock.loss, goal) : null;
   const stressPause = goal.equityDropPct === undefined ? 'no_assumption' : !validGoal ? 'goal_details' :
     !goalTotal ? 'no_holdings' : goalDateCheck.count ? 'valuation_dates' :
-      goalAssets.Other > 0 ? 'unclassified' :
+      goalAccessCheck.count ? 'access_uncertain' :
+        goalAssets.Other > 0 ? 'unclassified' :
         goalHoldings.some(holding => holding.granularity === 'fund_house') ? 'fund_house' :
           shock ? null : 'invalid';
   const equityPct = total ? (assets.Equity / total) * 100 : 0;
   const findings = [];
+  if (goalAccessCheck.count) {
+    findings.push({ key: 'goal-access', tone: 'amber', label: 'Goal timing',
+      title: 'Check when linked savings can be used',
+      detail: `${rupees(goalAccessCheck.value)} across ${goalAccessCheck.count} manually entered other ${goalAccessCheck.count === 1 ? 'investment is' : 'investments are'} linked to this goal. The future illustration is paused until access by the goal date can be checked from the product terms or statement.`,
+      question: 'Will each linked amount be available for this goal when it is needed?',
+      basis: `Counted ${goalAccessCheck.count} linked other-investment ${goalAccessCheck.count === 1 ? 'row' : 'rows'} and their assigned shares, totalling ${rupees(goalAccessCheck.value)} of ${rupees(goalTotal)} linked value.`,
+      limitation: 'Withdrawal, maturity, tax and sale conditions were not supplied or verified. The gap today still shows gross entered value, not confirmed spendable money.' });
+  }
   const incompleteTypes = [
     ['mutual funds', coverage?.mutualFunds],
     ['direct stocks', coverage?.directStocks],
@@ -179,6 +192,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   }
 
   const unclassifiedValue = valid.filter(holding => holding.asset === 'Other' &&
+    holding.type !== 'Other investment' &&
     holding.granularity !== 'fund_house').reduce((sum, holding) => sum + Number(holding.value), 0);
   if (unclassifiedValue > 0) {
     findings.push({ key: 'classification', tone: 'amber', label: 'Asset labels',
@@ -223,9 +237,11 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   }
 
   const mixComparisonPause = !goal.targetMix ? 'no_mix' : !validGoal ? 'goal_details' :
-    !goalTotal ? 'no_holdings' : goalAssets.Other > 0 ? 'unclassified' :
-      goalDateCheck.count ? 'valuation_dates' : goalIdentityConflict ? 'conflicting_identity' :
-        goalHoldings.some(holding => holding.granularity === 'fund_house') ? 'fund_house' : null;
+    !goalTotal ? 'no_holdings' :
+      goalHoldings.some(holding => holding.type === 'Other investment' && holding.asset === 'Other') ? 'other_investment' :
+        goalAssets.Other > 0 ? 'unclassified' :
+          goalDateCheck.count ? 'valuation_dates' : goalIdentityConflict ? 'conflicting_identity' :
+            goalHoldings.some(holding => holding.granularity === 'fund_house') ? 'fund_house' : null;
   const mixComparison = mixComparisonPause === null ? compareMixPlan(goalAssets, goalTotal, goal.targetMix) : null;
   const mixPause = mixComparisonPause || (mixComparison ? null : 'invalid_mix');
   const largestMixDifference = mixComparison?.reduce((largest, row) =>
@@ -298,7 +314,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
 
   return {
     total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
-    goalDateCheck, mixComparison, mixPause,
+    goalDateCheck, goalAccessCheck, mixComparison, mixPause,
     largestGoalPosition,
     largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, fundCost, amcCoveredValue, asOfSummary,
     unrealizedChange,

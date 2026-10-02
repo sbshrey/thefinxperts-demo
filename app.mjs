@@ -330,7 +330,9 @@ function render() {
   $('#goal-years-value').textContent = needsGoalConfirmation ? 'Goal details needed' : `${state.goal.years} years`;
   $('#age-at-goal').textContent = pauseGoalFigures ? 'Goal figures paused' : `Age ${Number(state.goal.age) + Number(state.goal.years)} at the goal date`;
   $('#goal-gap').textContent = result.goalGap === null ? '—' : rupees(result.goalGap);
-  $('#goal-gap-note').textContent = needsGoalConfirmation ? 'Confirm age, cost and time horizon below.' : 'Simple arithmetic before growth, inflation or tax';
+  $('#goal-gap-note').textContent = needsGoalConfirmation ? 'Confirm age, cost and time horizon below.' :
+    result.goalAccessCheck.count ? `Gross entered value; ${rupees(result.goalAccessCheck.value)} of linked savings has no checked access date.` :
+      'Simple arithmetic before growth, inflation or tax';
   $('#goal-setup-note').hidden = !pauseGoalFigures;
   $('#goal-setup-note').textContent = 'Check the goal name and enter your age, goal cost and time horizon before using goal figures.';
   $('#goal-confirm-note').hidden = !needsGoalConfirmation;
@@ -381,7 +383,8 @@ function render() {
   $('#shock-loss').textContent = shock ? rupees(shock.loss) : '—';
   $('#shock-value').textContent = shock ? rupees(shock.valueAfterLoss) : '—';
   $('#shock-gap').textContent = shock ? rupees(shock.gapAfterLoss) : '—';
-  $('#shock-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : shock
+  $('#shock-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' :
+    result.stressPause === 'access_uncertain' ? 'Check when the linked other investments can be used before interpreting this goal stress calculation.' : shock
     ? `This subtracts ${shock.dropPct}% once from only the holdings marked Equity and linked to this goal. It uses today's entered values and goal cost; it excludes future growth, contributions, inflation, taxes and changes in other assets. It is a what-if loss, not a prediction or a target allocation.`
     : 'Enter a valid equity-loss percentage to see this illustration.';
   const shockContinuation = pauseGoalFigures ? null : result.shockContinuation;
@@ -398,7 +401,8 @@ function render() {
       `${limitText('Amount you could cover', limits.affordable)} ${limitText('Amount you could tolerate', limits.tolerable)} ` +
       `${limits.capacityGap !== null ? `The amount you could tolerate is ${rupees(limits.capacityGap)} above the amount you said you could cover. Check whether a loss between those amounts would delay this goal or essential spending. ` : ''}` +
       'This is your own comparison, not a formal risk profile; real losses may be larger.';
-  $('#scenario-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : scenario
+  $('#scenario-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' :
+    result.goalAccessCheck.count ? `Future illustration paused: ${rupees(result.goalAccessCheck.value)} of manually entered other investments is linked to this goal, but access by the goal date has not been checked. Unlink these rows to project the remaining holdings, or check the product terms before relying on the gross gap.` : scenario
     ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and your planned ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. The total mathematical monthly amount would be ${rupees(Math.ceil(scenario.monthlyTotalNeeded))}; the number above is only the extra beyond your plan. This is arithmetic, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
     : 'Enter valid goal assumptions to see an illustrative scenario.';
   if (scenario && result.goalDateCheck.count) {

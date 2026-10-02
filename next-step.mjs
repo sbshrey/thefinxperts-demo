@@ -21,7 +21,8 @@ export function chooseNextReviewStep({ source, holdings, goal, coverage }, today
     kind: 'valuation', href: `#holding-${dated + 1}`, label: 'Check the first dated value →',
     text: 'At least one holding has a missing, future or over-90-day value date. Check it before interpreting the mix for this goal.',
   };
-  const unknown = holdings.findIndex(holding => holding.asset === 'Other' && holding.granularity !== 'fund_house');
+  const unknown = holdings.findIndex(holding => holding.asset === 'Other' &&
+    holding.type !== 'Other investment' && holding.granularity !== 'fund_house');
   if (unknown >= 0) return {
     kind: 'classification', href: `#holding-${unknown + 1}`, label: 'Check the first fund category →',
     text: 'An individual holding is still labelled Other. Check its source before comparing Equity, Debt and Gold shares.',

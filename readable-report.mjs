@@ -49,6 +49,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Linked asset mix: ${result.goalTotal ? MIX_ASSETS.map(asset => `${asset} ${(result.goalAssets[asset] / result.goalTotal * 100).toFixed(1)}%`).join(' | ') : 'No holdings linked'}`,
     `Linked value needing a valuation-date check: ${rupees(result.goalDateCheck.value)} across ${result.goalDateCheck.count} holdings (missing, future or over 90 days old; entered values remain unverified)`,
     `Current gap before growth, inflation or tax: ${rupees(result.goalGap ?? 0)}`,
+    ...(result.goalAccessCheck.count ? [`Gross gap includes ${rupees(result.goalAccessCheck.value)} in ${result.goalAccessCheck.count} linked other ${result.goalAccessCheck.count === 1 ? 'investment' : 'investments'} with no verified access date. Goal-date projection is paused; check product terms before treating this value as available for the goal.`] : []),
   ];
   if (monthsOfEssentials !== null) lines.push('', 'SEPARATE RESERVE CONTEXT',
     `Accessible money outside entered holdings: ${rupees(state.reserve.accessibleMoney)}`,
