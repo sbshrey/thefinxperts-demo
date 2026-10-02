@@ -6,11 +6,22 @@
   <meta name="theme-color" content="#102525">
   <meta name="description" content="A fictional, interactive preview of a simple Indian portfolio review tool.">
   <title>Portfolio Clarity — TheFinxperts concept</title>
+  <script>
+    if (location.protocol === 'http:' &&
+        ['thefinxperts.com', 'www.thefinxperts.com'].includes(location.hostname.toLowerCase())) {
+      document.documentElement.classList.add('awaiting-https');
+    }
+  </script>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.mjs"></script>
 </head>
 <body>
+  <main class="https-wait" role="status">
+    <span class="kicker">THEFINXPERTS</span>
+    <h1>Secure connection is being prepared.</h1>
+    <p>The portfolio review will be available here after HTTPS is active. Please wait before entering holdings or opening a statement at this address.</p>
+  </main>
   <div class="site-shell">
     <header class="topbar">
       <a class="brand" href="#top" aria-label="TheFinxperts, back to top"><span class="brand-mark">f<span>.</span></span><span>thefinxperts</span></a>
