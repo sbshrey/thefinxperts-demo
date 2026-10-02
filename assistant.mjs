@@ -12,6 +12,7 @@ import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
 import { parseBrowserGoalFact, parseBrowserHoldingStatement, nextBrowserGoalQuestion } from './assistant-local.mjs';
+import { parseHoldingCorrection, prepareHoldingCorrection } from './assistant-correction.mjs';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -52,7 +53,7 @@ async function saveDeviceReview(portfolio) {
 }
 const state = { confirmed: [], drafts: [], history: [], file: null, busy: false, available: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
-  goalFacts: null, goalDraftGoalId: null, casAvailable: false, casLocal: false,
+  goalFacts: null, goalDraftGoalId: null, correction: null, casAvailable: false, casLocal: false,
   capacityReached: false };
 const casStatusPromise = browserOnly ? Promise.resolve(false) : fetch('/api/cas/status', { cache: 'no-store' })
   .then(response => response.ok ? response.json() : null)
@@ -109,6 +110,7 @@ function renderAccountActions() {
   const localDownload = $('#download-tab-review');
   if (localDownload) localDownload.disabled = state.busy || !saved;
   renderDeviceActions();
+  renderCorrection();
 }
 
 function say(role, text, question = null) {
@@ -176,6 +178,18 @@ function renderGoalDraft() {
     Boolean(state.goalDraftGoalId && selected?.id !== state.goalDraftGoalId);
 }
 
+function renderCorrection() {
+  const box = $('#correction-draft');
+  if (!box) return;
+  box.hidden = !state.correction;
+  if (!state.correction) return;
+  const stale = state.account?.revision !== state.correction.revision;
+  $('#correction-preview').textContent = stale ?
+    'The confirmed review changed after this correction was prepared. Discard it and describe the correction again.' :
+    state.correction.description;
+  $('#confirm-correction').disabled = state.busy || stale;
+}
+
 function renderReview() {
   const rows = state.confirmed;
   const total = rows.reduce((sum, row) => sum + row.value, 0);
@@ -229,9 +243,9 @@ function renderReview() {
   holdings.replaceChildren();
   if (!rows.length) {
     const empty = document.createElement('p'); empty.textContent = 'Confirmed rows will appear here.'; holdings.append(empty);
-  } else for (const row of rows) {
+  } else for (const [index, row] of rows.entries()) {
     const item = document.createElement('div'); item.className = 'holding-item';
-    const name = document.createElement('strong'); name.textContent = row.name;
+    const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
     const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${money(row.value)} · ${row.asOf || 'date unknown'}`;
     item.append(name, meta); holdings.append(item);
   }
@@ -649,6 +663,23 @@ $('#composer').addEventListener('submit', async event => {
       return;
     }
   }
+  const correction = message && !state.file ? parseHoldingCorrection(message) : null;
+  if (correction) {
+    say('user', message); $('#message').value = '';
+    if (correction.error) { say('note', correction.error); return; }
+    if (state.drafts.length || state.goalFacts) {
+      say('note', 'Confirm or discard the current holding or goal draft before correcting a confirmed row.'); return;
+    }
+    if (!state.account?.portfolio) {
+      say('note', 'Add and confirm a holding before correcting it.'); return;
+    }
+    const prepared = prepareHoldingCorrection(state.account.portfolio, correction);
+    if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
+    state.correction = { ...prepared, revision: state.account.revision };
+    renderCorrection();
+    say('assistant', 'I prepared this change to your confirmed review. Check the row, value and date in the preview, then choose “Apply correction” or discard it.');
+    return;
+  }
   if (browserOnly && message && !state.file) {
     const portfolio = state.account?.portfolio;
     const selected = portfolio?.goals?.find(goal => goal.id === portfolio.activeGoalId);
@@ -770,6 +801,22 @@ $('#discard-goal').addEventListener('click', () => {
   state.goalFacts = null; state.goalDraftGoalId = null; renderGoalDraft(); say('note', 'Possible goal details discarded.');
 });
 
+$('#confirm-correction')?.addEventListener('click', async () => {
+  const correction = state.correction;
+  if (state.busy || !correction || !state.account || correction.revision !== state.account.revision) return;
+  state.busy = true; renderAccountActions();
+  try {
+    await writeAccount(correction.portfolio,
+      'The saved review changed in another tab. Check the latest holdings, discard this correction and describe it again.');
+    state.correction = null;
+    say('note', correction.result);
+  } catch (error) { say('note', error.message || 'The correction could not be saved. Check the preview and try again.'); }
+  finally { state.busy = false; renderAccountActions(); }
+});
+$('#discard-correction')?.addEventListener('click', () => {
+  state.correction = null; renderCorrection(); say('note', 'The proposed correction was discarded. Your confirmed review did not change.');
+});
+
 $('#export-saved').addEventListener('click', async () => {
   if (state.busy || !state.account?.portfolio) return;
   state.busy = true; renderAccountActions();
@@ -806,7 +853,7 @@ $('#delete-saved').addEventListener('click', async () => {
       throw new Error('The saved review changed in another tab. Check the latest holdings and confirm deletion again.');
     }
     if (!response.ok) throw new Error('The saved review could not be deleted. Try again later.');
-    state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.history = []; clearFile();
+    state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.history = []; clearFile();
     acceptAccount({ portfolio: null, revision: 0 });
     renderDrafts(); renderGoalDraft();
     $('#messages').replaceChildren();
@@ -817,7 +864,7 @@ $('#delete-saved').addEventListener('click', async () => {
 });
 
 $('#new-chat').addEventListener('click', () => {
-  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.history = []; clearFile();
+  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.history = []; clearFile();
   $('#messages').replaceChildren();
   say('assistant', state.confirmed.length ?
     `I still have ${state.confirmed.length} confirmed holding${state.confirmed.length === 1 ? '' : 's'} in this tab. What would you like to understand next?` :
@@ -836,7 +883,7 @@ $('#clear-review').addEventListener('click', () => {
     return;
   }
   if (browserOnly) state.account = { portfolio: null, revision: 0 };
-  state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.history = []; clearFile();
+  state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.history = []; clearFile();
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Describe one holding or attach a CAMS Active Statement or holdings report. After you confirm a draft, this browser review can answer factual questions.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
@@ -888,7 +935,7 @@ $('#restore-tab-file')?.addEventListener('change', async event => {
   catch { say('note', 'The selected review file could not be read. Try another copy.'); return; }
   if (parsed.errors.length) { say('note', parsed.errors[0]); return; }
   if (state.account?.portfolio && !window.confirm('Replace the review in this tab with the selected file?')) return;
-  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null;
   acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
   await saveDeviceReview(parsed.portfolio);
   renderDrafts(); renderGoalDraft();
@@ -928,7 +975,7 @@ $('#device-review-form')?.addEventListener('submit', async event => {
       if (parsed.errors.length) throw new Error('The saved review is damaged or uses an unsupported format.');
       if (state.account?.portfolio && !window.confirm('Replace the current tab review with the saved device review?')) return;
       devicePassphrase = passphrase;
-      state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+      state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null;
       acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
       renderDrafts(); renderGoalDraft();
       say('note', `Unlocked ${state.confirmed.length} holding${state.confirmed.length === 1 ? '' : 's'} from this device. Check the dates before using this review.`);
