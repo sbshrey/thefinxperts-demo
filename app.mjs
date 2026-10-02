@@ -9,6 +9,7 @@ import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
 import { contextNeedsReview } from './market-context.mjs';
+import { estimateNavValue } from './nav-estimate.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -370,7 +371,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const sourceCategory = document.createElement('small');
     sourceCategory.className = 'holding-source-category';
     sourceCategory.textContent = holding.statementCategory ?
@@ -582,11 +583,18 @@ function render() {
         updateError.textContent = 'Enter both a TER from 0% to 10% and its checked date, or leave both blank.';
         return;
       }
+      if (holding.navEstimate && (asset !== holding.asset || isin !== (holding.isin || '')) &&
+          value === holding.value && (asOf || null) === (holding.asOf || null)) {
+        updateError.textContent = 'After changing scheme details, enter a newly checked value and date before saving.';
+        return;
+      }
       state.holdings = state.holdings.map(item => {
         if (item.id !== holding.id) return item;
         const identifierChanged = isinInput && isin !== (item.isin || '');
         const updated = { ...item, value, asOf: asOf || null, asset,
           ...((asset !== item.asset || (identifierChanged && item.type === 'Mutual fund')) ? { exposure: null } : {}) };
+        if (value !== item.value || (asOf || null) !== (item.asOf || null) || asset !== item.asset || identifierChanged)
+          delete updated.navEstimate;
         if (identifierChanged) delete updated.statementCategory;
         if (isinInput) {
           if (isin) updated.isin = isin;
@@ -607,12 +615,90 @@ function render() {
       render();
     });
     update.append(updateTitle, updateForm);
+    let navWorksheet = null;
+    if (state.source === 'user' && holding.type === 'Mutual fund' && holding.units && holding.granularity !== 'fund_house' &&
+        (holding.navEstimate?.originalAsOf || holding.asOf)) {
+      navWorksheet = document.createElement('details');
+      navWorksheet.className = 'holding-update nav-worksheet';
+      const navTitle = document.createElement('summary');
+      navTitle.textContent = 'Estimate value from a newer NAV';
+      const navForm = document.createElement('form');
+      const originalValue = holding.navEstimate?.originalValue ?? holding.value;
+      const originalDate = holding.navEstimate?.originalAsOf ?? holding.asOf;
+      const navIntro = document.createElement('p');
+      navIntro.className = 'form-hint';
+      navIntro.textContent = `Statement: ${holding.units} units, ${rupees(originalValue)} as of ${originalDate}. Check the latest NAV for this exact scheme, Direct/Regular plan and Growth/IDCW option with the AMC. NAV is dated, not a live price.`;
+      const navLabel = document.createElement('label');
+      navLabel.textContent = 'NAV per unit (₹)';
+      const navInput = document.createElement('input');
+      navInput.type = 'text'; navInput.inputMode = 'decimal'; navInput.maxLength = 16;
+      navInput.placeholder = 'e.g. 125.4321';
+      navInput.value = holding.navEstimate?.nav || '';
+      navLabel.append(navInput);
+      const navDateLabel = document.createElement('label');
+      navDateLabel.textContent = 'Published NAV date';
+      const navDateInput = document.createElement('input');
+      navDateInput.type = 'date'; navDateInput.max = indiaToday();
+      navDateInput.value = holding.navEstimate?.navAsOf || '';
+      navDateLabel.append(navDateInput);
+      const matchLabel = document.createElement('label');
+      matchLabel.className = 'nav-confirm';
+      const matchCheck = document.createElement('input');
+      matchCheck.type = 'checkbox';
+      matchLabel.append(matchCheck, document.createTextNode(' I checked the exact scheme, plan and option.'));
+      const unitsLabel = document.createElement('label');
+      unitsLabel.className = 'nav-confirm';
+      const unitsCheck = document.createElement('input');
+      unitsCheck.type = 'checkbox';
+      unitsLabel.append(unitsCheck, document.createTextNode(' I checked that these units are still my current balance.'));
+      const navPreview = document.createElement('p');
+      navPreview.className = 'form-hint';
+      navPreview.setAttribute('role', 'status');
+      const preview = () => {
+        const value = estimateNavValue(holding.units, navInput.value.trim());
+        navPreview.textContent = value === null ? 'Enter a positive NAV with up to six decimal places.' :
+          `${holding.units} units × ₹${navInput.value.trim()} = ${rupees(value)}. Statement value: ${rupees(originalValue)} on ${originalDate}. This does not account for any unit changes.`;
+      };
+      navInput.addEventListener('input', preview);
+      preview();
+      const navError = document.createElement('p');
+      navError.className = 'form-error'; navError.setAttribute('role', 'alert');
+      const applyNav = document.createElement('button');
+      applyNav.type = 'submit'; applyNav.className = 'text-button';
+      applyNav.textContent = 'Use this dated estimate in my review';
+      navForm.append(navIntro, navLabel, navDateLabel, matchLabel, unitsLabel, navPreview, navError, applyNav);
+      navForm.addEventListener('submit', event => {
+        event.preventDefault();
+        const nav = navInput.value.trim();
+        const navAsOf = navDateInput.value;
+        const value = estimateNavValue(holding.units, nav);
+        if (value === null || !validEnteredDate(navAsOf) || !navAsOf || navAsOf <= originalDate ||
+            !matchCheck.checked || !unitsCheck.checked) {
+          navError.textContent = 'Enter a valid newer NAV and date, then confirm the exact fund and current units.';
+          return;
+        }
+        state.holdings = state.holdings.map(item => item.id === holding.id ? {
+          ...item, value, asOf: navAsOf,
+          navEstimate: { originalValue, originalAsOf: originalDate, nav, navAsOf },
+        } : item);
+        render();
+        $('#live-status').textContent = `${holding.name}: dated NAV estimate applied. The statement value remains in the private review backup.`;
+      });
+      navWorksheet.append(navTitle, navForm);
+    }
     info.append(name, meta);
+    if (holding.navEstimate) {
+      const earlier = document.createElement('small');
+      earlier.className = 'holding-source-category';
+      earlier.textContent = `Earlier statement: ${rupees(holding.navEstimate.originalValue)} on ${holding.navEstimate.originalAsOf || 'unknown'}. Current review uses your NAV estimate, not a verified live balance.`;
+      info.append(earlier);
+    }
     if (holding.statementCategory) info.append(sourceCategory);
     if (checks.childElementCount) info.append(checks);
     info.append(goalLink);
     if (state.goals.length > 1) info.append(allocation);
     info.append(update);
+    if (navWorksheet) info.append(navWorksheet);
     const amount = document.createElement('strong');
     amount.className = 'holding-amount';
     amount.textContent = rupees(holding.value);

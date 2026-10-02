@@ -141,7 +141,8 @@ export function planActiveStatementRefresh(existing, incoming) {
     if (holding.type !== 'Mutual fund') return holding;
     const next = incomingByKey.get(activeStatementKey(holding));
     if (!next) return [];
-    return [{ ...holding, value: next.value, asOf: next.asOf,
+    const { navEstimate: _previousEstimate, ...prior } = holding;
+    return [{ ...prior, value: next.value, asOf: next.asOf,
       ...(next.units ? { units: next.units } : {}),
       ...(next.statementCategory ? { statementCategory: next.statementCategory } : {}) }];
   });
