@@ -1203,12 +1203,15 @@ function refreshImportSummary() {
     $('#refresh-explanation').textContent = `These ${count} fund rows already match the statement date and values in your review, including scheme units where available. Keep existing goal links, any added fund details and direct stocks.`;
   }
   if (refresh) {
+    const estimateCount = state.holdings.filter(holding => holding.type === 'Mutual fund' && holding.navEstimate).length;
+    if (estimateCount) $('#refresh-changes').open = true;
     $('#refresh-statement').textContent = refresh.added.length || refresh.removed.length ?
       'Update funds from this statement' : 'Refresh matched funds';
     $('#refresh-explanation').textContent = `${refresh.updatedCount} matched fund ${refresh.updatedCount === 1 ? 'row' : 'rows'} will update; ` +
       `${refresh.added.length} new fund ${refresh.added.length === 1 ? 'row' : 'rows'} will be added; ` +
       `${refresh.removed.length} fund ${refresh.removed.length === 1 ? 'row' : 'rows'} absent from the newer statement will be removed. ` +
-      'Direct stocks and links for matched funds stay in place. New funds link to the selected goal.';
+      'Direct stocks and links for matched funds stay in place. New funds link to the selected goal.' +
+      (estimateCount ? ` ${estimateCount} user-entered NAV ${estimateCount === 1 ? 'estimate' : 'estimates'} will be replaced by statement values. Download a private JSON backup first if you want to keep the earlier comparison.` : '');
     const change = message => {
       const row = document.createElement('li');
       row.textContent = message;
@@ -1222,7 +1225,8 @@ function refreshImportSummary() {
     for (const holding of refresh.holdings.filter(item => item.type === 'Mutual fund')) {
       const old = oldById.get(holding.id);
       const units = old.units && holding.units ? ` · units ${old.units} → ${holding.units}` : '';
-      change(`Matched: ${holding.name} · ${rupees(old.value)} as of ${old.asOf} → ${rupees(holding.value)} as of ${holding.asOf}${units}. Goal links stay in place.`);
+      const estimateNote = old.navEstimate ? ` The NAV estimate dated ${old.navEstimate.navAsOf} will be removed; this statement follows the original statement dated ${old.navEstimate.originalAsOf}.` : '';
+      change(`Matched: ${holding.name} · ${rupees(old.value)} as of ${old.asOf} → ${rupees(holding.value)} as of ${holding.asOf}${units}. Goal links stay in place.${estimateNote}`);
     }
   }
 }

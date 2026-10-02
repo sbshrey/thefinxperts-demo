@@ -136,7 +136,10 @@ export function planActiveStatementRefresh(existing, incoming) {
   const date = incoming[0].asOf;
   const indiaToday = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
   if (!isRealIsoDate(date) || incoming.some(holding => holding.asOf !== date) ||
-      date > indiaToday || funds.some(holding => !isRealIsoDate(holding.asOf) || holding.asOf >= date)) return null;
+      date > indiaToday || funds.some(holding => {
+        const sourceDate = holding.navEstimate?.originalAsOf || holding.asOf;
+        return !isRealIsoDate(sourceDate) || sourceDate >= date;
+      })) return null;
   const retained = existing.flatMap(holding => {
     if (holding.type !== 'Mutual fund') return holding;
     const next = incomingByKey.get(activeStatementKey(holding));
