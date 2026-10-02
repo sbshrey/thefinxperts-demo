@@ -6,7 +6,7 @@ const AMFI = /^\d{5,8}$/;
 const TYPES = new Set(['Mutual fund', 'Stock']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId'];
-const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units'];
+const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'expenseRatioPct', 'expenseRatioAsOf'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
@@ -17,6 +17,8 @@ export function buildReviewBackup(state) {
       id: holding.id, name: holding.name, type: holding.type, asset: holding.asset, value: holding.value,
       asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
       granularity: holding.granularity || null, units: holding.units || null,
+      ...(holding.expenseRatioPct !== undefined ? { expenseRatioPct: holding.expenseRatioPct,
+        expenseRatioAsOf: holding.expenseRatioAsOf } : {}),
     })),
     goals: state.goals.map(goal => ({ ...goal, linkedIds: [...goal.linkedIds],
       ...(goal.allocationPct ? { allocationPct: { ...goal.allocationPct } } : {}) })),
@@ -51,6 +53,10 @@ export function parseReviewBackup(text) {
         (holding.units != null && (typeof holding.units !== 'string' ||
           !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/.test(holding.units) || !/[1-9]/.test(holding.units) ||
           holding.type !== 'Mutual fund' || holding.granularity === 'fund_house')) ||
+        (holding.expenseRatioPct !== undefined && (!boundedNumber(holding.expenseRatioPct, 0, 10) ||
+          !isRealIsoDate(holding.expenseRatioAsOf) || holding.expenseRatioAsOf > indiaToday() ||
+          holding.type !== 'Mutual fund' || holding.granularity === 'fund_house')) ||
+        (holding.expenseRatioPct === undefined && holding.expenseRatioAsOf !== undefined) ||
         (holding.type === 'Stock' && (holding.asset !== 'Equity' || holding.amc || holding.amfi)) ||
         (holding.granularity != null && (holding.granularity !== 'fund_house' || holding.type !== 'Mutual fund' ||
           !holding.amc || holding.isin || holding.amfi))) {
@@ -119,3 +125,4 @@ function isRealIsoDate(value) {
   const date = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
 }
+function indiaToday() { return new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10); }

@@ -26,6 +26,8 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Valuation dates: ${result.asOfSummary}`,
     `Asset mix: ${MIX_ASSETS.map(asset => `${asset} ${result.total ? (result.assets[asset] / result.total * 100).toFixed(1) : '0.0'}%`).join(' | ')}`,
     `Fund plan labels from entered names: Regular ${rupees(result.fundPlans.Regular)} | Direct ${rupees(result.fundPlans.Direct)} | unclear ${rupees(result.fundPlans.Unclear)}; current expense ratios not verified`,
+    `Entered fund cost coverage: ${rupees(result.fundCost.coveredValue)} of ${rupees(result.fundValue)} fund value across ${result.fundCost.coveredCount} dated scheme ${result.fundCost.coveredCount === 1 ? 'entry' : 'entries'}`,
+    ...(result.fundCost.coveredValue ? [`Weighted TER on covered fund value: ${result.fundCost.weightedPct.toFixed(2)}%; one-year illustration ${rupees(result.fundCost.annualIllustration)} if entered values and rates stayed unchanged. TER is already reflected in NAV, not an additional bill; rates and values are not independently verified.`] : []),
     ...(result.assets.Other > 0 ? [`Other category: ${rupees(result.assets.Other)}. ${fundHouseOther ?
       'CAMS non-equity totals are not classified as debt or gold here; check a detailed statement.' :
       'Check what these holdings contain before judging the asset mix.'}`] : []),
@@ -95,7 +97,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     const share = goalShare(goal, holding.id);
     const label = share ? `${share}% (${rupees(Number(holding.value) * share / 100)}) linked to selected goal` : 'not linked to selected goal';
     const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
-    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | ${label}`);
+    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
   }
   lines.push('', 'IMPORTANT LIMITS',
     'Values and asset labels are as entered or imported; this is not a live price feed.',

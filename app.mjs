@@ -302,7 +302,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const goalLink = document.createElement('label');
     goalLink.className = 'holding-goal-link';
     const goalCheckbox = document.createElement('input');
@@ -366,7 +366,8 @@ function render() {
     const update = document.createElement('details');
     update.className = 'holding-update';
     const updateTitle = document.createElement('summary');
-    updateTitle.textContent = holding.granularity === 'fund_house' ? 'Update value or date' : 'Update value, date, asset or ISIN';
+    updateTitle.textContent = holding.granularity === 'fund_house' ? 'Update value or date' :
+      holding.type === 'Mutual fund' ? 'Update value, details or fund cost' : 'Update value, date, asset or ISIN';
     const updateForm = document.createElement('form');
     const valueLabel = document.createElement('label');
     valueLabel.textContent = 'Current value (₹)';
@@ -417,8 +418,41 @@ function render() {
       isinLabel.append(isinInput);
       isinHint = document.createElement('p');
       isinHint.className = 'form-hint';
-      isinHint.textContent = 'Format checked only. Changing this code removes any linked AMFI code and fund constituent estimate.';
+      isinHint.textContent = 'Format checked only. Changing this code removes any linked AMFI code, fund constituent estimate and entered TER.';
     }
+    let expenseRatioInput = null;
+    let expenseDateInput = null;
+    let ratioLabel = null;
+    let ratioDateLabel = null;
+    let ratioHint = null;
+    if (holding.type === 'Mutual fund' && holding.granularity !== 'fund_house') {
+      ratioLabel = document.createElement('label');
+      ratioLabel.textContent = 'Total expense ratio (TER, % yearly; optional)';
+      expenseRatioInput = document.createElement('input');
+      expenseRatioInput.type = 'number';
+      expenseRatioInput.inputMode = 'decimal';
+      expenseRatioInput.min = '0';
+      expenseRatioInput.max = '10';
+      expenseRatioInput.step = 'any';
+      expenseRatioInput.value = holding.expenseRatioPct ?? '';
+      ratioLabel.append(expenseRatioInput);
+      ratioDateLabel = document.createElement('label');
+      ratioDateLabel.textContent = 'Date of that TER';
+      expenseDateInput = document.createElement('input');
+      expenseDateInput.type = 'date';
+      expenseDateInput.max = indiaToday();
+      expenseDateInput.value = holding.expenseRatioAsOf || '';
+      ratioDateLabel.append(expenseDateInput);
+      ratioHint = document.createElement('p');
+      ratioHint.className = 'form-hint';
+      ratioHint.textContent = 'Use the rate for this exact scheme and Direct or Regular plan. Check the latest AMC or AMFI disclosure. Leave both fields blank if unsure.';
+    }
+    isinInput?.addEventListener('input', () => {
+      if (expenseRatioInput && isinInput.value.trim().toUpperCase() !== (holding.isin || '')) {
+        expenseRatioInput.value = '';
+        expenseDateInput.value = '';
+      }
+    });
     const updateError = document.createElement('p');
     updateError.className = 'form-error';
     updateError.setAttribute('role', 'alert');
@@ -428,6 +462,7 @@ function render() {
     updateButton.textContent = 'Save holding changes';
     updateForm.append(valueLabel, dateLabel, assetLabel, assetHint);
     if (isinLabel) updateForm.append(isinLabel, isinHint);
+    if (ratioLabel) updateForm.append(ratioLabel, ratioDateLabel, ratioHint);
     updateForm.append(updateError, updateButton);
     updateForm.addEventListener('submit', event => {
       event.preventDefault();
@@ -435,6 +470,8 @@ function render() {
       const asOf = dateInput.value;
       const asset = assetInput.value;
       const isin = isinInput?.value.trim().toUpperCase() || '';
+      const expenseRatio = expenseRatioInput?.value.trim() || '';
+      const expenseDate = expenseDateInput?.value || '';
       if (!Number.isFinite(value) || value <= 0 || value > 1e10 || !validEnteredDate(asOf)) {
         updateError.textContent = 'Enter a positive value and a valid date no later than today.';
         return;
@@ -448,6 +485,12 @@ function render() {
         updateError.textContent = 'Check the 12-character ISIN against your statement, or leave it blank.';
         return;
       }
+      if (expenseRatioInput && ((expenseRatio !== '' && (!Number.isFinite(Number(expenseRatio)) ||
+          Number(expenseRatio) < 0 || Number(expenseRatio) > 10 || !expenseDate || !validEnteredDate(expenseDate))) ||
+          (expenseRatio === '' && expenseDate))) {
+        updateError.textContent = 'Enter both a TER from 0% to 10% and its checked date, or leave both blank.';
+        return;
+      }
       state.holdings = state.holdings.map(item => {
         if (item.id !== holding.id) return item;
         const identifierChanged = isinInput && isin !== (item.isin || '');
@@ -457,6 +500,15 @@ function render() {
           if (isin) updated.isin = isin;
           else delete updated.isin;
           if (identifierChanged) delete updated.amfi;
+        }
+        if (expenseRatioInput) {
+          if (expenseRatio !== '') {
+            updated.expenseRatioPct = Number(expenseRatio);
+            updated.expenseRatioAsOf = expenseDate;
+          } else {
+            delete updated.expenseRatioPct;
+            delete updated.expenseRatioAsOf;
+          }
         }
         return updated;
       });
@@ -514,6 +566,11 @@ function render() {
   $('#plan-note').textContent = result.fundValue ?
     `${rupees(result.fundPlans.Direct)} labelled Direct · ${rupees(result.fundPlans.Regular)} labelled Regular · ${rupees(result.fundPlans.Unclear)} unclear. Names only; check current expense ratios and services.` :
     'Add a mutual fund to review its plan label.';
+  $('#fund-cost-value').textContent = result.fundCost.coveredValue ?
+    `${result.fundCost.weightedPct.toFixed(2)}% on covered funds` : 'No rates entered';
+  $('#fund-cost-note').textContent = result.fundCost.coveredValue ?
+    `${rupees(result.fundCost.coveredValue)} of ${rupees(result.fundValue)} fund value has a dated rate you entered. ${rupees(result.fundCost.annualIllustration)} is a one-year illustration at unchanged value and rate, already reflected in NAV rather than an extra bill.` :
+    'Enter a dated, plan-specific TER on an individual fund below to estimate cost coverage.';
   $('#coverage-note').textContent = result.classifiedPct < 100 ? 'Unknown fund constituents are excluded from this measure' : 'All entered value has named issuer coverage';
   $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length + result.additionalFindings.length} review items.`;
   const canDownload = state.source === 'user' && state.holdings.length > 0 && state.goals.every(goal => goal.confirmed === true);

@@ -14,6 +14,7 @@ export const sampleHoldings = [
 
 export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 }, today = new Date()) {
   const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
+  const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
   const valid = holdings.filter(h => Number.isFinite(Number(h.value)) && Number(h.value) > 0);
   const total = valid.reduce((sum, h) => sum + Number(h.value), 0);
   const goalHoldings = Array.isArray(goal.linkedIds) ? valid.flatMap(holding => {
@@ -43,6 +44,9 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   let classifiedValue = 0;
   let fundValue = 0;
   let amcCoveredValue = 0;
+  let costCoveredValue = 0;
+  let annualCostIllustration = 0;
+  let costCoveredCount = 0;
   const fundPlans = { Direct: 0, Regular: 0, Unclear: 0 };
 
   for (const holding of valid) {
@@ -56,6 +60,13 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     if (holding.type === 'Mutual fund') {
       fundValue += value;
       fundPlans[holding.granularity === 'fund_house' ? 'Unclear' : planFromName(holding.name)] += value;
+      if (holding.granularity !== 'fund_house' && Number.isFinite(holding.expenseRatioPct) &&
+          holding.expenseRatioPct >= 0 && holding.expenseRatioPct <= 10 && parseValuationDate(holding.expenseRatioAsOf) &&
+          holding.expenseRatioAsOf <= indiaToday) {
+        costCoveredValue += value;
+        annualCostIllustration += value * holding.expenseRatioPct / 100;
+        costCoveredCount++;
+      }
       const amc = typeof holding.amc === 'string' ? holding.amc.trim() : '';
       if (amc) {
         amcCoveredValue += value;
@@ -82,6 +93,9 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   }
 
   const largestIssuer = [...issuers.entries()].sort((a, b) => b[1] - a[1])[0] || null;
+  const fundCost = { coveredValue: costCoveredValue, uncoveredValue: fundValue - costCoveredValue,
+    coveredCount: costCoveredCount, annualIllustration: annualCostIllustration,
+    weightedPct: costCoveredValue ? annualCostIllustration / costCoveredValue * 100 : null };
   const largestIssuerSources = largestIssuer ? issuerSources.get(largestIssuer[0]) : null;
   const largestAmc = [...amcs.values()].sort((a, b) => b.value - a.value)[0] || null;
   const dated = valid.map(h => h.asOf).filter(date => parseValuationDate(date));
@@ -92,7 +106,6 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     dated.length !== valid.length ? `Valuation dates missing for ${valid.length - dated.length} of ${valid.length} holdings; dated values ${dateSpan}` :
     orderedDates[0] === orderedDates.at(-1) ? `As of ${orderedDates[0]}` :
       `Mixed as-of dates: ${orderedDates[0]} to ${orderedDates.at(-1)}`;
-  const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
   const todayDate = new Date(`${indiaToday}T00:00:00Z`);
   const staleCutoff = new Date(todayDate);
   staleCutoff.setUTCDate(staleCutoff.getUTCDate() - 90);
@@ -213,7 +226,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       detail: `${rupees(fundPlans.Regular)} of entered fund value has an explicit Regular Plan label. Check each scheme's current expense ratio and what service you receive before deciding whether its plan still fits.`,
       question: 'What is the current expense ratio for each labelled plan, and what guidance or service do you use?',
       basis: `Added ${rupees(fundPlans.Regular)} from mutual-fund names explicitly labelled Regular Plan; ${rupees(fundPlans.Direct)} is labelled Direct Plan and ${rupees(fundPlans.Unclear)} has no clear plan label.`,
-      limitation: 'Labels are read from entered names and are not registry-verified. No current expense ratios, exit loads, tax lots or switching costs were supplied, so savings and a switch decision cannot be calculated.' });
+      limitation: `Labels and any entered expense ratios are not registry-verified. Expense ratios cover ${rupees(costCoveredValue)} of ${rupees(fundValue)} entered fund value. Exit loads, tax lots and switching costs are unknown, so savings and a switch decision cannot be calculated.` });
   }
   if (identifiedEquityFunds.size >= 3) {
     findings.push({ key: 'funds', tone: 'blue', label: 'Fund roles', title: 'Check what each equity fund adds',
@@ -234,7 +247,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
     goalDateCheck,
     largestGoalPosition,
-    largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, amcCoveredValue, asOfSummary,
+    largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, fundCost, amcCoveredValue, asOfSummary,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,
     scenario, shock, shockContinuation, lossLimits,
