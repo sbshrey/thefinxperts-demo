@@ -35,7 +35,7 @@ function key(row) {
 /** A matching name or ISIN may be the same position in another report. Never sum it silently. */
 export function findAssistantOverlap(existing, draft) {
   if (!Array.isArray(existing) || !draft || typeof draft.name !== 'string' ||
-      !['Mutual fund', 'Stock'].includes(draft.type)) return null;
+      !['Mutual fund', 'Stock', 'Other investment'].includes(draft.type)) return null;
   const isin = typeof draft.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(draft.isin) ? draft.isin : null;
   for (const row of existing) {
     if (!row || typeof row.name !== 'string') continue;
@@ -59,8 +59,12 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
   const added = [];
   for (const row of drafts) {
     if (!row || typeof row.name !== 'string' || row.name.trim().length < 2 || row.name.trim().length > 80 ||
-        !['Mutual fund', 'Stock'].includes(row.type) || !ASSETS.has(row.asset) ||
+        !['Mutual fund', 'Stock', 'Other investment'].includes(row.type) || !ASSETS.has(row.asset) ||
         (row.type === 'Stock' && row.asset !== 'Equity') ||
+        (row.type === 'Other investment' && (row.entryOrigin !== 'manual' ||
+          !['Other', 'Gold'].includes(row.asset) ||
+          (row.asset === 'Gold' && !/\bgold\b/i.test(row.name)) ||
+          row.isin || row.amc || row.amfi || row.units || row.statementCategory || row.granularity)) ||
         !Number.isFinite(row.value) || row.value <= 0 || row.value > 10_000_000_000 ||
         !realDate(row.asOf) || !SOURCES.has(row.entryOrigin) ||
         (row.isin && (typeof row.isin !== 'string' || !/^[A-Z]{2}[A-Z0-9]{10}$/.test(row.isin))) ||
@@ -72,7 +76,7 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
         (row.statementCategory && (typeof row.statementCategory !== 'string' ||
           !/^[A-Za-z][A-Za-z0-9 &/().,+-]{0,79}$/.test(row.statementCategory) || /\d{8,}/.test(row.statementCategory))) ||
         (row.type === 'Stock' && (row.amc || row.amfi || row.units || row.statementCategory))) {
-      return { portfolio: null, errors: ['A draft needs a fund or stock type, positive value, asset category and valid date.'] };
+      return { portfolio: null, errors: ['A draft needs a supported investment type, positive value, asset category and valid date.'] };
     }
     const overlap = findAssistantOverlap([...portfolio.holdings, ...added], row);
     if (overlap) {

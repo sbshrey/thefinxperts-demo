@@ -592,7 +592,7 @@ function render() {
     const update = document.createElement('details');
     update.className = 'holding-update';
     const updateTitle = document.createElement('summary');
-    updateTitle.textContent = holding.granularity === 'fund_house' ? 'Update value or date' :
+    updateTitle.textContent = holding.granularity === 'fund_house' || holding.type === 'Other investment' ? 'Update value or date' :
       holding.type === 'Mutual fund' ? 'Update value, invested amount or fund cost' :
         'Update value, invested amount or details';
     const updateForm = document.createElement('form');
@@ -619,7 +619,7 @@ function render() {
     let costLabel = null;
     let costDateLabel = null;
     let costHint = null;
-    if (holding.granularity !== 'fund_house') {
+    if (holding.granularity !== 'fund_house' && holding.type !== 'Other investment') {
       costLabel = document.createElement('label');
       costLabel.textContent = 'Amount invested in units or shares still held (₹; optional)';
       costInput = document.createElement('input');
@@ -656,17 +656,18 @@ function render() {
       assetInput.append(option);
     }
     assetInput.value = holding.asset;
-    assetInput.disabled = holding.type === 'Stock' || holding.granularity === 'fund_house';
+    assetInput.disabled = holding.type === 'Stock' || holding.type === 'Other investment' || holding.granularity === 'fund_house';
     assetLabel.append(assetInput);
     const assetHint = document.createElement('p');
     assetHint.className = 'form-hint';
     assetHint.textContent = holding.type === 'Stock' ? 'Direct stocks stay in Equity.' :
+      holding.type === 'Other investment' ? 'This category follows your description. Remove and add the holding again if its type is wrong.' :
       holding.granularity === 'fund_house' ? 'A fund-house total may contain several asset categories. Use a detailed scheme statement before classifying it.' :
         'Check the scheme objective or original statement before changing its category.';
     let isinInput = null;
     let isinLabel = null;
     let isinHint = null;
-    if (holding.granularity !== 'fund_house') {
+    if (holding.granularity !== 'fund_house' && holding.type !== 'Other investment') {
       isinLabel = document.createElement('label');
       isinLabel.textContent = 'ISIN from your statement (optional)';
       isinInput = document.createElement('input');
@@ -743,7 +744,7 @@ function render() {
         return;
       }
       if (!['Equity', 'Debt', 'Gold', 'Other'].includes(asset) ||
-          ((holding.type === 'Stock' || holding.granularity === 'fund_house') && asset !== holding.asset)) {
+          ((holding.type === 'Stock' || holding.type === 'Other investment' || holding.granularity === 'fund_house') && asset !== holding.asset)) {
         updateError.textContent = 'Check the asset category against the source before saving.';
         return;
       }

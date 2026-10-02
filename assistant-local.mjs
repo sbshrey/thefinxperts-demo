@@ -30,6 +30,7 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
   }
 
   let type = 'Other';
+  let asset = 'Other';
   let match = /^(?:(?:a|an)\s+)?(mutual fund|fund|stock|share)(?:\s+(?:called|named))?\s+(.+)$/i.exec(description);
   if (match) {
     type = /^(?:stock|share)$/i.test(match[1]) ? 'Stock' : 'Mutual fund';
@@ -41,12 +42,20 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
       description = match[1].trim();
     }
   }
+  if (type === 'Other') {
+    const other = /^(?:(?:a|an)\s+)?(nps|epf|ppf|fixed deposit|bank deposit|physical gold|digital gold)(?:\s+(?:called|named))?\b(.*)$/i.exec(description);
+    if (other) {
+      type = 'Other investment';
+      asset = /gold$/i.test(other[1]) ? 'Gold' : 'Other';
+      description = `${other[1]}${other[2] || ''}`.trim();
+    }
+  }
   const name = description.replace(/^(?:a|an)\s+/i, '').trim();
   if (name.length < 2 || name.length > 80 || !/[a-z]/i.test(name) ||
       /[<>@\r\n]/.test(name) || /\b[A-Z]{5}\d{4}[A-Z]\b/i.test(name) || /\d{8,}/.test(name) ||
       /\b(?:account|folio|password|pan number)\b/i.test(name))
     return { error: 'Name one fund or stock without an account number, PAN, password or other private identifier.' };
-  return { draft: { name, type, asset: type === 'Stock' ? 'Equity' : 'Other', value, asOf,
+  return { draft: { name, type, asset: type === 'Stock' ? 'Equity' : asset, value, asOf,
     entryOrigin: 'manual' } };
 }
 

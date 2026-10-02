@@ -429,7 +429,7 @@ async function assignGoalHoldings() {
 
 function normalizedDraft(row, defaultOrigin = 'manual') {
   if (!row || typeof row.name !== 'string' || !row.name.trim() ||
-      !['Mutual fund', 'Stock', 'Other'].includes(row.type) ||
+      !['Mutual fund', 'Stock', 'Other investment', 'Other'].includes(row.type) ||
       !['Equity', 'Debt', 'Gold', 'Other'].includes(row.asset) ||
       (row.granularity != null && (row.granularity !== 'fund_house' || row.type !== 'Mutual fund' ||
         typeof row.amc !== 'string' || !row.amc.trim()))) return null;
@@ -780,6 +780,8 @@ $('#composer').addEventListener('submit', async event => {
       say('assistant', 'I staged that goal fact for you to check.', nextBrowserGoalQuestion(selected, state.goalFacts));
       return;
     }
+  }
+  if (message && !state.file) {
     const holding = parseBrowserHoldingStatement(message);
     if (holding) {
       say('user', message); $('#message').value = '';
@@ -842,7 +844,7 @@ $('#confirm-drafts').addEventListener('click', async () => {
     return;
   }
   if (state.drafts.some(row => !Number.isFinite(row.value) || row.value <= 0 || row.type === 'Other')) {
-    say('note', 'Confirm a fund or stock type and positive value before adding these holdings.'); return;
+    say('note', 'Confirm a supported investment type and positive value before adding these holdings.'); return;
   }
   const added = [];
   for (const row of state.drafts) {

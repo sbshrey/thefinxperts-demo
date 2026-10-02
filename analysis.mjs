@@ -149,7 +149,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       detail: `Your coverage answer says ${answers}. Compare current fund and broker statements with the entered rows before treating these figures as your full portfolio.`,
       question: 'Which current fund or broker statement would help you complete or confirm the missing holdings?',
       basis: `Used your self reported coverage answer: mutual funds ${coverage.mutualFunds}; direct stocks ${coverage.directStocks}. Calculations use only ${rupees(total)} of entered value.`,
-      limitation: 'Your coverage answer and entered values have not been independently verified. Deposits, EPF, NPS and other assets are outside this holdings review.' });
+      limitation: 'Your coverage answer and entered values have not been independently verified. Other assets count only if you entered them, and their coverage is not checked.' });
   }
   const fundHouseSummaries = new Set(valid.filter(holding => holding.granularity === 'fund_house')
     .map(holding => holding.amc?.toLocaleLowerCase('en-IN')).filter(Boolean));
@@ -178,14 +178,14 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       limitation: 'Those rows have no scheme identifier, so scheme overlap, plan type and costs cannot be calculated.' });
   }
 
-  const unclassifiedSchemeValue = valid.filter(holding => holding.asset === 'Other' &&
+  const unclassifiedValue = valid.filter(holding => holding.asset === 'Other' &&
     holding.granularity !== 'fund_house').reduce((sum, holding) => sum + Number(holding.value), 0);
-  if (unclassifiedSchemeValue > 0) {
+  if (unclassifiedValue > 0) {
     findings.push({ key: 'classification', tone: 'amber', label: 'Asset labels',
       title: 'Check holdings labelled Other',
-      detail: `${rupees(unclassifiedSchemeValue)} of entered holding value is labelled Other. Check the original statement or scheme objective before using the asset mix for a goal.`,
-      question: 'Which of these holdings can you classify from its original statement or scheme information?',
-      basis: `${rupees(unclassifiedSchemeValue)} labelled Other ÷ ${rupees(total)} entered value = ${(unclassifiedSchemeValue / total * 100).toFixed(1)}%. Fund-house summary portions are excluded from this check because they have a separate detail prompt.`,
+      detail: `${rupees(unclassifiedValue)} of entered holding value is labelled Other. Check the original statement before using the asset mix for a goal.`,
+      question: 'Which of these holdings can you classify from their original statements?',
+      basis: `${rupees(unclassifiedValue)} labelled Other ÷ ${rupees(total)} entered value = ${(unclassifiedValue / total * 100).toFixed(1)}%. Fund-house summary portions are excluded from this check because they have a separate detail prompt.`,
       limitation: 'A statement label or fund name alone does not establish whether a holding belongs in Debt, Gold, Equity or another category. This is a data check, not a suggested allocation.' });
   }
 

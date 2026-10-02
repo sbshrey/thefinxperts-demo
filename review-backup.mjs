@@ -8,7 +8,7 @@ const MAX_BYTES = 2_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
 const AMFI = /^\d{5,8}$/;
-const TYPES = new Set(['Mutual fund', 'Stock']);
+const TYPES = new Set(['Mutual fund', 'Stock', 'Other investment']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId', 'reserve', 'coverage'];
 const COVERAGE = new Set(['all', 'some', 'none', 'unsure']);
@@ -96,6 +96,12 @@ export function parseReviewBackup(text) {
         ((holding.costBasis !== undefined || holding.costBasisAsOf !== undefined) &&
           (holding.granularity === 'fund_house' || !validCostBasis(holding.costBasis, holding.costBasisAsOf))) ||
         (holding.type === 'Stock' && (holding.asset !== 'Equity' || holding.amc || holding.amfi)) ||
+        (holding.type === 'Other investment' && (holding.entryOrigin !== 'manual' ||
+          !['Other', 'Gold'].includes(holding.asset) ||
+          (holding.asset === 'Gold' && !/\bgold\b/i.test(holding.name)) ||
+          holding.amc || holding.amfi || holding.isin || holding.units || holding.statementCategory ||
+          holding.expenseRatioPct !== undefined || holding.navEstimate || holding.shares ||
+          holding.stockEstimate || holding.costBasis !== undefined || holding.valuationOrigin)) ||
         (holding.granularity != null && (holding.granularity !== 'fund_house' || holding.type !== 'Mutual fund' ||
           !holding.amc || holding.isin || holding.amfi))) {
       return invalid('A holding in the review file is invalid or contains unsupported fields.');

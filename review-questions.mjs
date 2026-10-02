@@ -74,7 +74,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       result.asOfSummary,
       'A recent statement value may still differ from the current market value.', '#holdings', 'Check entered dates');
   if (!valid.length)
-    return answer('Add one fund or stock, or import a supported statement, and I can answer from that review.',
+    return answer('Add a fund, stock or other investment, or import a supported statement, and I can answer from that review.',
       'There are no positive holding values in this tab.',
       'No portfolio calculation is available yet.', '#input-choice', 'Choose an input');
   if (/\b(?:goal|target|chosen) mix\b|\b(?:mix|allocation)\b.{0,30}\b(?:compare|difference|plan)\b/.test(input)) {
@@ -140,7 +140,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     const label = value => ({ all: 'all included', some: 'some included', none: 'none included', unsure: 'unsure' })[value] || 'not answered';
     return answer(`${lead}mutual-fund coverage is ${label(coverage?.mutualFunds)} and direct-stock coverage is ${label(coverage?.directStocks)}.`,
       `Used your self-reported coverage answers and ${valid.length} entered holding rows; no broker or fund account was independently checked.`,
-      'EPF, NPS, deposits, physical gold and other assets are outside this holdings review. Compare current source statements before treating its total as complete.', '#holdings', 'Check review coverage');
+      'Manually entered EPF, NPS, deposits or gold may be included, but their coverage is not checked. Compare current source statements before treating the total as complete.', '#holdings', 'Check review coverage');
   }
   if (/\b(next|priority|start|check first|review first)\b/.test(input)) {
     const first = result.findings?.[0];
@@ -169,7 +169,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
         coverageNote, '#holdings', 'Link holdings');
     return answer(`${lead}${money(result.goalTotal)} is assigned to ${goal.name} against your ${money(goal.target)} target today. The simple gap is ${money(result.goalGap)}.`,
       `${money(goal.target)} target minus ${money(result.goalTotal)} assigned value; ${result.goalHoldingCount} linked holdings. ${result.asOfSummary}.`,
-      'This comparison excludes future growth, inflation, taxes, and holdings outside the selected goal. It uses entered values, not live prices.', '#goals', 'Review selected goal');
+      'This comparison excludes future growth, inflation, taxes, and holdings outside the selected goal. It does not check when NPS, EPF or deposits can be accessed. It uses entered values, not live prices.', '#goals', 'Review selected goal');
   }
   if (/\b(fees?|expense ratio|\bter\b|fund costs?)\b/.test(input)) {
     const cost = result.fundCost;
@@ -213,7 +213,8 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
   if (/\b(own|holdings?|total|worth|value|portfolio|funds?|stocks?)\b/.test(input)) {
     const funds = valid.filter(row => row.type === 'Mutual fund').length;
     const stocks = valid.filter(row => row.type === 'Stock').length;
-    return answer(`${lead}${funds} mutual-fund rows and ${stocks} direct-stock rows total ${money(result.total)}. ${result.asOfSummary}.`,
+    const other = valid.filter(row => row.type === 'Other investment').length;
+    return answer(`${lead}${funds} mutual-fund rows, ${stocks} direct-stock rows and ${other} other-investment rows total ${money(result.total)}. ${result.asOfSummary}.`,
       `Added ${valid.length} positive values entered or imported in this tab; a fund-house summary may represent several schemes.`,
       `${coverageNote} This is not a live account balance.`, '#holdings', 'Inspect included holdings');
   }
