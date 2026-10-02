@@ -21,7 +21,8 @@ import { parseHoldingCorrection, prepareHoldingCorrection,
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
   prepareAssistantReserveSave } from './assistant-reserve.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
-import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs';
+import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
+  prepareAssistantDematRefresh } from './assistant-refresh.mjs';
 import { validShares } from './stock-estimate.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -316,7 +317,7 @@ function renderRefresh() {
   const stale = state.account?.revision !== state.refresh.revision;
   $('#refresh-help').textContent = state.refresh.kind === 'broker' ?
     'Confirm this newer report covers the same account and positions. Unmatched rows will stay out.' :
-    state.refresh.kind === 'cas' ?
+    ['cas', 'demat'].includes(state.refresh.kind) ?
       'Confirm this newer CAS covers the same investment positions. Unmatched rows will stay out.' :
       'Confirm this is a complete newer statement for the same investments.';
   $('#refresh-summary').textContent = stale ?
@@ -751,15 +752,17 @@ function stageCasResult(result) {
   if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return false; }
   const drafts = prepared.drafts.map(row => normalizedDraft(row));
   if (drafts.some(row => !row)) { say('note', 'A CAS row could not be staged safely. No rows were added.'); return false; }
-  if (result.source !== 'Demat CAS' && state.account?.portfolio) {
-    const refresh = prepareAssistantCasRefresh(state.account.portfolio, drafts);
+  if (state.account?.portfolio) {
+    const refresh = result.source === 'Demat CAS' ?
+      prepareAssistantDematRefresh(state.account.portfolio, drafts) :
+      prepareAssistantCasRefresh(state.account.portfolio, drafts);
     if (refresh) {
       if (refresh.repeated) say('note', refresh.description);
       else if (refresh.errors.length) say('note', refresh.errors.join(' '));
       else {
         state.refresh = { ...refresh, revision: state.account.revision };
         renderRefresh();
-        say('assistant', 'I found exact scheme matches in a newer CAS. Review each dated update before applying it. Unmatched schemes remain outside this refresh.');
+        say('assistant', `I found exact ${refresh.kind === 'demat' ? 'demat position' : 'scheme'} matches in a newer CAS. Review each dated update before applying it. Unmatched rows remain outside this refresh.`);
       }
       clearFile(); return true;
     }

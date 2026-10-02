@@ -135,6 +135,60 @@ export function planBrokerReportRefresh(existing, incoming, origin) {
   return { holdings, matched, skipped: incoming.length - matched.length };
 }
 
+/** Refresh only unique positions first entered from a demat CAS, never another source. */
+export function planDematCasRefresh(existing, incoming) {
+  if (!Array.isArray(existing) || !existing.length || !Array.isArray(incoming) ||
+      !incoming.length || incoming.some(row => row.entryOrigin !== 'demat_cas')) return null;
+  const byIsin = rows => {
+    const map = new Map();
+    for (const row of rows) {
+      if (!row.isin) continue;
+      map.set(row.isin, map.has(row.isin) ? null : row);
+    }
+    return map;
+  };
+  const currentByIsin = byIsin(existing);
+  const incomingByIsin = byIsin(incoming);
+  const shared = [...incomingByIsin.keys()].filter(isin => currentByIsin.has(isin));
+  if (!shared.length) return null;
+  const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  const clean = value => typeof value === 'string' ? value.trim().toLocaleLowerCase('en-IN').replace(/\s+/g, ' ') : '';
+  const matched = [];
+  for (const isin of shared) {
+    const current = currentByIsin.get(isin), next = incomingByIsin.get(isin);
+    const confirmedStock = current?.type === 'Stock' && current.asset === 'Equity' &&
+      next?.type === 'Other' && next.asset === 'Other';
+    const checkedNext = confirmedStock ? { ...next, type: 'Stock', asset: 'Equity' } : next;
+    if (!current || !next || validateImportReview([checkedNext]).length ||
+        current.entryOrigin !== 'demat_cas' || current.type !== checkedNext.type ||
+        current.granularity || next.granularity || clean(current.name) !== clean(next.name) ||
+        current.asset !== checkedNext.asset && checkedNext.asset !== 'Other' ||
+        !isRealIsoDate(current.asOf) || !isRealIsoDate(next.asOf) ||
+        current.asOf > today || next.asOf > today || next.asOf < current.asOf ||
+        (current.type === 'Mutual fund' &&
+          (typeof next.units !== 'string' || !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/.test(next.units) ||
+           !/[1-9]/.test(next.units) || current.amfi && next.amfi && current.amfi !== next.amfi)) ||
+        next.asOf === current.asOf && (next.value !== current.value ||
+          current.type === 'Mutual fund' && next.units !== current.units)) return null;
+    matched.push({ current, next: checkedNext });
+  }
+  const changed = matched.filter(({ current, next }) => next.asOf > current.asOf);
+  if (!changed.length) return { holdings: existing, matched, changed, skipped: incoming.length - matched.length,
+    repeated: true };
+  const replacements = new Map(changed.map(({ current, next }) => [current.id, next]));
+  const holdings = existing.map(row => {
+    const next = replacements.get(row.id);
+    if (!next) return row;
+    const { navEstimate: _navEstimate, stockEstimate: _stockEstimate,
+      costBasis: _costBasis, costBasisAsOf: _costBasisAsOf,
+      valuationOrigin: _valuationOrigin, shares: _shares, ...prior } = row;
+    return { ...prior, value: next.value, asOf: next.asOf,
+      ...(row.type === 'Mutual fund' ? { units: next.units } : {}) };
+  });
+  if (holdings.reduce((sum, row) => sum + Number(row.value), 0) > 1_000_000_000_000) return null;
+  return { holdings, matched, changed, skipped: incoming.length - matched.length, repeated: false };
+}
+
 /** Recognize the same complete Active Statement fund snapshot without changing saved goal links. */
 export function isRepeatedActiveStatement(existing, incoming) {
   if (!Array.isArray(existing) || !Array.isArray(incoming) || !incoming.length ||

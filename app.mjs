@@ -1,7 +1,8 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs';
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
-import { validateImportReview, validateImportMerge, possibleManualDuplicate, isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh } from './import-review.mjs';
+import { validateImportReview, validateImportMerge, possibleManualDuplicate, isRepeatedActiveStatement,
+  planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
 import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
@@ -1374,9 +1375,11 @@ function refreshImportSummary() {
   const brokerOrigin = entryOriginFromImport(label);
   const brokerRefresh = canAdd && ['broker_xlsx', 'broker_csv'].includes(brokerOrigin) ?
     planBrokerReportRefresh(state.holdings, pendingImport, brokerOrigin) : null;
-  $('#refresh-statement').hidden = !refresh && !repeated && !brokerRefresh;
-  $('#refresh-explanation').hidden = !refresh && !repeated && !brokerRefresh;
-  $('#refresh-changes').hidden = !refresh && !brokerRefresh;
+  const dematRefresh = canAdd && label === 'Demat CAS' && !errors.length ?
+    planDematCasRefresh(state.holdings, pendingImport) : null;
+  $('#refresh-statement').hidden = !refresh && !repeated && !brokerRefresh && !dematRefresh;
+  $('#refresh-explanation').hidden = !refresh && !repeated && !brokerRefresh && !dematRefresh;
+  $('#refresh-changes').hidden = !refresh && !brokerRefresh && !dematRefresh?.changed.length;
   const changeList = $('#refresh-change-list');
   changeList.replaceChildren();
   if (repeated) {
@@ -1422,6 +1425,22 @@ function refreshImportSummary() {
       const row = document.createElement('li');
       row.textContent = `${current.name} · ISIN ${current.isin} · ${rupees(current.value)} as of ${current.asOf} → ${rupees(next.value)} as of ${next.asOf}. Goal links stay in place.`;
       changeList.append(row);
+    }
+  }
+  if (dematRefresh) {
+    $('#refresh-statement').textContent = dematRefresh.repeated ?
+      'Keep my review — no changes' : 'Refresh matched demat positions';
+    $('#refresh-explanation').textContent = dematRefresh.repeated ?
+      `The ${dematRefresh.matched.length} matched positions already use these dated values and fund units. ${dematRefresh.skipped} unmatched rows stay out. No holdings or goal links change.` :
+      `${dematRefresh.changed.length} matched demat ${dematRefresh.changed.length === 1 ? 'position' : 'positions'} will use newer dated values. ${dematRefresh.skipped} unmatched ${dematRefresh.skipped === 1 ? 'row stays' : 'rows stay'} out. Confirm this is the same account and positions. No holding is removed and goal links stay. Earlier estimates, share counts and checked invested costs on updated rows clear; fund units update from the statement.`;
+    if (dematRefresh.changed.length) {
+      $('#refresh-changes summary').textContent = 'Review demat positions before updating';
+      $('#refresh-changes').open = true;
+      for (const { current, next } of dematRefresh.changed) {
+        const row = document.createElement('li');
+        row.textContent = `${current.name} · ISIN ${current.isin} · ${rupees(current.value)} as of ${current.asOf} → ${rupees(next.value)} as of ${next.asOf}${current.type === 'Mutual fund' ? ` · units ${current.units} → ${next.units}` : ''}. Goal links stay in place.`;
+        changeList.append(row);
+      }
     }
   }
 }
@@ -1656,6 +1675,26 @@ function applyImport(mode) {
   if (!pendingImport || validateImportReview(pendingImport).length) return;
   if (mode === 'refresh') {
     const origin = entryOriginFromImport($('#import-preview').dataset.source);
+    if (state.source === 'user' && origin === 'demat_cas') {
+      const refresh = planDematCasRefresh(state.holdings, pendingImport);
+      if (!refresh) return;
+      if (!refresh.repeated && !window.confirm(`Refresh ${refresh.changed.length} matched demat ${refresh.changed.length === 1 ? 'position' : 'positions'}? Confirm this is the same account and positions, not another account with the same ISIN. ${refresh.skipped} unmatched ${refresh.skipped === 1 ? 'row stays' : 'rows stay'} out. Earlier estimates, share counts and invested costs on updated rows clear. Goal links stay.`)) return;
+      if (!refresh.repeated) {
+        state.holdings = refresh.holdings;
+        if (refresh.skipped) state.coverage = null;
+      }
+      pendingImport = null;
+      pendingPerformance.clear();
+      $('#cas-file').value = '';
+      $('#cas-password').value = '';
+      $('#import-preview').hidden = true;
+      render();
+      $('#live-status').textContent = refresh.repeated ?
+        'These matched demat positions already use the same dated values and fund units. No holdings or goal links changed.' :
+        `${refresh.changed.length} matched demat positions refreshed. ${refresh.skipped} unmatched rows left out. Goal links kept; check the newer dated values and fund units.`;
+      $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     if (state.source === 'user' && ['broker_xlsx', 'broker_csv'].includes(origin)) {
       const refresh = planBrokerReportRefresh(state.holdings, pendingImport, origin);
       if (!refresh || !window.confirm(`Refresh ${refresh.matched.length} matched ${refresh.matched.length === 1 ? 'position' : 'positions'} from this newer broker report? Confirm this is the same account and positions, not another account or an extra lot. ${refresh.skipped} unmatched report ${refresh.skipped === 1 ? 'row will' : 'rows will'} be left out. No holding will be removed, and matched goal links will stay. Old invested amounts clear; only newly checked report amounts replace them.`)) return;

@@ -1,4 +1,5 @@
-import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh } from './import-review.mjs';
+import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh,
+  planDematCasRefresh } from './import-review.mjs';
 import { removeHoldingAllocation } from './goals.mjs';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -49,6 +50,25 @@ export function prepareAssistantBrokerRefresh(saved, incoming, origin) {
   return { portfolio, errors: [], kind: 'broker', changes,
     description: `Newer broker report. Confirm this covers the same account and positions, not another account or an extra lot. ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'} will receive the newer dated value. ${plan.skipped} unmatched report ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out of this review. No holding is removed; goal links stay. Prior units, shares, price estimates and checked invested amounts on matched rows clear because this report does not verify them. No trade is placed.`,
     result: `Broker report refresh applied to ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. Check saved units, invested amounts and the report source before relying on the newer values.` };
+}
+
+/** Revalue only unique positions from a newer demat CAS after account confirmation. */
+export function prepareAssistantDematRefresh(saved, incoming) {
+  if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(saved.goals) ||
+      !Array.isArray(incoming) || !incoming.length) return null;
+  const known = new Set(saved.holdings.map(row => row.isin).filter(Boolean));
+  if (!incoming.some(row => row.isin && known.has(row.isin))) return null;
+  const plan = planDematCasRefresh(saved.holdings, incoming);
+  if (!plan) return { errors: ['This demat CAS shares an ISIN with the review but cannot safely refresh it. Check for another account, repeated ISINs, changed security names or categories, an old report, or unclassified rows. No values changed.'] };
+  if (plan.repeated) return { repeated: true, errors: [],
+    description: `The ${plan.matched.length} matched demat ${plan.matched.length === 1 ? 'position already uses' : 'positions already use'} the same dated value and units. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} left out. No holdings or goal links changed.` };
+  const portfolio = structuredClone({ ...saved, holdings: plan.holdings });
+  if (plan.skipped) delete portfolio.coverage;
+  return { portfolio, errors: [], kind: 'demat',
+    changes: plan.changed.map(({ current, next }) =>
+      `${current.name} · ISIN ${current.isin}: ${money(current.value)} (${current.asOf}) → ${money(next.value)} (${next.asOf})${current.type === 'Mutual fund' ? ` · units ${current.units} → ${next.units}` : ''}`),
+    description: `Newer demat CAS. Confirm this covers the same account and positions, not another account with the same ISIN. ${plan.changed.length} unique matched ${plan.changed.length === 1 ? 'position' : 'positions'} will use newer dated values; ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out. No holding is removed and goal links stay. Earlier price estimates, share counts and checked invested costs on updated rows clear; fund units update from the new statement. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
+    result: `Demat CAS refresh applied to ${plan.changed.length} matched ${plan.changed.length === 1 ? 'position' : 'positions'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. Check source account, unit counts and dated values.` };
 }
 
 /** Update only unambiguous positions from a newer original mutual-fund CAS. */
