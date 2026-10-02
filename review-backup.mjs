@@ -16,7 +16,7 @@ function validCoverage(value) {
     Object.keys(value).every(key => ['mutualFunds', 'directStocks'].includes(key)) &&
     COVERAGE.has(value.mutualFunds) && COVERAGE.has(value.directStocks);
 }
-const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin', 'navEstimate', 'shares', 'stockEstimate'];
+const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin', 'valuationOrigin', 'navEstimate', 'shares', 'stockEstimate'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
@@ -28,6 +28,7 @@ export function buildReviewBackup(state) {
       asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
       granularity: holding.granularity || null, units: holding.units || null,
       ...(holding.entryOrigin ? { entryOrigin: holding.entryOrigin } : {}),
+      ...(holding.valuationOrigin ? { valuationOrigin: holding.valuationOrigin } : {}),
       ...(holding.statementCategory ? { statementCategory: holding.statementCategory } : {}),
       ...(holding.expenseRatioPct !== undefined ? { expenseRatioPct: holding.expenseRatioPct,
         expenseRatioAsOf: holding.expenseRatioAsOf } : {}),
@@ -70,6 +71,7 @@ export function parseReviewBackup(text) {
         !boundedNumber(holding.value, Number.MIN_VALUE, 10_000_000_000) ||
         (holding.asOf != null && !isRealIsoDate(holding.asOf)) ||
         (holding.entryOrigin !== undefined && !Object.hasOwn(ENTRY_ORIGINS, holding.entryOrigin)) ||
+        (holding.valuationOrigin !== undefined && !['broker_xlsx', 'broker_csv'].includes(holding.valuationOrigin)) ||
         (holding.amc != null && !isName(holding.amc, 200)) ||
         (holding.isin != null && (typeof holding.isin !== 'string' || !ISIN.test(holding.isin))) ||
         (holding.amfi != null && (typeof holding.amfi !== 'string' || !AMFI.test(holding.amfi))) ||

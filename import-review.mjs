@@ -88,6 +88,46 @@ export function possibleManualDuplicate(existing, candidate) {
       candidate.name.trim().toLocaleLowerCase('en-IN') === current.name.trim().toLocaleLowerCase('en-IN'))) || null;
 }
 
+/** Update only unambiguous positions from a newer report of the same account. */
+export function planBrokerReportRefresh(existing, incoming, origin) {
+  if (!Array.isArray(existing) || !existing.length || !Array.isArray(incoming) ||
+      validateImportReview(incoming).length || !['broker_xlsx', 'broker_csv'].includes(origin)) return null;
+  const currentByIsin = new Map();
+  for (const holding of existing) {
+    if (!holding.isin) continue;
+    if (currentByIsin.has(holding.isin)) currentByIsin.set(holding.isin, null);
+    else currentByIsin.set(holding.isin, holding);
+  }
+  const incomingByIsin = new Map();
+  for (const holding of incoming) {
+    if (!holding.isin) continue;
+    if (incomingByIsin.has(holding.isin)) incomingByIsin.set(holding.isin, null);
+    else incomingByIsin.set(holding.isin, holding);
+  }
+  const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  const matched = [];
+  for (const [isin, next] of incomingByIsin) {
+    if (!currentByIsin.has(isin)) continue;
+    const current = currentByIsin.get(isin);
+    if (!current || !next || current.type !== next.type || current.asset !== next.asset ||
+        current.granularity || next.granularity || !isRealIsoDate(current.asOf) ||
+        !isRealIsoDate(next.asOf) || next.asOf <= current.asOf || next.asOf > today) return null;
+    matched.push({ current, next });
+  }
+  if (!matched.length) return null;
+  const byId = new Map(matched.map(({ current, next }) => [current.id, next]));
+  const holdings = existing.map(holding => {
+    const next = byId.get(holding.id);
+    if (!next) return holding;
+    const { navEstimate: _navEstimate, stockEstimate: _stockEstimate,
+      units: _units, shares: _shares, ...prior } = holding;
+    return { ...prior, value: next.value, asOf: next.asOf, valuationOrigin: origin };
+  });
+  const total = holdings.reduce((sum, holding) => sum + Number(holding.value), 0);
+  if (!Number.isFinite(total) || total > 1_000_000_000_000) return null;
+  return { holdings, matched, skipped: incoming.length - matched.length };
+}
+
 /** Recognize the same complete Active Statement fund snapshot without changing saved goal links. */
 export function isRepeatedActiveStatement(existing, incoming) {
   if (!Array.isArray(existing) || !Array.isArray(incoming) || !incoming.length ||
@@ -147,7 +187,7 @@ export function planActiveStatementRefresh(existing, incoming) {
     if (holding.type !== 'Mutual fund') return holding;
     const next = incomingByKey.get(activeStatementKey(holding));
     if (!next) return [];
-    const { navEstimate: _previousEstimate, ...prior } = holding;
+    const { navEstimate: _previousEstimate, valuationOrigin: _previousValuationOrigin, ...prior } = holding;
     return [{ ...prior, value: next.value, asOf: next.asOf,
       ...(next.units ? { units: next.units } : {}),
       ...(next.statementCategory ? { statementCategory: next.statementCategory } : {}) }];

@@ -1,7 +1,7 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs';
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
-import { validateImportReview, validateImportMerge, possibleManualDuplicate, isRepeatedActiveStatement, planActiveStatementRefresh } from './import-review.mjs';
+import { validateImportReview, validateImportMerge, possibleManualDuplicate, isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh } from './import-review.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
 import { entryOriginFromImport, entryOriginText } from './entry-origin.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
@@ -137,6 +137,7 @@ function createDatedUnitWorksheet(holding) {
     }
     state.holdings = state.holdings.map(item => item.id === holding.id ? {
       ...item, value, asOf: priceAsOf,
+      valuationOrigin: undefined,
       ...(fund ? { navEstimate: { originalValue, originalAsOf: originalDate, nav: price, navAsOf: priceAsOf } } :
         { stockEstimate: { originalValue, originalAsOf: originalDate, price, priceAsOf } }),
     } : item);
@@ -492,7 +493,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` · latest value from ${entryOriginText(holding.valuationOrigin)}` : ''}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const sourceCategory = document.createElement('small');
     sourceCategory.className = 'holding-source-category';
     sourceCategory.textContent = holding.statementCategory ?
@@ -739,6 +740,8 @@ function render() {
           ...((asset !== item.asset || (identifierChanged && item.type === 'Mutual fund')) ? { exposure: null } : {}) };
         if (value !== item.value || (asOf || null) !== (item.asOf || null) || asset !== item.asset || identifierChanged)
           delete updated.navEstimate;
+        if (value !== item.value || (asOf || null) !== (item.asOf || null) || identifierChanged)
+          delete updated.valuationOrigin;
         if (value !== item.value || (asOf || null) !== (item.asOf || null) || identifierChanged ||
             shares !== (item.shares || '')) delete updated.stockEstimate;
         if (sharesInput) {
@@ -1286,9 +1289,12 @@ function refreshImportSummary() {
     isRepeatedActiveStatement(state.holdings, pendingImport);
   const refresh = label === 'Active Statement' && canAdd && !repeated ?
     planActiveStatementRefresh(state.holdings, pendingImport) : null;
-  $('#refresh-statement').hidden = !refresh && !repeated;
-  $('#refresh-explanation').hidden = !refresh && !repeated;
-  $('#refresh-changes').hidden = !refresh;
+  const brokerOrigin = entryOriginFromImport(label);
+  const brokerRefresh = canAdd && ['broker_xlsx', 'broker_csv'].includes(brokerOrigin) ?
+    planBrokerReportRefresh(state.holdings, pendingImport, brokerOrigin) : null;
+  $('#refresh-statement').hidden = !refresh && !repeated && !brokerRefresh;
+  $('#refresh-explanation').hidden = !refresh && !repeated && !brokerRefresh;
+  $('#refresh-changes').hidden = !refresh && !brokerRefresh;
   const changeList = $('#refresh-change-list');
   changeList.replaceChildren();
   if (repeated) {
@@ -1296,6 +1302,7 @@ function refreshImportSummary() {
     $('#refresh-explanation').textContent = `These ${count} fund rows already match the statement date and values in your review, including scheme units where available. Keep existing goal links, any added fund details and direct stocks.`;
   }
   if (refresh) {
+    $('#refresh-changes summary').textContent = 'Review fund changes before updating';
     const estimateCount = state.holdings.filter(holding => holding.type === 'Mutual fund' && holding.navEstimate).length;
     if (estimateCount) $('#refresh-changes').open = true;
     $('#refresh-statement').textContent = refresh.added.length || refresh.removed.length ?
@@ -1320,6 +1327,19 @@ function refreshImportSummary() {
       const units = old.units && holding.units ? ` · units ${old.units} → ${holding.units}` : '';
       const estimateNote = old.navEstimate ? ` The NAV estimate dated ${old.navEstimate.navAsOf} will be removed; this statement follows the original statement dated ${old.navEstimate.originalAsOf}.` : '';
       change(`Matched: ${holding.name} · ${rupees(old.value)} as of ${old.asOf} → ${rupees(holding.value)} as of ${holding.asOf}${units}. Goal links stay in place.${estimateNote}`);
+    }
+  }
+  if (brokerRefresh) {
+    $('#refresh-changes summary').textContent = 'Review matched positions before updating';
+    $('#refresh-changes').open = true;
+    $('#refresh-statement').textContent = 'Refresh matched positions';
+    $('#refresh-explanation').textContent = `${brokerRefresh.matched.length} exact ISIN ${brokerRefresh.matched.length === 1 ? 'match' : 'matches'} can receive the newer dated value. ` +
+      `${brokerRefresh.skipped} report ${brokerRefresh.skipped === 1 ? 'row is' : 'rows are'} unmatched and will not be added. ` +
+      'No existing holding will be removed. Use this only for a newer view of the same account and positions; another account may hold the same ISIN. Goal links stay in place. A prior unit or share count and any manual price estimate will be cleared because this report does not verify them.';
+    for (const { current, next } of brokerRefresh.matched) {
+      const row = document.createElement('li');
+      row.textContent = `${current.name} · ISIN ${current.isin} · ${rupees(current.value)} as of ${current.asOf} → ${rupees(next.value)} as of ${next.asOf}. Goal links stay in place.`;
+      changeList.append(row);
     }
   }
 }
@@ -1515,6 +1535,22 @@ $('#preview-cas').addEventListener('click', async () => {
 function applyImport(mode) {
   if (!pendingImport || validateImportReview(pendingImport).length) return;
   if (mode === 'refresh') {
+    const origin = entryOriginFromImport($('#import-preview').dataset.source);
+    if (state.source === 'user' && ['broker_xlsx', 'broker_csv'].includes(origin)) {
+      const refresh = planBrokerReportRefresh(state.holdings, pendingImport, origin);
+      if (!refresh || !window.confirm(`Refresh ${refresh.matched.length} matched ${refresh.matched.length === 1 ? 'position' : 'positions'} from this newer broker report? Confirm this is the same account and positions, not another account or an extra lot. ${refresh.skipped} unmatched report ${refresh.skipped === 1 ? 'row will' : 'rows will'} be left out. No holding will be removed, and matched goal links will stay.`)) return;
+      state.holdings = refresh.holdings;
+      pendingImport = null;
+      pendingPerformance.clear();
+      $('#broker-file').value = '';
+      brokerRows = null;
+      $('#broker-map').hidden = true;
+      $('#import-preview').hidden = true;
+      render();
+      $('#live-status').textContent = `${refresh.matched.length} matched positions refreshed from the broker report. ${refresh.skipped} unmatched rows left out. Goal links kept.`;
+      $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     if (state.source !== 'user' || $('#import-preview').dataset.source !== 'Active Statement') return;
     if (isRepeatedActiveStatement(state.holdings, pendingImport)) {
       pendingImport = null;
