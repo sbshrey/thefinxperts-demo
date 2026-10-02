@@ -1,11 +1,12 @@
 import { planFromName, valuationDateIssue } from './analysis.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
+import { reserveMonths } from './reserve.mjs';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
 
 /** Answer a narrow set of portfolio questions from the current in-tab review. */
-export function answerReviewQuestion(question, { holdings, goal, source, coverage, result, today = new Date() }) {
+export function answerReviewQuestion(question, { holdings, goal, source, coverage, reserve, result, today = new Date() }) {
   if (typeof question !== 'string' || !question.trim() || !result || !Array.isArray(holdings)) return null;
   const input = question.trim().toLocaleLowerCase('en-IN');
   const valid = holdings.filter(row => Number.isFinite(Number(row.value)) && Number(row.value) > 0);
@@ -73,6 +74,15 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     return answer('I do not have a live market feed here. Use a dated value from your broker or fund statement, then update the holding in this browser.',
       result.asOfSummary,
       'A recent statement value may still differ from the current market value.', '#holdings', 'Check entered dates');
+  if (/\b(?:reserve|emergency buffer|emergency fund)\b/.test(input)) {
+    const months = reserveMonths(reserve);
+    return months === null ? answer('No separate reserve totals are saved in this review. If you want the arithmetic, say “monthly essentials ₹50,000” and “accessible money outside holdings ₹3 lakh”, then confirm both.',
+      'A reserve comparison needs both the monthly essential-spending total and accessible money outside these holdings.',
+      'This review does not choose a reserve target or verify bank balances, debts, or access to money.', '#goals', 'Add separate reserve totals') :
+      answer(`Your entered accessible money outside these holdings is ${money(reserve.accessibleMoney)} against ${money(reserve.monthlyEssentials)} monthly essentials: ${months.toFixed(1)} months by division.`,
+        `${money(reserve.accessibleMoney)} ÷ ${money(reserve.monthlyEssentials)} = ${months.toFixed(1)} months. These amounts are outside the portfolio total.`,
+        'Both amounts are self reported. This is not a recommendation or proof that the money is accessible or enough for your circumstances.', '#goals', 'Check separate reserve');
+  }
   if (!valid.length)
     return answer('Add a fund, stock or other investment, or import a supported statement, and I can answer from that review.',
       'There are no positive holding values in this tab.',

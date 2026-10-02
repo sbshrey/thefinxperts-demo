@@ -16,6 +16,9 @@ import { parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHolding
   nextBrowserGoalQuestion } from './assistant-local.mjs';
 import { parseHoldingCorrection, prepareHoldingCorrection,
   parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs';
+import { parseAssistantReserveFact, nextAssistantReserveQuestion,
+  prepareAssistantReserveSave } from './assistant-reserve.mjs';
+import { validReserve, reserveMonths } from './reserve.mjs';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh } from './assistant-refresh.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -57,7 +60,8 @@ async function saveDeviceReview(portfolio) {
 }
 const state = { confirmed: [], drafts: [], history: [], file: null, busy: false, available: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
-  goalFacts: null, goalDraftGoalId: null, correction: null, refresh: null, casAvailable: false, casLocal: false,
+  goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
+  correction: null, refresh: null, casAvailable: false, casLocal: false,
   capacityReached: false, coveragePrompted: false };
 const toolsToggle = $('#tools-toggle');
 const mobileTools = window.matchMedia('(max-width: 600px)');
@@ -154,6 +158,7 @@ function renderAccountActions() {
   renderDeviceActions();
   renderCorrection();
   renderRefresh();
+  renderReserveDraft();
 }
 
 function nextFundCategoryQuestion(portfolio) {
@@ -225,6 +230,26 @@ function renderGoalDraft() {
   list.append(ul);
   $('#confirm-goal').disabled = state.busy || !state.account ||
     Boolean(state.goalDraftGoalId && selected?.id !== state.goalDraftGoalId);
+}
+
+function renderReserveDraft() {
+  const box = $('#reserve-draft');
+  box.hidden = !state.reserveFacts;
+  if (!state.reserveFacts) return;
+  const stale = state.reserveDraftRevision !== state.account?.revision;
+  const clearing = state.reserveFacts.clear === true;
+  const combined = clearing ? null : { ...state.account?.portfolio?.reserve, ...state.reserveFacts };
+  $('#reserve-draft-help').textContent = stale ?
+    'The confirmed review changed after these totals were staged. Discard them and answer again.' :
+    clearing ? 'Remove only the separate reserve totals after confirmation.' :
+      nextAssistantReserveQuestion(state.account?.portfolio, state.reserveFacts);
+  const list = $('#reserve-draft-list'); list.replaceChildren();
+  const summary = document.createElement('p');
+  summary.textContent = clearing ? 'Remove the saved monthly essentials and accessible money totals.' :
+    `Monthly essentials: ${combined.monthlyEssentials === undefined ? 'missing' : money(combined.monthlyEssentials)} · Accessible money outside reviewed holdings: ${combined.accessibleMoney === undefined ? 'missing' : money(combined.accessibleMoney)}`;
+  list.append(summary);
+  $('#confirm-reserve').textContent = clearing ? 'Remove reserve totals' : 'Save reserve totals';
+  $('#confirm-reserve').disabled = state.busy || stale || (!clearing && !validReserve(combined));
 }
 
 function renderCorrection() {
@@ -350,6 +375,9 @@ function renderGoalReview() {
   const otherGoals = portfolio?.goals?.filter(goal => goal.id !== portfolio.activeGoalId) || [];
   if (otherGoals.length) root.append(paragraph(`Other goals: ${otherGoals.map(goal => goal.name).join(', ')}. Say “select goal NAME” to review one, “count HOLDING toward goal NAME” to assign an unassigned holding, or “split HOLDING: 60% to goal NAME, 40% to goal OTHER” to share one.`));
   else root.append(paragraph('Need another goal? Say “create goal named Education”.'));
+  if (portfolio?.reserve) root.append(paragraph(
+    `Your separate accessible money of ${money(portfolio.reserve.accessibleMoney)} divided by ${money(portfolio.reserve.monthlyEssentials)} monthly essentials is ${reserveMonths(portfolio.reserve).toFixed(1)} months. These are your totals outside the reviewed holdings, not a check that this reserve is enough or available.`));
+  else root.append(paragraph('Optional context: say “monthly essentials ₹50,000” and “accessible money outside holdings ₹3 lakh” to compare separate money with essential spending. You will confirm both totals before they are saved.'));
   if (review.kind === 'draft') {
     root.append(paragraph(review.missing.length ?
       `This goal still needs your ${review.missing.join(', ')}. No goal scenario is shown yet.` :
@@ -515,7 +543,7 @@ async function aiTurn(message, pdf = null) {
       { name: 'My goal', age: null, years: null, target: null, confirmed: false, linkedIds: [] };
     const result = analyzePortfolio(holdings, goal, new Date(), portfolio?.reserve, portfolio?.coverage);
     const response = answerReviewQuestion(message, { holdings, goal,
-      source: 'user', coverage: portfolio?.coverage || null, result });
+      source: 'user', coverage: portfolio?.coverage || null, reserve: portfolio?.reserve || null, result });
     if (response) say('assistant', `${response.text}\n\nHow I worked this out: ${response.basis}\n\nKeep in mind: ${response.limitation}`);
     else say('assistant', 'Ask about the holdings you entered, or upload a supported CAMS Active Statement or broker report.');
     return;
@@ -681,6 +709,7 @@ $('#cas-preview').addEventListener('click', async () => {
 $('#upload').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
+  if (state.reserveFacts) { say('note', 'Save or discard the separate reserve totals before opening another report.'); clearFile(); return; }
   if (state.refresh) { say('note', 'Apply or discard the pending statement refresh before opening another report.'); clearFile(); return; }
   if (state.correction) { say('note', 'Apply or discard the pending holding correction before opening another report.'); clearFile(); return; }
   if (state.drafts.length && !window.confirm('Replace the unconfirmed holdings already in this chat with this report?')) {
@@ -735,8 +764,8 @@ $('#composer').addEventListener('submit', async event => {
   if (goalCommand) {
     say('user', message); $('#message').value = '';
     if (!state.account) { say('note', 'Saved goal commands need a signed-in portfolio account.'); return; }
-    if (state.goalFacts) {
-      say('note', 'Confirm or discard the possible goal details before changing goals or assignments.'); return;
+    if (state.goalFacts || state.reserveFacts) {
+      say('note', 'Confirm or discard the current goal or reserve draft before changing goals or assignments.'); return;
     }
     let prepared = prepareAssistantGoalCommand(state.account.portfolio, goalCommand);
     if (browserOnly && goalCommand.kind === 'create' && state.account.portfolio?.goals?.length === 1) {
@@ -787,8 +816,8 @@ $('#composer').addEventListener('submit', async event => {
     say('user', message); $('#message').value = '';
     if (correction.error) { say('note', correction.error); return; }
     if (state.correction) { say('note', 'Apply or discard the change already shown before preparing another.'); return; }
-    if (state.drafts.length || state.goalFacts) {
-      say('note', 'Confirm or discard the current holding or goal draft before correcting a confirmed row.'); return;
+    if (state.drafts.length || state.goalFacts || state.reserveFacts) {
+      say('note', 'Confirm or discard the current holding, goal or reserve draft before correcting a confirmed row.'); return;
     }
     if (!state.account?.portfolio) {
       say('note', 'Add and confirm a holding before correcting it.'); return;
@@ -804,8 +833,8 @@ $('#composer').addEventListener('submit', async event => {
   if (coverageAnswer) {
     say('user', message); $('#message').value = '';
     if (state.correction) { say('note', 'Apply or discard the change already shown before preparing another.'); return; }
-    if (state.drafts.length || state.goalFacts) {
-      say('note', 'Confirm or discard the current holding or goal draft before changing review coverage.'); return;
+    if (state.drafts.length || state.goalFacts || state.reserveFacts) {
+      say('note', 'Confirm or discard the current holding, goal or reserve draft before changing review coverage.'); return;
     }
     const prepared = prepareCoverageAnswer(state.account?.portfolio, coverageAnswer);
     if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
@@ -815,6 +844,26 @@ $('#composer').addEventListener('submit', async event => {
     say('assistant', 'I staged your coverage answer. Check it against current statements, then apply or discard it.');
     return;
   }
+  const reserveAnswer = message && !state.file ? parseAssistantReserveFact(message) : null;
+  if (reserveAnswer) {
+    say('user', message); $('#message').value = '';
+    if (reserveAnswer.error) { say('note', reserveAnswer.error); return; }
+    if (!state.account) { say('note', 'The saved review has not loaded yet. Try again when it is available.'); return; }
+    if (state.drafts.length || state.goalFacts || state.correction || state.refresh) {
+      say('note', 'Confirm or discard the current review change before adding separate reserve totals.'); return;
+    }
+    if (reserveAnswer.clear && !state.account.portfolio?.reserve) {
+      say('note', 'No separate reserve totals are saved in this review.'); return;
+    }
+    if (state.reserveFacts === null) state.reserveDraftRevision = state.account.revision;
+    state.reserveFacts = reserveAnswer.clear ? { clear: true } :
+      { ...(state.reserveFacts?.clear ? {} : state.reserveFacts || {}), ...reserveAnswer.facts };
+    renderReserveDraft();
+    say('assistant', reserveAnswer.clear ?
+      'I staged removal of the two separate reserve totals. Check the preview, then confirm or discard.' :
+      `I staged that separate reserve amount. ${nextAssistantReserveQuestion(state.account.portfolio, state.reserveFacts)}`);
+    return;
+  }
   if (browserOnly && message && !state.file) {
     const portfolio = state.account?.portfolio;
     const selected = portfolio?.goals?.find(goal => goal.id === portfolio.activeGoalId);
@@ -822,6 +871,7 @@ $('#composer').addEventListener('submit', async event => {
     if (parsed) {
       say('user', message); $('#message').value = '';
       if (parsed.error) { say('note', parsed.error); return; }
+      if (state.reserveFacts) { say('note', 'Save or discard the separate reserve draft before changing goal facts.'); return; }
       state.goalFacts = { ...(state.goalFacts || {}), ...parsed.facts };
       state.goalDraftGoalId = selected.id;
       renderGoalDraft();
@@ -834,6 +884,7 @@ $('#composer').addEventListener('submit', async event => {
     if (holding) {
       say('user', message); $('#message').value = '';
       if (holding.error) { say('note', holding.error); return; }
+      if (state.reserveFacts) { say('note', 'Save or discard the separate reserve draft before adding holdings.'); return; }
       if (state.drafts.length) {
         say('note', 'Confirm or discard the possible holdings already shown before describing another one.');
         return;
@@ -943,6 +994,25 @@ $('#discard-goal').addEventListener('click', () => {
   state.goalFacts = null; state.goalDraftGoalId = null; renderGoalDraft(); say('note', 'Possible goal details discarded.');
 });
 
+$('#confirm-reserve').addEventListener('click', async () => {
+  if (state.busy || !state.reserveFacts || !state.account ||
+      state.reserveDraftRevision !== state.account.revision) return;
+  const prepared = prepareAssistantReserveSave(state.account.portfolio, state.reserveFacts);
+  if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
+  state.busy = true; renderReserveDraft(); renderCredits();
+  try {
+    await writeAccount(prepared.portfolio,
+      'The saved review changed in another tab. Discard these reserve totals and answer again.');
+    state.reserveFacts = null; state.reserveDraftRevision = null; renderReserveDraft();
+    say('note', prepared.result);
+  } catch (error) { say('note', error.message || 'The separate reserve totals could not be saved.'); }
+  finally { state.busy = false; renderReserveDraft(); renderCredits(); }
+});
+$('#discard-reserve').addEventListener('click', () => {
+  state.reserveFacts = null; state.reserveDraftRevision = null; renderReserveDraft();
+  say('note', 'The separate reserve draft was discarded. The confirmed review did not change.');
+});
+
 $('#confirm-correction')?.addEventListener('click', async () => {
   const correction = state.correction;
   if (state.busy || !correction || !state.account || correction.revision !== state.account.revision) return;
@@ -1015,9 +1085,11 @@ $('#delete-saved').addEventListener('click', async () => {
       throw new Error('The saved review changed in another tab. Check the latest holdings and confirm deletion again.');
     }
     if (!response.ok) throw new Error('The saved review could not be deleted. Try again later.');
-    state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.history = []; clearFile();
+    state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+    state.reserveFacts = null; state.reserveDraftRevision = null;
+    state.correction = null; state.refresh = null; state.history = []; clearFile();
     acceptAccount({ portfolio: null, revision: 0 });
-    renderDrafts(); renderGoalDraft();
+    renderDrafts(); renderGoalDraft(); renderReserveDraft();
     $('#messages').replaceChildren();
     say('assistant', 'Your saved review has been deleted. Tell me what you own to begin a new review.');
     say('note', 'Saved holdings, goals, reserve and coverage were deleted. The assistant credit count remains for this account.');
@@ -1026,13 +1098,15 @@ $('#delete-saved').addEventListener('click', async () => {
 });
 
 $('#new-chat').addEventListener('click', () => {
-  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.history = []; clearFile();
+  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+  state.reserveFacts = null; state.reserveDraftRevision = null;
+  state.correction = null; state.refresh = null; state.history = []; clearFile();
   $('#messages').replaceChildren();
   say('assistant', state.confirmed.length ?
     `I still have ${state.confirmed.length} confirmed holding${state.confirmed.length === 1 ? '' : 's'} in this tab. What would you like to understand next?` :
     browserOnly ? 'Attach a CAMS Active Statement or holdings CSV/XLSX to begin. This browser review can then answer factual questions.' :
       'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
-  renderDrafts(); renderGoalDraft(); renderReview();
+  renderDrafts(); renderGoalDraft(); renderReserveDraft(); renderReview();
 });
 
 $('#clear-review').addEventListener('click', () => {
@@ -1045,11 +1119,13 @@ $('#clear-review').addEventListener('click', () => {
     return;
   }
   if (browserOnly) state.account = { portfolio: null, revision: 0 };
-  state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; clearFile();
+  state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+  state.reserveFacts = null; state.reserveDraftRevision = null;
+  state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; clearFile();
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Describe one holding or attach a CAMS Active Statement or holdings report. After you confirm a draft, this browser review can answer factual questions.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
-  renderDrafts(); renderGoalDraft(); renderReview();
+  renderDrafts(); renderGoalDraft(); renderReserveDraft(); renderReview();
 });
 
 if (browserOnly) {
