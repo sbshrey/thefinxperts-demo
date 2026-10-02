@@ -77,6 +77,13 @@ const state = { confirmed: [], drafts: [], history: [], file: null, busy: false,
   goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
   correction: null, refresh: null, casAvailable: false, casLocal: false,
   capacityReached: false, coveragePrompted: false };
+const starterActions = $('#starter-actions');
+function hideStarterActions() { if (starterActions) starterActions.hidden = true; }
+function showStarterActions() {
+  if (!browserOnly || !starterActions || state.confirmed.length) return;
+  $('#messages').append(starterActions);
+  starterActions.hidden = false;
+}
 const creditChannel = !browserOnly && typeof BroadcastChannel !== 'undefined' ?
   new BroadcastChannel('thefinxperts-assistant-credits') : null;
 const toolsToggle = $('#tools-toggle');
@@ -202,6 +209,7 @@ function nextGoalSetupQuestion(portfolio) {
 }
 
 function say(role, text, question = null) {
+  if (role === 'user') hideStarterActions();
   const item = document.createElement('div');
   item.className = `message ${role}`;
   item.textContent = text;
@@ -591,6 +599,7 @@ function acceptAccount(payload) {
   const sourceRows = Array.isArray(payload.portfolio?.holdings) ? payload.portfolio.holdings : [];
   state.confirmed = sourceRows.map(row => normalizedDraft(row)).filter(row => row &&
     Number.isFinite(row.value) && row.value > 0);
+  if (state.confirmed.length) hideStarterActions();
   renderGoalDraft(); renderReview();
   return { loaded: state.confirmed.length, omitted: sourceRows.length - state.confirmed.length };
 }
@@ -830,6 +839,7 @@ $('#cas-preview').addEventListener('click', async () => {
 $('#upload').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
+  hideStarterActions();
   if (state.reserveFacts) { say('note', 'Save or discard the separate reserve totals before opening another report.'); clearFile(); return; }
   if (state.refresh) { say('note', 'Apply or discard the pending statement refresh before opening another report.'); clearFile(); return; }
   if (state.correction) { say('note', 'Apply or discard the pending holding correction before opening another report.'); clearFile(); return; }
@@ -1104,6 +1114,12 @@ $('#message').addEventListener('keydown', event => {
 });
 $('#report-help-open').addEventListener('click', () => $('#report-help-dialog').showModal());
 $('#report-help-close').addEventListener('click', () => $('#report-help-dialog').close());
+$('#starter-upload')?.addEventListener('click', () => $('#upload').click());
+$('#starter-open')?.addEventListener('click', () => {
+  if (deviceRecord()) $('#device-review-action').click();
+  else $('#restore-tab-file').click();
+});
+$('#starter-report')?.addEventListener('click', () => $('#report-help-dialog').showModal());
 for (const prompt of document.querySelectorAll('[data-guided-question]')) {
   prompt.addEventListener('click', () => {
     if (state.busy) return;
@@ -1311,6 +1327,7 @@ $('#new-chat').addEventListener('click', () => {
     `I still have ${state.confirmed.length} confirmed holding${state.confirmed.length === 1 ? '' : 's'} in this tab. What would you like to understand next?` :
     browserOnly ? 'Choose Upload for a CAMS statement, supported CAS or broker report. I’ll show possible holdings to confirm before answering questions.' :
       'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
+  showStarterActions();
   renderDrafts(); renderGoalDraft(); renderReserveDraft(); renderReview();
 });
 
@@ -1333,6 +1350,7 @@ $('#clear-review').addEventListener('click', () => {
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Choose Upload for a CAMS statement, supported CAS or broker report. I’ll show possible holdings to confirm before answering questions. You can also describe one holding.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
+  showStarterActions();
   renderDrafts(); renderGoalDraft(); renderReserveDraft(); renderReview();
 });
 
