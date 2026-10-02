@@ -59,6 +59,31 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
     entryOrigin: 'manual' } };
 }
 
+/** Stage an explicit pasted list as one reviewable batch; reject the whole list on any unclear row. */
+export function parseBrowserHoldingList(message, today = new Date()) {
+  if (typeof message !== 'string' || !/[\r\n]/.test(message)) return null;
+  const lines = message.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (/^(?:my )?(?:holdings|investments):?$/i.test(lines[0] || '')) lines.shift();
+  if (lines.length < 2) return null;
+  const first = lines[0].replace(/^(?:[-*•]|\d+[.)])\s*/, '');
+  if (!/^(?:i (?:own|hold)\b|my holding is\b|(?:a |an )?(?:mutual fund|fund|stock|share|nps|epf|ppf|fixed deposit|bank deposit|physical gold|digital gold)\b)/i.test(first))
+    return null;
+  if (lines.length > 30) return { error: 'Paste at most 30 holdings at once, one per line.' };
+  const drafts = [];
+  const names = new Set();
+  for (const [index, raw] of lines.entries()) {
+    const line = raw.replace(/^(?:[-*•]|\d+[.)])\s*/, '').trim();
+    const statement = /^(?:i (?:own|hold)\b|my holding is\b)/i.test(line) ? line : `I own ${line}`;
+    const parsed = parseBrowserHoldingStatement(statement, today);
+    if (!parsed?.draft) return { error: `Line ${index + 1} could not be staged. Give each holding its type, name and total value in rupees; leave out account details and advice questions.` };
+    const key = `${parsed.draft.type}:${parsed.draft.name.toLocaleLowerCase('en-IN').replace(/\s+/g, ' ')}`;
+    if (names.has(key)) return { error: `Line ${index + 1} repeats a holding name and type in this list. Check the source before adding it twice.` };
+    names.add(key);
+    drafts.push(parsed.draft);
+  }
+  return { drafts };
+}
+
 /** Narrow, explicit goal answers for the browser-only guided review. */
 export function parseBrowserGoalFact(message, goal, pending = {}) {
   if (typeof message !== 'string' || !goal) return null;

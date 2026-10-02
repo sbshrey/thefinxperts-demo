@@ -12,7 +12,8 @@ import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
-import { parseBrowserGoalFact, parseBrowserHoldingStatement, nextBrowserGoalQuestion } from './assistant-local.mjs';
+import { parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
+  nextBrowserGoalQuestion } from './assistant-local.mjs';
 import { parseHoldingCorrection, prepareHoldingCorrection,
   parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh } from './assistant-refresh.mjs';
@@ -822,7 +823,7 @@ $('#composer').addEventListener('submit', async event => {
     }
   }
   if (message && !state.file) {
-    const holding = parseBrowserHoldingStatement(message);
+    const holding = parseBrowserHoldingList(message) || parseBrowserHoldingStatement(message);
     if (holding) {
       say('user', message); $('#message').value = '';
       if (holding.error) { say('note', holding.error); return; }
@@ -830,10 +831,10 @@ $('#composer').addEventListener('submit', async event => {
         say('note', 'Confirm or discard the possible holdings already shown before describing another one.');
         return;
       }
-      const draft = normalizedDraft(holding.draft);
-      if (!draft) { say('note', 'I could not stage this holding. Please check its name and value.'); return; }
-      state.drafts = [draft]; renderDrafts();
-      say('assistant', 'I staged one possible holding for you to check. It is not in the dashboard yet.',
+      const drafts = (holding.drafts || [holding.draft]).map(row => normalizedDraft(row));
+      if (drafts.some(row => !row)) { say('note', 'I could not stage these holdings. Please check their names and values.'); return; }
+      state.drafts = drafts; renderDrafts();
+      say('assistant', `I staged ${drafts.length} possible ${drafts.length === 1 ? 'holding' : 'holdings'} for you to check. ${drafts.length === 1 ? 'It is' : 'They are'} not in the dashboard yet.`,
         nextDraftQuestion(state.drafts));
       return;
     }
