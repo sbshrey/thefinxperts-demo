@@ -13,7 +13,7 @@ import { estimateNavValue } from './nav-estimate.mjs';
 import { estimateStockValue, validShares } from './stock-estimate.mjs';
 import { chooseNextReviewStep } from './next-step.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
-import { validCostBasis } from './cost-basis.mjs';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -305,6 +305,11 @@ function render() {
   renderMixPlan(result, pauseGoalFigures);
   $('#portfolio-value').textContent = rupees(result.total);
   $('#portfolio-value-label').textContent = state.source === 'demo' ? 'Example holdings total' : 'Entered holdings total';
+  const checkedCost = result.unrealizedChange;
+  $('#cost-snapshot').hidden = state.source !== 'user' || !checkedCost.coveredCount;
+  $('#cost-invested').textContent = rupeesWithPaise(checkedCost.invested);
+  $('#cost-change').textContent = `${checkedCost.change >= 0 ? 'Gain' : 'Loss'} ${rupeesWithPaise(Math.abs(checkedCost.change))}`;
+  $('#cost-snapshot-note').textContent = `${checkedCost.coveredCount} of ${state.holdings.length} entered ${state.holdings.length === 1 ? 'holding' : 'holdings'} covered; ${checkedCost.missingCount} excluded. Values dated ${checkedCost.earliestValueDate}${checkedCost.latestValueDate !== checkedCost.earliestValueDate ? ` to ${checkedCost.latestValueDate}` : ''}. This is unrealized change on covered positions, not lifetime profit or annual return.`;
   $('#portfolio-scope').hidden = state.source !== 'user' || !state.holdings.length;
   $('#coverage-summary').hidden = state.source !== 'user' || !state.holdings.length;
   $('#coverage-quick-check').hidden = state.source !== 'user' || !state.holdings.length;

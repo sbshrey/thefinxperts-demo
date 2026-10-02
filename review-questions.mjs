@@ -1,4 +1,5 @@
 import { valuationDateIssue } from './analysis.mjs';
+import { rupeesWithPaise } from './cost-basis.mjs';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -24,6 +25,18 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     return answer('A holdings snapshot cannot establish your annual return or XIRR. Complete dated cash flows are needed before calculating those figures.',
       `${valid.length} entered current holding ${valid.length === 1 ? 'value' : 'values'}; no complete transaction history is held in this browser review.`,
       'The goal growth assumption is an illustration, not your historical return.', '#holdings', 'Check source statements');
+  if (/\b(?:invested|investment amount|cost basis|purchase cost)\b/.test(input) &&
+      !/\b(?:profit|gains?|loss(?:es)?|returns?)\b/.test(input)) {
+    const cost = result.unrealizedChange;
+    if (!cost?.coveredCount) return answer(cost?.costAfterValueCount ?
+      'A checked invested amount exists, but it is dated after the holding value. Refresh that value before including this position in a covered invested total.' :
+      'No checked invested amount is paired with a dated value yet. Check the cost of the units or shares you still hold.',
+      `${valid.length} entered holding rows; 0 have usable paired cost and value dates.`,
+      'A purchase total that includes sold units is not the invested cost of the positions still held.', '#holdings', 'Check holding costs');
+    return answer(`${lead}the checked invested amount is ${rupeesWithPaise(cost.invested)} across ${cost.coveredCount} of ${valid.length} entered ${valid.length === 1 ? 'holding' : 'holdings'}.`,
+      `Added only checked current-position costs paired with dated values; covered value ${rupeesWithPaise(cost.coveredValue)}. ${cost.missingCount} ${cost.missingCount === 1 ? 'row' : 'rows'} excluded${cost.costAfterValueCount ? `, including ${cost.costAfterValueCount} with cost checked after the value date` : ''}.`,
+      'This is a partial cost total for holdings still entered here, not all money ever invested or lifetime profit. Sold units, other assets and unchecked costs are excluded.', '#holdings', 'Check covered holdings');
+  }
   if (/\b(profit|gains?|loss(?:es)?|invested|returns?)\b/.test(input)) {
     const change = result.unrealizedChange;
     if (!change?.coveredCount) return answer(change?.costAfterValueCount ?
@@ -33,8 +46,8 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       'A total purchase amount that includes sold units is not the cost of the units still held. Complete dated cash flows would be needed for XIRR.', '#holdings', 'Check holding details');
     const direction = change.change >= 0 ? 'gain' : 'loss';
     const percentChange = (Math.abs(change.change) / change.invested * 100).toFixed(1);
-    return answer(`${lead}${change.coveredCount} covered ${change.coveredCount === 1 ? 'holding has' : 'holdings have'} an entered unrealized ${direction} of ${money(Math.abs(change.change))} (${percentChange}% of the invested amount).`,
-      `${money(change.coveredValue)} entered current value minus ${money(change.invested)} entered cost for the covered positions; value dates ${change.earliestValueDate}${change.latestValueDate !== change.earliestValueDate ? ` to ${change.latestValueDate}` : ''}. ${change.missingCount} ${change.missingCount === 1 ? 'row' : 'rows'} excluded${change.costAfterValueCount ? `, including ${change.costAfterValueCount} with cost checked after the value date` : ''}.`,
+    return answer(`${lead}${change.coveredCount} covered ${change.coveredCount === 1 ? 'holding has' : 'holdings have'} an entered unrealized ${direction} of ${rupeesWithPaise(Math.abs(change.change))} (${percentChange}% of the invested amount).`,
+      `${rupeesWithPaise(change.coveredValue)} entered current value minus ${rupeesWithPaise(change.invested)} entered cost for the covered positions; value dates ${change.earliestValueDate}${change.latestValueDate !== change.earliestValueDate ? ` to ${change.latestValueDate}` : ''}. ${change.missingCount} ${change.missingCount === 1 ? 'row' : 'rows'} excluded${change.costAfterValueCount ? `, including ${change.costAfterValueCount} with cost checked after the value date` : ''}.`,
       'This is not total lifetime profit or an annual return. It excludes sold positions, cash distributions, taxes, exit loads, rows without checked cost or dated value, and cost checked after the value date.', '#holdings', 'Check covered holdings');
   }
   if (/\b(nav|share price|stock price|market price|live quote|live price|today.{0,25}(?:price|nav|value)|latest.{0,25}(?:price|nav|value))\b/.test(input))

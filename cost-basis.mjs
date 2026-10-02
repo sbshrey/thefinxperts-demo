@@ -1,5 +1,11 @@
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Preserve paise in investor-supplied cost and calculated change. */
+export function rupeesWithPaise(value) {
+  const rounded = Math.round(value * 100) / 100;
+  return `₹${rounded.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
 function realDay(value) {
   if (typeof value !== 'string' || !DAY.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00Z`);
