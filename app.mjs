@@ -92,6 +92,17 @@ function createDatedUnitWorksheet(holding) {
   intro.textContent = fund ?
     `Original statement: ${count} units, ${rupees(originalValue)} as of ${originalDate}. Check the NAV for this exact scheme, Direct/Regular plan and Growth/IDCW option with the AMC. NAV is dated, not a live price.` :
     `Earlier entered value: ${count} shares, ${rupees(originalValue)} as of ${originalDate}. Check a dated price for the exact listed security and exchange. Splits, bonuses or trades may change your share count.`;
+  const source = fund ? document.createElement('p') : null;
+  if (source) {
+    source.className = 'form-hint';
+    source.append(document.createTextNode('Find the exact scheme and dated NAV on your AMC site or '));
+    const link = document.createElement('a');
+    link.href = 'https://www.amfiindia.com/';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'open AMFI’s home page ↗';
+    source.append(link, document.createTextNode('. Nothing from this review is sent with the link.'));
+  }
   const priceLabel = document.createElement('label');
   priceLabel.textContent = fund ? 'NAV per unit (₹)' : 'Price per share (₹)';
   const priceInput = document.createElement('input');
@@ -131,7 +142,7 @@ function createDatedUnitWorksheet(holding) {
   const apply = document.createElement('button');
   apply.type = 'submit'; apply.className = 'text-button';
   apply.textContent = 'Use this dated estimate in my review';
-  form.append(intro, priceLabel, dateLabel, identity.label, balance.label, preview, error, apply);
+  form.append(intro, ...(source ? [source] : []), priceLabel, dateLabel, identity.label, balance.label, preview, error, apply);
   form.addEventListener('submit', event => {
     event.preventDefault();
     const price = priceInput.value.trim();
