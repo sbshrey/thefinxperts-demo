@@ -251,7 +251,9 @@ function render() {
   $('#loss-context').textContent = pauseGoalFigures ? 'Goal figures are paused until the personal holdings and goal details are ready.' :
     !result.goalTotal ? 'Link holdings to this goal before comparing a loss.' :
     !limits?.affordable && !limits?.tolerable ? 'Add your own optional loss limits below to put this illustration in context.' :
-      `${limitText('Amount you could cover', limits.affordable)} ${limitText('Amount you could tolerate', limits.tolerable)} This is your own comparison, not a formal risk profile; real losses may be larger.`.trim();
+      `${limitText('Amount you could cover', limits.affordable)} ${limitText('Amount you could tolerate', limits.tolerable)} ` +
+      `${limits.capacityGap !== null ? `The amount you could tolerate is ${rupees(limits.capacityGap)} above the amount you said you could cover. Check whether a loss between those amounts would delay this goal or essential spending. ` : ''}` +
+      'This is your own comparison, not a formal risk profile; real losses may be larger.';
   $('#scenario-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' : scenario
     ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and your planned ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. The total mathematical monthly amount would be ${rupees(Math.ceil(scenario.monthlyTotalNeeded))}; the number above is only the extra beyond your plan. This is arithmetic, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
     : 'Enter valid goal assumptions to see an illustrative scenario.';

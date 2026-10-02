@@ -42,5 +42,8 @@ export function compareEnteredLossLimits(loss, goal) {
   const check = value => value === undefined ? null :
     typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1e10
       ? { limit: value, excess: Math.max(0, loss - value) } : null;
-  return { affordable: check(goal.affordableLoss), tolerable: check(goal.tolerableLoss) };
+  const affordable = check(goal.affordableLoss);
+  const tolerable = check(goal.tolerableLoss);
+  return { affordable, tolerable, capacityGap: affordable && tolerable && tolerable.limit > affordable.limit ?
+    tolerable.limit - affordable.limit : null };
 }

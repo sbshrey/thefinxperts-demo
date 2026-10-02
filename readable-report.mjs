@@ -74,6 +74,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     lines.push(`Illustrative linked-equity loss: ${rupees(result.shock.loss)} under the entered ${result.shock.dropPct}% one-time fall.`);
     if (result.lossLimits.affordable) lines.push(`Your entered amount coverable from other resources: ${rupees(result.lossLimits.affordable.limit)}; illustration ${result.lossLimits.affordable.excess ? `exceeds it by ${rupees(result.lossLimits.affordable.excess)}` : 'does not exceed it'}.`);
     if (result.lossLimits.tolerable) lines.push(`Your entered tolerable temporary fall: ${rupees(result.lossLimits.tolerable.limit)}; illustration ${result.lossLimits.tolerable.excess ? `exceeds it by ${rupees(result.lossLimits.tolerable.excess)}` : 'does not exceed it'}.`);
+    if (result.lossLimits.capacityGap !== null) lines.push(`Your tolerable amount is ${rupees(result.lossLimits.capacityGap)} above the amount you said you could cover. Check whether a loss between those amounts would delay this goal or essential spending.`);
     lines.push('This comparison is not a formal risk profile or a suitability assessment; actual losses may differ.');
   }
 
