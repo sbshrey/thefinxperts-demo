@@ -200,7 +200,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `${dateNote}${categoryNote}Fund constituents and holdings outside this review are not verified. These shares do not establish whether the mix suits your age, risk capacity or goal. ${coverageNote}`,
       selectedGoal ? '#goals' : '#holdings', selectedGoal ? 'Review this goal' : 'Inspect holdings');
   }
-  if (/\b(biggest|largest|concentrat|top holding|single holding)\b/.test(input)) {
+  if (/\b(biggest|largest|concentrat(?:ion|ed|e|ing)?|top holding|single holding)\b/.test(input)) {
     const largest = [...valid].sort((a, b) => Number(b.value) - Number(a.value))[0];
     return answer(`${lead}${largest.name} is the largest entered row at ${money(largest.value)}, or ${percent(largest.value, result.total)} of the entered total.`,
       `${money(largest.value)} ÷ ${money(result.total)} entered total; ${largest.granularity === 'fund_house' ? 'this row is a fund-house summary' : 'this is one entered holding row'}.`,
