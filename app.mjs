@@ -3,7 +3,7 @@ import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { validateImportReview, validateImportMerge, possibleManualDuplicate, isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh } from './import-review.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
-import { entryOriginFromImport, entryOriginText } from './entry-origin.mjs';
+import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs';
@@ -520,7 +520,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` · latest value from ${entryOriginText(holding.valuationOrigin)}` : ''}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.costBasis !== undefined ? ` · invested ${rupees(holding.costBasis)} checked ${holding.costBasisAsOf}` : ''}${holding.costBasisAsOf && holding.asOf && holding.costBasisAsOf > holding.asOf ? ' · refresh value before calculating gain or loss' : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` · latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.costBasis !== undefined ? ` · invested ${rupees(holding.costBasis)} checked ${holding.costBasisAsOf}` : ''}${holding.costBasisAsOf && holding.asOf && holding.costBasisAsOf > holding.asOf ? ' · refresh value before calculating gain or loss' : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const sourceCategory = document.createElement('small');
     sourceCategory.className = 'holding-source-category';
     sourceCategory.textContent = holding.statementCategory ?
@@ -799,8 +799,9 @@ function render() {
           ...((asset !== item.asset || (identifierChanged && item.type === 'Mutual fund')) ? { exposure: null } : {}) };
         if (value !== item.value || (asOf || null) !== (item.asOf || null) || asset !== item.asset || identifierChanged)
           delete updated.navEstimate;
-        if (value !== item.value || (asOf || null) !== (item.asOf || null) || identifierChanged)
-          delete updated.valuationOrigin;
+        if (value !== item.value || (asOf || null) !== (item.asOf || null)) {
+          if (item.type !== 'Other investment') updated.valuationOrigin = 'manual';
+        } else if (identifierChanged) delete updated.valuationOrigin;
         if (value !== item.value || (asOf || null) !== (item.asOf || null) || identifierChanged ||
             shares !== (item.shares || '')) delete updated.stockEstimate;
         if (sharesInput) {

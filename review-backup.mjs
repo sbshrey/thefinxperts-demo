@@ -74,7 +74,7 @@ export function parseReviewBackup(text) {
         !boundedNumber(holding.value, Number.MIN_VALUE, 10_000_000_000) ||
         (holding.asOf != null && !isRealIsoDate(holding.asOf)) ||
         (holding.entryOrigin !== undefined && !Object.hasOwn(ENTRY_ORIGINS, holding.entryOrigin)) ||
-        (holding.valuationOrigin !== undefined && !['broker_xlsx', 'broker_csv'].includes(holding.valuationOrigin)) ||
+        (holding.valuationOrigin !== undefined && !['manual', 'broker_xlsx', 'broker_csv'].includes(holding.valuationOrigin)) ||
         (holding.amc != null && !isName(holding.amc, 200)) ||
         (holding.isin != null && (typeof holding.isin !== 'string' || !ISIN.test(holding.isin))) ||
         (holding.amfi != null && (typeof holding.amfi !== 'string' || !AMFI.test(holding.amfi))) ||

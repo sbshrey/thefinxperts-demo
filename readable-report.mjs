@@ -2,7 +2,7 @@ import { analyzePortfolio } from './analysis.mjs';
 import { MIX_ASSETS } from './mix-plan.mjs';
 import { goalShare, summarizeGoalCoverage } from './goals.mjs';
 import { reserveMonths } from './reserve.mjs';
-import { entryOriginText } from './entry-origin.mjs';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
@@ -116,7 +116,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     const share = goalShare(goal, holding.id);
     const label = share ? `${share}% (${rupees(Number(holding.value) * share / 100)}) linked to selected goal` : 'not linked to selected goal';
     const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
-    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` | latest value from ${entryOriginText(holding.valuationOrigin)}` : ''}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
+    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` | latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
     if (holding.navEstimate) lines.push(`  User-entered NAV estimate: ${holding.units} statement units × ₹${holding.navEstimate.nav} on ${holding.navEstimate.navAsOf}; original statement value ${rupees(holding.navEstimate.originalValue)} on ${holding.navEstimate.originalAsOf || 'unknown'}. Units and exact scheme were confirmed by the investor, not independently verified here.`);
     if (holding.shares) lines.push(`  Entered direct-stock shares: ${holding.shares}. Check trades and corporate actions against a current broker report.`);
     if (holding.costBasis !== undefined) lines.push(`  Entered invested amount for current units or shares: ${rupeesWithPaise(holding.costBasis)} checked ${holding.costBasisAsOf}. This is investor-supplied, not a verified transaction history.`);

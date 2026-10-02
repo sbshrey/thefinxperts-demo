@@ -10,6 +10,7 @@ import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
 import { analyzePortfolio } from './analysis.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
 import { parseBrowserGoalFact, parseBrowserHoldingStatement, nextBrowserGoalQuestion } from './assistant-local.mjs';
 import { parseHoldingCorrection, prepareHoldingCorrection } from './assistant-correction.mjs';
@@ -305,7 +306,7 @@ function renderReview() {
   } else for (const [index, row] of rows.entries()) {
     const item = document.createElement('div'); item.className = 'holding-item';
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
-    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${money(row.value)} · ${row.asOf || 'date unknown'}`;
+    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}`;
     item.append(name, meta); holdings.append(item);
   }
   renderGoalReview();
@@ -444,6 +445,8 @@ function normalizedDraft(row, defaultOrigin = 'manual') {
     value: row.value == null || !Number.isFinite(value) ? null : value,
     asOf: /^\d{4}-\d{2}-\d{2}$/.test(row.asOf || '') ? row.asOf : null,
     entryOrigin: row.entryOrigin || defaultOrigin,
+    ...(row.valuationOrigin && ['manual', 'broker_xlsx', 'broker_csv'].includes(row.valuationOrigin) ?
+      { valuationOrigin: row.valuationOrigin } : {}),
     ...(row.isin ? { isin: row.isin } : {}),
     ...(row.amc ? { amc: row.amc } : {}),
     ...(row.amfi ? { amfi: row.amfi } : {}),

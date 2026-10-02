@@ -22,3 +22,7 @@ export function entryOriginFromImport(label) {
 export function entryOriginText(origin) {
   return ENTRY_ORIGINS[origin] || 'source not recorded';
 }
+
+export function valuationOriginText(origin) {
+  return origin === 'manual' ? 'your manual update' : entryOriginText(origin);
+}

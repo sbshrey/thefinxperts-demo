@@ -70,9 +70,10 @@ export function prepareHoldingCorrection(saved, command, today = new Date()) {
   const { units: _units, shares: _shares, navEstimate: _navEstimate, stockEstimate: _stockEstimate,
     costBasis: _costBasis, costBasisAsOf: _costBasisAsOf, valuationOrigin: _valuationOrigin,
     ...retained } = portfolio.holdings[index];
-  portfolio.holdings[index] = { ...retained, value: command.value, asOf: command.asOf };
+  portfolio.holdings[index] = { ...retained, value: command.value, asOf: command.asOf,
+    ...(row.type === 'Other investment' ? {} : { valuationOrigin: 'manual' }) };
   const total = portfolio.holdings.reduce((sum, holding) => sum + Number(holding.value), 0);
   if (!Number.isFinite(total) || total > 1_000_000_000_000)
     return { portfolio: null, errors: ['The corrected portfolio total would exceed the supported limit.'] };
-  return { portfolio, errors: [], description: `Update holding ${index + 1}: ${row.name} from ${money(row.value)} (${row.asOf || 'date missing'}) to ${money(command.value)} (${command.asOf}). Any saved units or shares, entered price estimates, checked invested cost and latest broker valuation label will be cleared; verify those details again if needed.`, result: `${row.name} now uses the supplied ${money(command.value)} value dated ${command.asOf}. Any prior units, cost and price estimates were cleared.` };
+  return { portfolio, errors: [], description: `Update holding ${index + 1}: ${row.name} from ${money(row.value)} (${row.asOf || 'date missing'}) to ${money(command.value)} (${command.asOf}). Any saved units or shares, entered price estimates and checked invested cost will be cleared; the new value will be marked as your manual update. Verify those details again if needed.`, result: `${row.name} now uses your manually supplied ${money(command.value)} value dated ${command.asOf}. Any prior units, cost and price estimates were cleared.` };
 }
