@@ -149,16 +149,30 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
       return { error: `Choose your own ${growth ? 'growth' : 'inflation'} assumption from ${growth ? '-20% to 13%' : '-5% to 15%'}. This is an illustration, not a forecast.` };
     return { facts: { [growth ? 'returnPct' : 'inflationPct']: value } };
   }
+  const datedAmount = /^i (?:will )?(?:need|want) (?:₹\s*)?([0-9][0-9,]*(?:\.[0-9]{1,2})?)(?:\s*(lakh|crore))? in ([0-9]{1,2}) years?[.!]?$/i.exec(input);
+  if (datedAmount) {
+    const years = Number(datedAmount[3]);
+    if (years < 1 || years > 50) return { error: 'Check the number of years until this goal.' };
+    return { facts: { years }, clarification: 'I staged the time horizon, but left the amount out because it could mean today’s purchasing power or the amount at the goal date. What amount would you need in today’s rupees? Reply “I need ₹50 lakh in today’s rupees”.' };
+  }
   let field;
   let value;
-  let match = /^(?:my age is |i am |age )([0-9]{1,3})(?: years old)?[.!]?$/i.exec(input);
+  let match = /^(?:my age is |i am |i['’]m |age )([0-9]{1,3})(?: years old)?[.!]?$/i.exec(input);
   if (match) { field = 'age'; value = Number(match[1]); }
   if (!field) {
     match = /^(?:years(?: until (?:the )?goal)? |in )([0-9]{1,2})(?: years?)?[.!]?$/i.exec(input);
     if (match) { field = 'years'; value = Number(match[1]); }
   }
   if (!field) {
+    match = /^(?:i (?:need|want) (?:it|this|my goal)|i (?:want|plan) to (?:retire|reach (?:this|my) goal)|my goal is|the goal is) in ([0-9]{1,2}) years?[.!]?$/i.exec(input);
+    if (match) { field = 'years'; value = Number(match[1]); }
+  }
+  if (!field) {
     match = /^(?:target|goal amount|amount needed)(?: is)? ₹?([0-9][0-9,]*(?:\.[0-9]{1,2})?)(?:\s*(lakh|crore))?[.!]?$/i.exec(input);
+    if (match) { field = 'target'; value = amount(match[1], match[2]); }
+  }
+  if (!field) {
+    match = /^i (?:will )?(?:need|want) (?:₹\s*)?([0-9][0-9,]*(?:\.[0-9]{1,2})?)(?:\s*(lakh|crore))? in today['’]s (?:rupees|money)[.!]?$/i.exec(input);
     if (match) { field = 'target'; value = amount(match[1], match[2]); }
   }
   if (!field && /^[0-9][0-9,]*(?:\.[0-9]{1,2})?$/.test(input)) {
@@ -185,9 +199,9 @@ function enteredAmount(raw) {
 
 export function nextBrowserGoalQuestion(goal, pending = {}) {
   if (!goal) return 'Name a goal by saying “create goal named Retirement”.';
-  if (goal.age == null && pending.age == null) return 'How old are you now? Reply “age 32”, or give all three facts together: “I am 32, goal in 20 years, target 50 lakh in today’s rupees”.';
-  if (goal.years == null && pending.years == null) return 'How many years until this goal? You can reply “in 10 years”.';
-  if (goal.target == null && pending.target == null) return 'What amount would you need in today’s rupees? You can reply “target 50 lakh”.';
+  if (goal.age == null && pending.age == null) return 'How old are you now? Reply “I’m 32”, or give all three facts together: “I am 32, goal in 20 years, target 50 lakh in today’s rupees”.';
+  if (goal.years == null && pending.years == null) return 'How many years until this goal? You can reply “I need it in 10 years”.';
+  if (goal.target == null && pending.target == null) return 'What amount would you need in today’s rupees? You can reply “I need ₹50 lakh in today’s rupees”.';
   if (!goal.assumptionsChecked?.monthlyContribution && pending.monthlyContribution === undefined)
     return 'Optional for a future illustration: what monthly amount do you plan to add? Reply “monthly contribution ₹5,000” or “monthly contribution 0”.';
   if (!goal.assumptionsChecked?.returnPct && pending.returnPct === undefined)
