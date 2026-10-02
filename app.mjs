@@ -1688,6 +1688,12 @@ async function initAccount() {
     if (typeof info.authenticated !== 'boolean') return;
     accountAuthenticated = info.authenticated;
     accountPortfolioAccess = info.portfolioAccess === true;
+    if (accountPortfolioAccess) {
+      fetch('/api/assistant/status', { cache: 'no-store' })
+        .then(response => response.ok ? response.json() : null)
+        .then(status => { if (status?.available === true) $('#assistant-link').hidden = false; })
+        .catch(() => { /* The browser-only review remains usable without AI. */ });
+    }
     accountEnrollment = accountAuthenticated && !accountPortfolioAccess &&
       info.enrollment?.noticePath === '/private-data-notice.html' &&
       /^[A-Za-z0-9._-]{1,40}$/.test(info.enrollment?.noticeVersion)
