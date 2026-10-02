@@ -1072,6 +1072,8 @@ $('#composer').addEventListener('submit', async event => {
 $('#message').addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); $('#composer').requestSubmit(); }
 });
+$('#report-help-open').addEventListener('click', () => $('#report-help-dialog').showModal());
+$('#report-help-close').addEventListener('click', () => $('#report-help-dialog').close());
 for (const prompt of document.querySelectorAll('[data-guided-question]')) {
   prompt.addEventListener('click', () => {
     if (state.busy) return;

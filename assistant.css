@@ -22,6 +22,10 @@ body{margin:0}
 .device-dialog-actions{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:18px}
 .device-dialog-actions button[type=submit]{border:0;background:#235d42;color:#fff;border-radius:8px;padding:10px 13px;font:inherit;font-weight:700;cursor:pointer}
 .device-dialog-actions button:disabled{opacity:.55;cursor:wait}
+.report-help-dialog{width:min(560px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto}
+.report-help-dialog ol{padding-left:21px;margin:0 0 15px;color:#38584a;font-size:13px;line-height:1.5}
+.report-help-dialog li+li{margin-top:10px}
+.report-help-dialog a{color:#176344}
 .account-menu{position:relative;color:#376356}
 .account-menu summary{cursor:pointer;list-style:none}
 .account-menu summary::-webkit-details-marker{display:none}
@@ -175,3 +179,4 @@ body[data-mode="browser-only"] .mobile-data-link{display:inline-block;margin-top
 .tools-items>.quiet:hover{background:#edf5ee}
 .tools-items>.quiet:disabled{opacity:.5}
 }
+@media(max-width:360px){.suggested-questions button[data-guided-question="Which of my funds say Regular or Direct Plan?"]{display:none}}
