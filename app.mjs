@@ -618,9 +618,9 @@ function render() {
     'Enter a dated, plan-specific TER on an individual fund below to estimate cost coverage.';
   $('#coverage-note').textContent = result.classifiedPct < 100 ? 'Unknown fund constituents are excluded from this measure' : 'All entered value has named issuer coverage';
   $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length + result.additionalFindings.length} review items.`;
-  const canDownload = state.source === 'user' && state.holdings.length > 0 && state.goals.every(goal => goal.confirmed === true);
-  $('#download-review').disabled = !canDownload;
-  $('#download-readable').disabled = !canDownload;
+  const hasPersonalHoldings = state.source === 'user' && state.holdings.length > 0;
+  $('#download-review').disabled = !hasPersonalHoldings;
+  $('#download-readable').disabled = !hasPersonalHoldings || state.goals.some(goal => goal.confirmed !== true);
   updateAccountActions();
 }
 
@@ -1408,7 +1408,7 @@ $('#download-review').addEventListener('click', () => {
   const backup = buildReviewBackup(state);
   const checked = parseReviewBackup(JSON.stringify(backup));
   if (checked.errors.length) {
-    $('#backup-status').textContent = 'This review could not be downloaded. Check the holdings and goals.';
+    $('#backup-status').textContent = 'This review could not be downloaded. Check the holdings and goal inputs.';
     return;
   }
   downloadFile(JSON.stringify(checked.portfolio, null, 2), 'application/json', 'thefinxperts-review.json');

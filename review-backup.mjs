@@ -99,9 +99,11 @@ export function parseReviewBackup(text) {
   const assigned = new Map();
   const goals = [];
   for (const goal of document.goals) {
+    const draft = goal?.confirmed === false;
     if (!exactKeys(goal, GOAL_KEYS) || !isUuid(goal.id) || goalIds.has(goal.id) || !isName(goal.name, 60) ||
-        !boundedNumber(goal.age, 18, 100, true) || !boundedNumber(goal.years, 1, 50, true) ||
-        !boundedNumber(goal.target, 1_000, 1_000_000_000_000) ||
+        !(draft && goal.age === null || boundedNumber(goal.age, 18, 100, true)) ||
+        !(draft && goal.years === null || boundedNumber(goal.years, 1, 50, true)) ||
+        !(draft && goal.target === null || boundedNumber(goal.target, 1_000, 1_000_000_000_000)) ||
         !boundedNumber(goal.monthlyContribution, 0, 100_000_000) ||
         !boundedNumber(goal.returnPct, -20, 13) || !boundedNumber(goal.inflationPct, -5, 15) ||
         (goal.equityDropPct !== undefined && !boundedNumber(goal.equityDropPct, 0, 60)) ||
