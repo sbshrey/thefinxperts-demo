@@ -24,3 +24,16 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
       title: item.title, detail: item.detail, basis: item.basis, limitation: item.limitation,
     })) };
 }
+
+/** Carry the same sourced review findings into the chat side panel. */
+export function buildAssistantReviewChecks(holdings, portfolio, today = new Date()) {
+  const rows = Array.isArray(portfolio?.holdings) ? portfolio.holdings : holdings;
+  if (!Array.isArray(rows) || !rows.length) return [];
+  const goal = portfolio?.goals?.find(item => item.id === portfolio.activeGoalId) ||
+    { name: 'My goal', age: null, years: null, target: null, confirmed: false, linkedIds: [] };
+  const result = analyzePortfolio(rows, goal, today, portfolio?.reserve, portfolio?.coverage);
+  return [...result.findings, ...result.additionalFindings].slice(0, 3).map(item => ({
+    title: item.title, detail: item.detail, question: item.question,
+    basis: item.basis, limitation: item.limitation,
+  }));
+}

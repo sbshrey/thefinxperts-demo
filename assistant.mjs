@@ -1,6 +1,6 @@
 import { previewActiveStatementFile } from './active-statement-pdf.mjs';
 import { prepareAssistantSave, findAssistantOverlap } from './assistant-save.mjs';
-import { buildAssistantGoalReview } from './assistant-review.mjs';
+import { buildAssistantGoalReview, buildAssistantReviewChecks } from './assistant-review.mjs';
 import { goalShare } from './goals.mjs';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand } from './assistant-goal.mjs';
@@ -156,18 +156,28 @@ function renderReview() {
       line.append(label, track, pct); bars.append(line);
     }
   }
-  const questions = [];
-  if (!rows.length) questions.push(browserOnly ? 'Upload a CAMS Active Statement or holdings CSV/XLSX to start.' :
-    'Upload a statement or describe an investment to start.');
-  else {
-    if (stale) questions.push(`${stale} holding${stale === 1 ? '' : 's'} need${stale === 1 ? 's' : ''} a current valuation-date check.`);
-    if (rows.some(row => row.asset === 'Other')) questions.push('Check the asset category for holdings shown as Other.');
-    if (buildAssistantGoalReview(state.account?.portfolio).kind !== 'confirmed') questions.push('What goal is this money for, and when might you need it?');
-    questions.push('Check whether funds or stocks outside this review are missing.');
+  const checks = buildAssistantReviewChecks(rows, state.account?.portfolio);
+  const checkList = $('#review-questions');
+  checkList.replaceChildren();
+  if (!checks.length) {
+    const item = document.createElement('li');
+    item.textContent = browserOnly ? 'Upload a CAMS Active Statement or holdings CSV/XLSX to start.' :
+      'Upload a statement or describe an investment to start.';
+    checkList.append(item);
+  } else for (const check of checks) {
+    const item = document.createElement('li'); item.className = 'review-check';
+    const title = document.createElement('strong'); title.textContent = check.title;
+    const detail = document.createElement('p'); detail.textContent = check.detail;
+    const question = document.createElement('p'); question.className = 'review-check-question';
+    question.textContent = check.question;
+    const why = document.createElement('details');
+    const summary = document.createElement('summary'); summary.textContent = 'Why this appeared';
+    const basis = document.createElement('p'); basis.textContent = check.basis;
+    const limitation = document.createElement('p'); limitation.textContent = check.limitation;
+    why.append(summary, basis, limitation);
+    item.append(title, detail, question, why);
+    checkList.append(item);
   }
-  $('#review-questions').replaceChildren(...questions.map(text => {
-    const item = document.createElement('li'); item.textContent = text; return item;
-  }));
   const holdings = $('#holding-list');
   holdings.replaceChildren();
   if (!rows.length) {
@@ -235,14 +245,6 @@ function renderGoalReview() {
   }
   if (review.scenario) root.append(paragraph(
     `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Entered assumptions: ${money(review.assumptions.monthlyContribution)}/month, ${review.assumptions.returnPct}% annual growth and ${review.assumptions.inflationPct}% inflation. Zero values may be initial placeholders. This is arithmetic, not a forecast.`));
-  for (const finding of review.findings) {
-    const box = document.createElement('div'); box.className = 'goal-finding';
-    const title = document.createElement('strong'); title.textContent = finding.title;
-    const why = document.createElement('details'); const summary = document.createElement('summary');
-    summary.textContent = 'Why this appeared';
-    why.append(summary, paragraph(finding.basis), paragraph(finding.limitation));
-    box.append(title, paragraph(finding.detail), why); root.append(box);
-  }
 }
 
 async function assignGoalHoldings() {
@@ -583,6 +585,13 @@ $('#composer').addEventListener('submit', async event => {
 $('#message').addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); $('#composer').requestSubmit(); }
 });
+for (const prompt of document.querySelectorAll('[data-guided-question]')) {
+  prompt.addEventListener('click', () => {
+    if (state.busy) return;
+    $('#message').value = prompt.dataset.guidedQuestion;
+    $('#composer').requestSubmit();
+  });
+}
 
 $('#confirm-drafts').addEventListener('click', async () => {
   if (state.busy || !state.drafts.length) return;
