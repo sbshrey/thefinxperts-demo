@@ -1,7 +1,7 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs';
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
-import { validateImportReview, validateImportMerge, isRepeatedActiveStatement, planActiveStatementRefresh } from './import-review.mjs';
+import { validateImportReview, validateImportMerge, possibleManualDuplicate, isRepeatedActiveStatement, planActiveStatementRefresh } from './import-review.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
 import { entryOriginFromImport, entryOriginText } from './entry-origin.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
@@ -765,6 +765,14 @@ $('#holding-form').addEventListener('submit', event => {
   $('#holding-error').textContent = '';
   const added = { id: crypto.randomUUID(), name, type, asset, value, asOf: asOf || null, entryOrigin: 'manual',
     ...(isin ? { isin } : {}), exposure: type === 'Stock' ? { [name]: 1 } : null };
+  if (state.source === 'user') {
+    if (state.holdings.length >= 500 || state.holdings.reduce((sum, holding) => sum + holding.value, value) > 1e12) {
+      $('#holding-error').textContent = 'This review has reached its holding count or total value limit.';
+      return;
+    }
+    const duplicate = possibleManualDuplicate(state.holdings, added);
+    if (duplicate && !window.confirm(`“${name}” may already be counted as “${duplicate.name}”. Is this a separate position from another account or folio? Add it only if its value is not already included above.`)) return;
+  }
   if (state.source === 'demo') clearCurrentReview();
   state.holdings.push(added);
   state.coverage = null;

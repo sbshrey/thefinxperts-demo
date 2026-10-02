@@ -75,6 +75,16 @@ export function validateImportMerge(existing, incoming) {
   return [];
 }
 
+/** A manual row may be a separate account position, but an exact match needs investor confirmation. */
+export function possibleManualDuplicate(existing, candidate) {
+  if (!Array.isArray(existing) || !candidate || !['Mutual fund', 'Stock'].includes(candidate.type)) return null;
+  return existing.find(current => current.type === candidate.type && (
+    candidate.isin && current.isin && candidate.isin === current.isin ||
+    candidate.type === 'Mutual fund' && candidate.amfi && current.amfi && candidate.amfi === current.amfi ||
+    typeof candidate.name === 'string' && typeof current.name === 'string' &&
+      candidate.name.trim().toLocaleLowerCase('en-IN') === current.name.trim().toLocaleLowerCase('en-IN'))) || null;
+}
+
 /** Recognize the same complete Active Statement fund snapshot without changing saved goal links. */
 export function isRepeatedActiveStatement(existing, incoming) {
   if (!Array.isArray(existing) || !Array.isArray(incoming) || !incoming.length ||
