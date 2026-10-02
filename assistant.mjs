@@ -33,6 +33,9 @@ let devicePassphrase = null;
 let deviceSaveRevision = 0;
 let deviceBusy = false;
 let assistantStatusRevision = 0;
+let reviewChangeSerial = 0;
+let fileSavedSerial = -1;
+let deviceSavedSerial = -1;
 function deviceRecord() {
   try { return localStorage.getItem(DEVICE_KEY); }
   catch { return null; }
@@ -40,7 +43,8 @@ function deviceRecord() {
 function renderDeviceActions() {
   if (!browserOnly) return;
   const exists = Boolean(deviceRecord());
-  $('#device-review-action').textContent = exists ? devicePassphrase ? 'Saved here' : 'Unlock here' : 'Save here';
+  $('#device-review-action').textContent = exists ? devicePassphrase ?
+    deviceSavedSerial === reviewChangeSerial ? 'Saved here' : 'Retry save here' : 'Unlock here' : 'Save here';
   $('#device-review-action').disabled = deviceBusy || (!exists && !state.account?.portfolio);
   $('#forget-device-review').hidden = !exists;
   $('#forget-device-review').disabled = deviceBusy;
@@ -48,19 +52,24 @@ function renderDeviceActions() {
 function forgetDeviceRecord() {
   deviceSaveRevision++;
   devicePassphrase = null;
+  deviceSavedSerial = -1;
   try { localStorage.removeItem(DEVICE_KEY); return true; }
   catch { return false; }
 }
 async function saveDeviceReview(portfolio) {
-  if (!devicePassphrase || !portfolio) return;
+  if (!devicePassphrase || !portfolio) return false;
   const revision = ++deviceSaveRevision;
+  const changeSerial = reviewChangeSerial;
   try {
     const encrypted = await encryptDeviceReview(JSON.stringify(portfolio), devicePassphrase);
-    if (revision !== deviceSaveRevision || !devicePassphrase) return;
+    if (revision !== deviceSaveRevision || !devicePassphrase) return false;
     localStorage.setItem(DEVICE_KEY, encrypted);
+    deviceSavedSerial = changeSerial;
     renderDeviceActions();
+    return true;
   } catch {
-    if (revision === deviceSaveRevision) say('note', 'Could not save this review on this device. Download a private review file to keep your changes.');
+    if (revision === deviceSaveRevision) say('note', 'Could not save this review on this device. Choose “Retry save here” or download a private review file to keep your changes.');
+    return false;
   }
 }
 const state = { confirmed: [], drafts: [], history: [], file: null, busy: false, available: false,
@@ -578,6 +587,7 @@ function normalizedDraft(row, defaultOrigin = 'manual') {
 
 function acceptAccount(payload) {
   state.account = { portfolio: payload.portfolio, revision: payload.revision };
+  if (browserOnly) reviewChangeSerial++;
   const sourceRows = Array.isArray(payload.portfolio?.holdings) ? payload.portfolio.holdings : [];
   state.confirmed = sourceRows.map(row => normalizedDraft(row)).filter(row => row &&
     Number.isFinite(row.value) && row.value > 0);
@@ -1293,7 +1303,10 @@ $('#clear-review').addEventListener('click', () => {
     say('note', 'Could not remove the saved device copy. Use “Forget here” when browser storage is available.');
     return;
   }
-  if (browserOnly) state.account = { portfolio: null, revision: 0 };
+  if (browserOnly) {
+    state.account = { portfolio: null, revision: 0 };
+    reviewChangeSerial++;
+  }
   state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
   state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; clearFile();
@@ -1355,6 +1368,7 @@ $('#download-tab-review')?.addEventListener('click', () => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a'); link.href = url; link.download = 'thefinxperts-review.json';
   document.body.append(link); link.click(); link.remove();
+  fileSavedSerial = reviewChangeSerial;
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   say('note', 'Your review file was downloaded. Keep it private; it contains your holdings and goal details.');
 });
@@ -1372,13 +1386,21 @@ $('#restore-tab-file')?.addEventListener('change', async event => {
   if (state.account?.portfolio && !window.confirm('Replace the review in this tab with the selected file?')) return;
   state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null;
   acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
+  fileSavedSerial = reviewChangeSerial;
   await saveDeviceReview(parsed.portfolio);
   renderDrafts(); renderGoalDraft();
   say('note', `Restored ${state.confirmed.length} holding${state.confirmed.length === 1 ? '' : 's'} from your private file. Check the dates before using this review.`);
 });
-$('#device-review-action')?.addEventListener('click', () => {
+$('#device-review-action')?.addEventListener('click', async () => {
   if (!browserOnly || deviceBusy) return;
   if (devicePassphrase && deviceRecord()) {
+    if (deviceSavedSerial !== reviewChangeSerial) {
+      deviceBusy = true; renderDeviceActions();
+      try {
+        if (await saveDeviceReview(state.account?.portfolio)) say('note', 'Current review saved on this device.');
+      } finally { deviceBusy = false; renderDeviceActions(); }
+      return;
+    }
     say('note', 'This review saves on this device after each confirmed change. Keep your passphrase; you will need it after a refresh.');
     return;
   }
@@ -1412,6 +1434,7 @@ $('#device-review-form')?.addEventListener('submit', async event => {
       devicePassphrase = passphrase;
       state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null;
       acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
+      deviceSavedSerial = reviewChangeSerial;
       renderDrafts(); renderGoalDraft();
       say('note', `Unlocked ${state.confirmed.length} holding${state.confirmed.length === 1 ? '' : 's'} from this device. Check the dates before using this review.`);
     } else {
@@ -1419,6 +1442,7 @@ $('#device-review-form')?.addEventListener('submit', async event => {
       const encrypted = await encryptDeviceReview(JSON.stringify(state.account.portfolio), passphrase);
       localStorage.setItem(DEVICE_KEY, encrypted);
       devicePassphrase = passphrase;
+      deviceSavedSerial = reviewChangeSerial;
       say('note', 'Encrypted review saved on this device. Confirmed changes will save here while this tab is open. Keep your passphrase and a private backup file.');
     }
     $('#device-passphrase').value = '';
@@ -1443,7 +1467,18 @@ window.addEventListener('storage', event => {
   if (!browserOnly || event.key !== DEVICE_KEY) return;
   deviceSaveRevision++;
   devicePassphrase = null;
+  deviceSavedSerial = -1;
   renderDeviceActions();
   say('note', 'The saved review changed in another tab. This tab stopped saving to this device; unlock again to load the latest copy.');
+});
+window.addEventListener('beforeunload', event => {
+  if (!browserOnly) return;
+  const pending = state.drafts.length || state.goalFacts || state.reserveFacts ||
+    state.correction || state.refresh || state.file || $('#message').value.trim();
+  const unsaved = state.account?.portfolio && fileSavedSerial !== reviewChangeSerial &&
+    deviceSavedSerial !== reviewChangeSerial;
+  if (!pending && !unsaved) return;
+  event.preventDefault();
+  event.returnValue = '';
 });
 renderReview();
