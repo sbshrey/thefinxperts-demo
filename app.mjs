@@ -161,7 +161,7 @@ function render() {
   const needsGoalConfirmation = state.source !== 'demo' && state.goal.confirmed === false;
   const pauseGoalFigures = needsGoalConfirmation;
   const result = analyzePortfolio(state.holdings, pauseGoalFigures ? { ...state.goal, years: 0, target: 0 } : state.goal,
-    new Date(), state.reserve);
+    new Date(), state.reserve, state.source === 'user' ? state.coverage : null);
   $('#reserve-check').hidden = state.source !== 'user';
   const months = reserveMonths(state.reserve);
   $('#reserve-result').textContent = months === null ? 'Add both amounts to see months of essential spending covered.' :
@@ -286,6 +286,7 @@ function render() {
   $('#findings-title').textContent = result.findings.length === 3 ? 'Three things worth a closer look' : result.findings.length === 0 ? 'Add holdings to start your review' : `${result.findings.length} ${result.findings.length === 1 ? 'thing' : 'things'} worth a closer look`;
   $('#panel-counter').textContent = result.findings.length ? `${String(result.findings.length).padStart(2, '0')} REVIEW ${result.findings.length === 1 ? 'ITEM' : 'ITEMS'}` : 'NO HOLDINGS';
   const reviewDestinations = {
+    scope: ['#coverage-details', 'Check snapshot coverage'],
     identity: ['#holdings', 'Review holding labels'], summary: ['#input-choice', 'See import choices'],
     valuation: ['#holdings', 'Check entered values'], 'chosen-mix': ['#mix-plan-details', 'Compare my chosen mix'],
     emergency: ['#goal-form', 'Review goal context'], reserve: ['#reserve-check', 'Check accessible money'],

@@ -15,7 +15,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
       !(preparedAt instanceof Date) || Number.isNaN(preparedAt.getTime())) return null;
   const goal = state.goals.find(item => item.id === state.activeGoalId);
   if (!goal || goal.confirmed !== true) return null;
-  const result = analyzePortfolio(state.holdings, goal, preparedAt, state.reserve);
+  const result = analyzePortfolio(state.holdings, goal, preparedAt, state.reserve, state.coverage);
   const monthsOfEssentials = reserveMonths(state.reserve);
   const goalCoverage = summarizeGoalCoverage(state.goals, state.activeGoalId, state.holdings);
   const fundHouseOther = state.holdings.some(holding => holding.granularity === 'fund_house' && holding.asset === 'Other');

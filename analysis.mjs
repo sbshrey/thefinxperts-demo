@@ -13,7 +13,7 @@ export const sampleHoldings = [
   { id: 'bank-stock', name: 'Example Bank', type: 'Stock', asset: 'Equity', value: 70000, exposure: { 'Example Bank': 1 }, asOf: '2026-09-30' },
 ];
 
-export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 }, today = new Date(), reserve = null) {
+export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 }, today = new Date(), reserve = null, coverage = null) {
   const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
   const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
   const valid = holdings.filter(h => Number.isFinite(Number(h.value)) && Number(h.value) > 0);
@@ -130,6 +130,20 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const lossLimits = shock ? compareEnteredLossLimits(shock.loss, goal) : null;
   const equityPct = total ? (assets.Equity / total) * 100 : 0;
   const findings = [];
+  const incompleteTypes = [
+    ['mutual funds', coverage?.mutualFunds],
+    ['direct stocks', coverage?.directStocks],
+  ].filter(([, answer]) => answer === 'some' || answer === 'unsure');
+  if (total > 0 && incompleteTypes.length) {
+    const answers = incompleteTypes.map(([type, answer]) =>
+      `${type} ${answer === 'some' ? 'still have missing holdings' : 'have unconfirmed coverage'}`).join('; ');
+    findings.push({ key: 'scope', tone: 'amber', label: 'Complete your snapshot',
+      title: 'Check what this review leaves out',
+      detail: `Your coverage answer says ${answers}. Compare current fund and broker statements with the entered rows before treating these figures as your full portfolio.`,
+      question: 'Which current fund or broker statement would help you complete or confirm the missing holdings?',
+      basis: `Used your self reported coverage answer: mutual funds ${coverage.mutualFunds}; direct stocks ${coverage.directStocks}. Calculations use only ${rupees(total)} of entered value.`,
+      limitation: 'Your coverage answer and entered values have not been independently verified. Deposits, EPF, NPS and other assets are outside this holdings review.' });
+  }
   const fundHouseSummaries = new Set(valid.filter(holding => holding.granularity === 'fund_house')
     .map(holding => holding.amc?.toLocaleLowerCase('en-IN')).filter(Boolean));
   const conflictingIsins = [...isinClassifications.values()].filter(classifications => classifications.size > 1).length;
