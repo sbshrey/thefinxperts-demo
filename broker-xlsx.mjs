@@ -57,10 +57,14 @@ export function suggestBrokerColumns(rows) {
   if (!Array.isArray(rows) || !rows.length) return { headerIndex: 0, name: '', value: '', isin: '', cost: '' };
   let best = { headerIndex: 0, score: -1, name: '', value: '', isin: '', cost: '' };
   for (let index = 0; index < Math.min(rows.length, 15); index++) {
-    const cells = Array.isArray(rows[index]) ? rows[index].map(cell => String(cell ?? '').trim().toLowerCase()) : [];
-    const find = pattern => cells.findIndex(cell => pattern.test(cell));
-    const name = find(/^(?:symbol|instrument|security|stock|stock name|security name|instrument name|scrip|scrip name)$/);
-    const value = find(/^(?:current value|market value|current market value|holding value|holdings value|valuation|current valuation)$/);
+    const cells = Array.isArray(rows[index]) ? rows[index].map(normalizeHeader) : [];
+    // A duplicated heading cannot be mapped safely in the chat importer.
+    const find = pattern => {
+      const matches = cells.flatMap((cell, column) => pattern.test(cell) ? [column] : []);
+      return matches.length === 1 ? matches[0] : -1;
+    };
+    const name = find(/^(?:symbol|trading symbol|stock symbol|instrument|security|stock|stock name|security name|instrument name|scrip|scrip name)$/);
+    const value = find(/^(?:current|market|mkt|holding|holdings|present)(?: market)? value$|^(?:valuation|current valuation|market valuation)$/);
     const isin = find(/^isin(?: no| number)?$/);
     const cost = find(/^(?:total )?(?:invested amount|invested value|investment value|purchase cost|purchase value|cost basis|buy value)$/);
     const score = (name >= 0 ? 2 : 0) + (value >= 0 ? 2 : 0) + (isin >= 0 ? 1 : 0);
@@ -70,6 +74,12 @@ export function suggestBrokerColumns(rows) {
   }
   const { score, ...result } = best;
   return result;
+}
+
+function normalizeHeader(cell) {
+  return String(cell ?? '').trim().toLowerCase()
+    .replace(/\(\s*(?:₹|inr|rs\.?)\s*\)|₹|\b(?:inr|rs\.?)\b/g, '')
+    .replace(/[._-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Normalize only confirmed name, current market value and optional ISIN columns. */
