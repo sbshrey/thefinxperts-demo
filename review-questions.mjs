@@ -49,7 +49,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     const cost = result.unrealizedChange;
     if (!cost?.coveredCount) return answer(cost?.costAfterValueCount ?
       'A checked invested amount exists, but it is dated after the holding value. Refresh that value before including this position in a covered invested total.' :
-      'No checked invested amount is paired with a dated value yet. Check the cost of the units or shares you still hold.',
+      'No checked invested amount is paired with a dated value yet. For one fund or stock, say “set invested amount of NAME to ₹40,000 checked YYYY-MM-DD” using the cost of the units or shares you still hold.',
       `${valid.length} entered holding rows; 0 have usable paired cost and value dates.`,
       'A purchase total that includes sold units is not the invested cost of the positions still held.', '#holdings', 'Check holding costs');
     return answer(`${lead}the checked invested amount is ${rupeesWithPaise(cost.invested)} across ${cost.coveredCount} of ${valid.length} entered ${valid.length === 1 ? 'holding' : 'holdings'}.`,
@@ -60,7 +60,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     const change = result.unrealizedChange;
     if (!change?.coveredCount) return answer(change?.costAfterValueCount ?
       'The checked invested amount is dated after the holding value. Refresh the value for the same units or shares before calculating an unrealized gain or loss.' :
-      'No unrealized gain or loss can be calculated yet. Enter the amount invested in the units or shares you still hold and a dated current value for an individual fund or stock.',
+      'No unrealized gain or loss can be calculated yet. For one individual fund or stock with a dated value, say “set invested amount of NAME to ₹40,000 checked YYYY-MM-DD” using the cost of the units or shares you still hold.',
       `${valid.length} entered holding rows; none has cost checked on or before its dated value${change?.costAfterValueCount ? `; ${change.costAfterValueCount} cost ${change.costAfterValueCount === 1 ? 'date is' : 'dates are'} later than the value date` : ''}.`,
       'A total purchase amount that includes sold units is not the cost of the units still held. Complete dated cash flows would be needed for XIRR.', '#holdings', 'Check holding details');
     const direction = change.change >= 0 ? 'gain' : 'loss';

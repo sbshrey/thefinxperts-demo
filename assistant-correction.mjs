@@ -1,4 +1,5 @@
 import { parseAmount } from './assistant-clarify.mjs';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs';
 import { removeHoldingAllocation } from './goals.mjs';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -10,6 +11,15 @@ export function parseHoldingCorrection(message, today = new Date()) {
   const input = message.trim();
   const remove = /^remove (?:holding )?(.+?)[.!]?$/i.exec(input);
   if (remove) return { kind: 'remove', selector: remove[1].trim() };
+  const cost = /^(?:set|update) invested amount of (.+?) to (.+?) checked (\d{4}-\d{2}-\d{2})[.!]?$/i.exec(input);
+  if (cost) {
+    const value = parseAmount(cost[2]);
+    if (!validCostBasis(value, cost[3], today))
+      return { error: 'Use the positive cost of the units or shares you still hold and a real, non-future check date: “set invested amount of NAME to ₹40,000 checked YYYY-MM-DD”.' };
+    return { kind: 'cost', selector: cost[1].trim(), value, checkedOn: cost[3] };
+  }
+  if (/^(?:set|update) invested amount\b/i.test(input))
+    return { error: 'Say “set invested amount of NAME to ₹40,000 checked YYYY-MM-DD”. Use the holding number if its name appears more than once.' };
   const update = /^(?:update|change|correct) (?:value of )?(.+?) (?:value )?to (.+?) as of (\d{4}-\d{2}-\d{2})[.!]?$/i.exec(input);
   if (update) {
     const value = parseAmount(update[2]);
@@ -45,7 +55,7 @@ function findRow(holdings, selector) {
 export function prepareHoldingCorrection(saved, command, today = new Date()) {
   if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(saved.goals))
     return { portfolio: null, errors: ['Add a confirmed holding before correcting the review.'] };
-  if (!command || !['update', 'remove'].includes(command.kind) ||
+  if (!command || !['update', 'remove', 'cost'].includes(command.kind) ||
       typeof command.selector !== 'string' || !command.selector.trim())
     return { portfolio: null, errors: ['Name the confirmed holding or use its number in Included holdings.'] };
   const match = findRow(saved.holdings, command.selector);
@@ -58,6 +68,21 @@ export function prepareHoldingCorrection(saved, command, today = new Date()) {
     delete portfolio.coverage;
     const linkedGoals = saved.goals.filter(goal => goal.linkedIds?.includes(row.id)).map(goal => goal.name);
     return { portfolio, errors: [], description: `Remove holding ${index + 1}: ${row.name} · ${money(row.value)} · ${row.asOf || 'date missing'} from this review. Nothing is traded. ${linkedGoals.length ? `It will also stop counting toward ${linkedGoals.join(', ')}. ` : ''}${saved.coverage ? 'The self-reported coverage answer will be cleared.' : ''}`, result: `${row.name} removed from the confirmed review. Its goal links were cleared.${saved.coverage ? ' The coverage answer was also cleared.' : ''}` };
+  }
+  if (command.kind === 'cost') {
+    if (!['Mutual fund', 'Stock'].includes(row.type) || row.granularity === 'fund_house')
+      return { portfolio: null, errors: ['A checked invested amount needs one individual fund or stock, not a fund-house total or other investment.'] };
+    if (!validCostBasis(command.value, command.checkedOn, today))
+      return { portfolio: null, errors: ['Use a positive invested amount and a real, non-future check date.'] };
+    if (!row.asOf || command.checkedOn > row.asOf)
+      return { portfolio: null, errors: ['Check a dated current value for this same position on or after the invested-amount check date before calculating a gain or loss.'] };
+    if (row.costBasis === command.value && row.costBasisAsOf === command.checkedOn)
+      return { portfolio: null, errors: ['That invested amount and check date already match this holding.'] };
+    portfolio.holdings[index].costBasis = command.value;
+    portfolio.holdings[index].costBasisAsOf = command.checkedOn;
+    return { portfolio, errors: [],
+      description: `Set holding ${index + 1}: ${row.name} invested amount to ${rupeesWithPaise(command.value)}, checked ${command.checkedOn}. Current value stays ${money(row.value)} as of ${row.asOf}. Confirm this is the cost of the units or shares still held, after any sales or redemptions; this does not record lifetime contributions or transactions.`,
+      result: `${row.name} now has your checked current-position invested amount of ${rupeesWithPaise(command.value)} dated ${command.checkedOn}. Ask “What is my unrealized gain or loss?” for a partial calculation.` };
   }
   const date = typeof command.asOf === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(command.asOf) ?
     new Date(`${command.asOf}T00:00:00Z`) : null;

@@ -255,8 +255,10 @@ function renderReview() {
   const total = rows.reduce((sum, row) => sum + row.value, 0);
   const assets = { Equity: 0, Debt: 0, Gold: 0, Other: 0 };
   for (const row of rows) assets[row.asset] += row.value;
-  const cutoff = new Date(Date.now() + 330 * 60_000 - 90 * 86_400_000).toISOString().slice(0, 10);
-  const stale = rows.filter(row => !row.asOf || row.asOf < cutoff).length;
+  const indiaNow = Date.now() + 330 * 60_000;
+  const today = new Date(indiaNow).toISOString().slice(0, 10);
+  const cutoff = new Date(indiaNow - 90 * 86_400_000).toISOString().slice(0, 10);
+  const stale = rows.filter(row => !row.asOf || row.asOf < cutoff || row.asOf > today).length;
   $('#total').textContent = money(total);
   $('#count').textContent = String(rows.length);
   $('#stale-count').textContent = String(stale);
@@ -306,7 +308,7 @@ function renderReview() {
   } else for (const [index, row] of rows.entries()) {
     const item = document.createElement('div'); item.className = 'holding-item';
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
-    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}`;
+    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
     item.append(name, meta); holdings.append(item);
   }
   renderGoalReview();
@@ -452,7 +454,9 @@ function normalizedDraft(row, defaultOrigin = 'manual') {
     ...(row.amfi ? { amfi: row.amfi } : {}),
     ...(row.units ? { units: row.units } : {}),
     ...(row.granularity === 'fund_house' ? { granularity: 'fund_house' } : {}),
-    ...(row.statementCategory ? { statementCategory: row.statementCategory } : {}) };
+    ...(row.statementCategory ? { statementCategory: row.statementCategory } : {}),
+    ...(Number.isFinite(row.costBasis) && row.costBasis > 0 && /^\d{4}-\d{2}-\d{2}$/.test(row.costBasisAsOf || '') ?
+      { costBasis: row.costBasis, costBasisAsOf: row.costBasisAsOf } : {}) };
 }
 
 function acceptAccount(payload) {
@@ -773,7 +777,7 @@ $('#composer').addEventListener('submit', async event => {
     if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
     state.correction = { ...prepared, revision: state.account.revision };
     renderCorrection();
-    say('assistant', 'I prepared this change to your confirmed review. Check the row, value and date in the preview, then choose “Apply correction” or discard it.');
+    say('assistant', 'I prepared this change to your confirmed review. Check the holding and supplied facts in the preview, then choose “Apply correction” or discard it.');
     return;
   }
   if (browserOnly && message && !state.file) {
