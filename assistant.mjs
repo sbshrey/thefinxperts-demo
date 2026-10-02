@@ -1271,6 +1271,8 @@ $('#delete-saved').addEventListener('click', async () => {
 });
 
 $('#new-chat').addEventListener('click', () => {
+  if ((state.drafts.length || state.goalFacts || state.reserveFacts || state.correction || state.refresh || state.file) &&
+      !window.confirm('Start a new chat and discard the unconfirmed holdings, goal or reserve details, report change and selected file? Confirmed holdings and goals stay in your review.')) return;
   state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
   state.correction = null; state.refresh = null; state.history = []; clearFile();
