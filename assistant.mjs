@@ -22,6 +22,7 @@ import { parseAssistantReserveFact, nextAssistantReserveQuestion,
   prepareAssistantReserveSave } from './assistant-reserve.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs';
+import { validShares } from './stock-estimate.mjs';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -216,7 +217,7 @@ function renderDrafts() {
   const list = document.createElement('ul');
   for (const [index, row] of state.drafts.entries()) {
     const item = document.createElement('li');
-    item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}`;
+    item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}${row.shares ? ` · ${row.shares} report shares; check current balance` : ''}`;
     list.append(item);
   }
   $('#draft-list').append(list);
@@ -390,7 +391,7 @@ function renderReview() {
     const savedRow = state.account?.portfolio?.holdings?.[index];
     const item = document.createElement('div'); item.className = 'holding-item';
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
-    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
+    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.shares ? ` · ${row.shares} reported shares; verify current balance` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
     item.append(name, meta); holdings.append(item);
   }
   renderGoalReview();
@@ -544,6 +545,7 @@ function normalizedDraft(row, defaultOrigin = 'manual') {
   if (!row || typeof row.name !== 'string' || !row.name.trim() ||
       !['Mutual fund', 'Stock', 'Other investment', 'Other'].includes(row.type) ||
       !['Equity', 'Debt', 'Gold', 'Other'].includes(row.asset) ||
+      (row.shares !== undefined && (row.type !== 'Stock' || !validShares(row.shares))) ||
       (row.granularity != null && (row.granularity !== 'fund_house' || row.type !== 'Mutual fund' ||
         typeof row.amc !== 'string' || !row.amc.trim()))) return null;
   const value = Number(row.value);
@@ -557,6 +559,7 @@ function normalizedDraft(row, defaultOrigin = 'manual') {
     ...(row.amc ? { amc: row.amc } : {}),
     ...(row.amfi ? { amfi: row.amfi } : {}),
     ...(row.units ? { units: row.units } : {}),
+    ...(row.shares ? { shares: row.shares } : {}),
     ...(row.granularity === 'fund_house' ? { granularity: 'fund_house' } : {}),
     ...(row.statementCategory ? { statementCategory: row.statementCategory } : {}),
     ...(Number.isFinite(row.costBasis) && row.costBasis > 0 && /^\d{4}-\d{2}-\d{2}$/.test(row.costBasisAsOf || '') ?

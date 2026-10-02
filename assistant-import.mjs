@@ -1,6 +1,7 @@
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { readBrokerWorkbook } from './broker-xlsx-browser.mjs';
+import { validShares } from './stock-estimate.mjs';
 
 const MAX_CHAT_DRAFTS = 30;
 
@@ -8,16 +9,17 @@ const BROKER_METADATA_HEADERS = {
   type: new Set(['holding type', 'security type', 'instrument type']),
   asset: new Set(['asset class', 'asset category']),
   asOf: new Set(['value date', 'valuation date', 'as of date']),
+  shares: new Set(['quantity', 'share quantity', 'shares held', 'holding quantity']),
 };
 
 function brokerMetadataColumns(header, reserved) {
-  const found = { type: null, asset: null, asOf: null };
+  const found = { type: null, asset: null, asOf: null, shares: null };
   for (const [index, cell] of header.entries()) {
     const label = String(cell ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
     for (const [field, labels] of Object.entries(BROKER_METADATA_HEADERS)) {
       if (!labels.has(label)) continue;
       if (reserved.has(index) || found[field] !== null)
-        return { error: `The report has ambiguous ${field === 'asOf' ? 'valuation date' : field} columns. Check the header before importing.` };
+        return { error: `The report has ambiguous ${field === 'asOf' ? 'valuation date' : field === 'shares' ? 'share count' : field} columns. Check the header before importing.` };
       found[field] = index;
     }
   }
@@ -80,18 +82,24 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable) {
     const type = metadata.type === null ? 'Other' : explicitType(row[metadata.type]);
     const asset = metadata.asset === null ? 'Other' : explicitAsset(row[metadata.asset]);
     const asOf = metadata.asOf === null ? null : explicitDate(row[metadata.asOf]);
+    const rawShares = metadata.shares === null ? '' : String(row[metadata.shares] ?? '').trim();
+    const shares = type === 'Stock' && rawShares ? rawShares : null;
     if (type === null || asset === null || asOf === false || type === 'Stock' && asset !== 'Other' && asset !== 'Equity') {
       return { drafts: [], errors: [`Report row ${number}: check the holding type, asset class and ISO valuation date (YYYY-MM-DD). Unsupported or conflicting labels cannot be imported.`] };
     }
+    if (shares && !validShares(shares))
+      return { drafts: [], errors: [`Report row ${number}: the stock share count is invalid. Check the current settled shares after trades and corporate actions.`] };
     drafts.push({ name: holding.name, type, asset: type === 'Stock' ? 'Equity' : asset,
-      value: holding.value, asOf, ...(holding.isin ? { isin: holding.isin } : {}), entryOrigin: source });
+      value: holding.value, asOf, ...(holding.isin ? { isin: holding.isin } : {}),
+      ...(shares ? { shares } : {}), entryOrigin: source });
   }
   const typed = drafts.filter(row => row.type !== 'Other').length;
   const dated = drafts.filter(row => row.asOf).length;
+  const counted = drafts.filter(row => row.shares).length;
   const metadataNote = metadata.type !== null || metadata.asset !== null || metadata.asOf !== null ?
     `Used explicit report fields for ${typed} type${typed === 1 ? '' : 's'} and ${dated} valuation date${dated === 1 ? '' : 's'}; check every row. Missing fields remain unknown.` :
     'Please confirm each row is a fund or directly held stock; its valuation date remains unknown until you provide one.';
-  return { drafts, errors: [], message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the broker report. The file stayed in this browser. ${metadataNote} ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
+  return { drafts, errors: [], message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the broker report. The file stayed in this browser. ${metadataNote}${counted ? ` ${counted} stock share count${counted === 1 ? ' was' : 's were'} staged; check the current settled shares after trades, splits or bonuses before confirming.` : ''} ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
 }
 
 /** Prepare unconfirmed chat rows from supported CSV or XLSX exports without an upload. */
