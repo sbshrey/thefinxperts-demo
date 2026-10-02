@@ -110,11 +110,14 @@ const casStatusPromise = browserOnly ? Promise.resolve(false) : fetch('/api/cas/
     state.casLocal = Boolean(status?.local);
     if (state.casLocal) $('#cas-description').textContent =
       'Read an original CAS with the loopback server on this computer. The PDF and password are processed for this preview and are not saved. This uses no AI credit.';
+    else if (state.casAvailable) $('#cas-description').textContent =
+      'Read an original mutual-fund CAS with the signed-in service. The PDF and password are processed for this preview and are not saved.';
+    if (state.casAvailable) $('#cas-preview').textContent = 'Read as CAS';
     return state.casAvailable;
   })
   .catch(() => false);
 if (browserOnly) $('#cas-description').textContent =
-  'Read an original CAMS or KFintech mutual-fund CAS in this browser tab. The PDF and password stay here; confirm every holding before using it. This uses no AI credit.';
+  'Enter this PDF’s password. This browser will try the supported CAMS statement readers; the PDF and password stay in this tab. Confirm every holding before using it.';
 
 function renderCredits() {
   const label = $('#credit-balance');
@@ -687,6 +690,10 @@ function stageActiveStatement(parsed) {
 
 async function offerUnsupportedPdf(file, parsed, allowAi = true) {
   if (browserOnly) {
+    if (!/\.pdf$/i.test(file.name)) {
+      say('note', parsed.errors[0] || 'This is not a supported statement or holdings report. No holdings were added.');
+      clearFile(); return;
+    }
     state.file = file;
     setFileLabel('PDF selected · not sent');
     $('#active-option').hidden = true;
@@ -708,6 +715,29 @@ async function offerUnsupportedPdf(file, parsed, allowAi = true) {
   say('note', casAvailable ?
     `This is not a supported CAMS Active Statement preview. If it is an original CAS, enter its password and choose private CAS reading.${allowAi && file.size <= 4_000_000 ? ' You may instead explicitly allow AI extraction. Extracted rows need your confirmation.' : ''}` :
     `This is not a supported CAMS Active Statement preview.${allowAi && file.size <= 4_000_000 ? ' You can explicitly allow AI extraction of this PDF, or describe the holdings in chat instead. Extracted rows need your confirmation.' : ' You can describe the holdings in chat instead.'}`);
+}
+
+function stageCasResult(result) {
+  const prepared = prepareAssistantCasDrafts(result, { local: state.casLocal, browser: browserOnly });
+  if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return false; }
+  const drafts = prepared.drafts.map(row => normalizedDraft(row));
+  if (drafts.some(row => !row)) { say('note', 'A CAS row could not be staged safely. No rows were added.'); return false; }
+  if (state.account?.portfolio) {
+    const refresh = prepareAssistantCasRefresh(state.account.portfolio, drafts);
+    if (refresh) {
+      if (refresh.repeated) say('note', refresh.description);
+      else if (refresh.errors.length) say('note', refresh.errors.join(' '));
+      else {
+        state.refresh = { ...refresh, revision: state.account.revision };
+        renderRefresh();
+        say('assistant', 'I found exact scheme matches in a newer CAS. Review each dated update before applying it. Unmatched schemes remain outside this refresh.');
+      }
+      clearFile(); return true;
+    }
+  }
+  state.drafts = drafts;
+  renderDrafts(); say('note', prepared.message); clearFile();
+  return true;
 }
 
 $('#active-preview').addEventListener('click', async () => {
@@ -733,7 +763,11 @@ $('#cas-preview').addEventListener('click', async () => {
     'Reading the selected CAS in this browser…' : 'Reading the selected CAS with the signed-in server…');
   try {
     let result;
-    if (browserOnly) result = await previewBrowserCas(state.file, password);
+    if (browserOnly) {
+      const active = await previewActiveStatementFile(state.file, password);
+      if (stageActiveStatement(active)) return;
+      result = await previewBrowserCas(state.file, password);
+    }
     else {
       const response = await fetch('/api/cas/preview', { method: 'POST', headers: {
         'Content-Type': 'application/json', 'X-Thefinxperts-Intent': 'cas-preview',
@@ -742,25 +776,7 @@ $('#cas-preview').addEventListener('click', async () => {
       result = await response.json();
       if (!response.ok && result.error) { say('note', result.error); return; }
     }
-    const prepared = prepareAssistantCasDrafts(result, { local: state.casLocal, browser: browserOnly });
-    if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
-    const drafts = prepared.drafts.map(row => normalizedDraft(row));
-    if (drafts.some(row => !row)) { say('note', 'A CAS row could not be staged safely. No rows were added.'); return; }
-    if (state.account?.portfolio) {
-      const refresh = prepareAssistantCasRefresh(state.account.portfolio, drafts);
-      if (refresh) {
-        if (refresh.repeated) say('note', refresh.description);
-        else if (refresh.errors.length) say('note', refresh.errors.join(' '));
-        else {
-          state.refresh = { ...refresh, revision: state.account.revision };
-          renderRefresh();
-          say('assistant', 'I found exact scheme matches in a newer CAS. Review each dated update before applying it. Unmatched schemes remain outside this refresh.');
-        }
-        clearFile(); return;
-      }
-    }
-    state.drafts = drafts;
-    renderDrafts(); say('note', prepared.message); clearFile();
+    stageCasResult(result);
   } catch { say('note', browserOnly ? 'The browser CAS preview failed. Try again or remove the PDF.' :
     'The private CAS preview failed. Try again or remove the PDF.'); }
   finally { $('#cas-password').value = ''; state.busy = false; renderCredits(); renderDrafts();
@@ -806,15 +822,23 @@ $('#upload').addEventListener('change', async event => {
   if (parsed.errors.some(error => /different password/i.test(error))) {
     state.file = file;
     setFileLabel('Password-protected PDF selected · not sent');
-    $('#active-option').hidden = false;
+    $('#active-option').hidden = browserOnly;
     $('#cas-option').hidden = !(browserOnly || await casStatusPromise);
     $('#pdf-consent-label').hidden = true;
     say('note', browserOnly ?
-      'Enter the PDF password in a masked field. You can try the CAMS Active Statement preview or read an original CAMS/KFintech mutual-fund CAS in this browser tab.' :
+      'Enter the PDF password once and choose “Read statement”. This browser will try a CAMS Active Statement and an original mutual-fund CAS without sending the PDF or password.' :
       'Enter the PDF password in a masked field to try the browser preview. For an original CAS, signed-in private reading is available when enabled.');
     return;
   }
   if (stageActiveStatement(parsed)) return;
+  if (browserOnly && /\.pdf$/i.test(file.name)) {
+    state.busy = true; renderCredits(); setFileLabel('Trying supported statement readers in this browser…');
+    try {
+      stageCasResult(await previewBrowserCas(file));
+    } catch { say('note', 'This PDF could not be safely read as a supported statement. No holdings were added.'); }
+    finally { state.busy = false; clearFile(); renderCredits(); renderDrafts(); }
+    return;
+  }
   await offerUnsupportedPdf(file, parsed);
 });
 
@@ -1213,7 +1237,7 @@ $('#new-chat').addEventListener('click', () => {
   $('#messages').replaceChildren();
   say('assistant', state.confirmed.length ?
     `I still have ${state.confirmed.length} confirmed holding${state.confirmed.length === 1 ? '' : 's'} in this tab. What would you like to understand next?` :
-    browserOnly ? 'Attach a CAMS Active Statement or holdings CSV/XLSX to begin. This browser review can then answer factual questions.' :
+    browserOnly ? 'Choose Upload for a CAMS statement, mutual-fund CAS or broker report. I’ll show possible holdings to confirm before answering questions.' :
       'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
   renderDrafts(); renderGoalDraft(); renderReserveDraft(); renderReview();
 });
@@ -1232,7 +1256,7 @@ $('#clear-review').addEventListener('click', () => {
   state.reserveFacts = null; state.reserveDraftRevision = null;
   state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; clearFile();
   $('#messages').replaceChildren();
-  say('assistant', browserOnly ? 'Describe one holding or attach a CAMS Active Statement or holdings report. After you confirm a draft, this browser review can answer factual questions.' :
+  say('assistant', browserOnly ? 'Choose Upload for a CAMS statement, mutual-fund CAS or broker report. I’ll show possible holdings to confirm before answering questions. You can also describe one holding.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
   renderDrafts(); renderGoalDraft(); renderReserveDraft(); renderReview();
 });
