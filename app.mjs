@@ -987,8 +987,18 @@ function refreshImportSummary() {
   mergeButton.disabled = errors.length > 0 || mergeErrors.length > 0;
   mergeValidation.hidden = !canAdd || mergeErrors.length === 0;
   mergeValidation.textContent = mergeErrors.join(' ');
-  $('#refresh-statement').hidden = label !== 'Active Statement' || !canAdd ||
-    !planActiveStatementRefresh(state.holdings, pendingImport);
+  const refresh = label === 'Active Statement' && canAdd ?
+    planActiveStatementRefresh(state.holdings, pendingImport) : null;
+  $('#refresh-statement').hidden = !refresh;
+  $('#refresh-explanation').hidden = !refresh;
+  if (refresh) {
+    $('#refresh-statement').textContent = refresh.added.length || refresh.removed.length ?
+      'Update funds from this statement' : 'Refresh matched funds';
+    $('#refresh-explanation').textContent = `${refresh.updatedCount} matched fund ${refresh.updatedCount === 1 ? 'row' : 'rows'} will update; ` +
+      `${refresh.added.length} new fund ${refresh.added.length === 1 ? 'row' : 'rows'} will be added; ` +
+      `${refresh.removed.length} fund ${refresh.removed.length === 1 ? 'row' : 'rows'} absent from the newer statement will be removed. ` +
+      'Direct stocks and links for matched funds stay in place. New funds link to the selected goal.';
+  }
 }
 
 function renderImportRows() {
@@ -1185,14 +1195,20 @@ function applyImport(mode) {
     if (state.source !== 'user' || $('#import-preview').dataset.source !== 'Active Statement') return;
     const refresh = planActiveStatementRefresh(state.holdings, pendingImport);
     if (!refresh) return;
-    state.holdings = refresh.holdings;
+    if (refresh.removed.length && !window.confirm(`${refresh.removed.length} existing fund ${refresh.removed.length === 1 ? 'row is' : 'rows are'} absent from this newer statement. Remove those rows and their goal links? Check the statement is complete before continuing.`)) return;
+    const added = refresh.added.map(holding => ({ ...holding, id: crypto.randomUUID(), exposure: null }));
+    state.holdings = [...refresh.holdings, ...added];
+    state.goals = refresh.removed.reduce((goals, holding) =>
+      removeHoldingAllocation(goals, holding.id), state.goals);
+    if (added.length) state.goals = linkAddedHoldings(state.goals, state.activeGoalId, added);
+    state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
     pendingImport = null;
     pendingPerformance.clear();
     $('#active-file').value = '';
     $('#active-password').value = '';
     $('#import-preview').hidden = true;
     render();
-    $('#live-status').textContent = `${refresh.updatedCount} statement holdings refreshed. Stocks and goal links kept.`;
+    $('#live-status').textContent = `${refresh.updatedCount} fund rows updated, ${added.length} added, ${refresh.removed.length} removed. Direct stocks kept.`;
     $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }

@@ -68,37 +68,47 @@ export function validateImportMerge(existing, incoming) {
   return [];
 }
 
-/** Refresh one complete Active Statement snapshot without changing holding IDs or goal links. */
+/** Plan one complete newer Active Statement snapshot, preserving identities for matched fund rows. */
 export function planActiveStatementRefresh(existing, incoming) {
   if (!Array.isArray(existing) || !Array.isArray(incoming) || validateImportReview(incoming).length ||
       !incoming.length || incoming.some(holding => holding.type !== 'Mutual fund')) return null;
   const funds = existing.filter(holding => holding.type === 'Mutual fund');
-  if (!funds.length || funds.length !== incoming.length ||
+  if (!funds.length || existing.length - funds.length + incoming.length > 500 ||
       funds.some(holding => holding.granularity !== 'fund_house' &&
         !(holding.statementCategory && holding.units)) ||
       incoming.some(holding => holding.granularity !== 'fund_house' &&
         !(holding.statementCategory && holding.units))) return null;
+  const summary = funds.every(holding => holding.granularity === 'fund_house') &&
+    incoming.every(holding => holding.granularity === 'fund_house');
+  const schemes = funds.every(holding => holding.granularity !== 'fund_house') &&
+    incoming.every(holding => holding.granularity !== 'fund_house');
+  if (!summary && !schemes) return null;
   const key = holding => JSON.stringify([holding.amc?.trim().toLocaleLowerCase('en-IN'),
     holding.name?.trim().toLocaleLowerCase('en-IN'), holding.asset,
     holding.granularity || 'scheme']);
   const currentByKey = new Map(funds.map(holding => [key(holding), holding]));
   const incomingByKey = new Map(incoming.map(holding => [key(holding), holding]));
-  if (currentByKey.size !== funds.length || incomingByKey.size !== incoming.length ||
-      [...incomingByKey.keys()].some(item => !currentByKey.has(item))) return null;
+  if (currentByKey.size !== funds.length || incomingByKey.size !== incoming.length) return null;
+  const sharedKeys = [...incomingByKey.keys()].filter(item => currentByKey.has(item));
+  if (!sharedKeys.length) return null;
   const date = incoming[0].asOf;
   const indiaToday = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
   if (!isRealIsoDate(date) || incoming.some(holding => holding.asOf !== date) ||
       date > indiaToday || funds.some(holding => !isRealIsoDate(holding.asOf) || holding.asOf >= date)) return null;
-  const refreshed = existing.map(holding => {
+  const retained = existing.flatMap(holding => {
     if (holding.type !== 'Mutual fund') return holding;
     const next = incomingByKey.get(key(holding));
-    return { ...holding, value: next.value, asOf: next.asOf,
+    if (!next) return [];
+    return [{ ...holding, value: next.value, asOf: next.asOf,
       ...(next.units ? { units: next.units } : {}),
-      ...(next.statementCategory ? { statementCategory: next.statementCategory } : {}) };
+      ...(next.statementCategory ? { statementCategory: next.statementCategory } : {}) }];
   });
-  if (refreshed.reduce((sum, holding) => sum + Number(holding.value), 0) > 1_000_000_000_000)
+  const added = incoming.filter(holding => !currentByKey.has(key(holding)));
+  const removed = funds.filter(holding => !incomingByKey.has(key(holding)));
+  const total = [...retained, ...added].reduce((sum, holding) => sum + Number(holding.value), 0);
+  if (!Number.isFinite(total) || total > 1_000_000_000_000)
     return null;
-  return { holdings: refreshed, updatedCount: funds.length };
+  return { holdings: retained, added, removed, updatedCount: sharedKeys.length };
 }
 
 function isRealIsoDate(value) {
