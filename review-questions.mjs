@@ -83,10 +83,13 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `${rupeesWithPaise(change.coveredValue)} entered current value minus ${rupeesWithPaise(change.invested)} entered cost for the covered positions; value dates ${change.earliestValueDate}${change.latestValueDate !== change.earliestValueDate ? ` to ${change.latestValueDate}` : ''}. ${change.missingCount} ${change.missingCount === 1 ? 'row' : 'rows'} excluded${change.costAfterValueCount ? `, including ${change.costAfterValueCount} with cost checked after the value date` : ''}.`,
       'This is not total lifetime profit or an annual return. It excludes sold positions, cash distributions, taxes, exit loads, rows without checked cost or dated value, and cost checked after the value date.', '#holdings', 'Check covered holdings');
   }
-  if (/\b(nav|share price|stock price|market price|live quote|live price|today.{0,25}(?:price|nav|value)|latest.{0,25}(?:price|nav|value))\b/.test(input))
-    return answer('I do not have a live market feed here. Use a dated value from your broker or fund statement, then update the holding in this browser.',
+  if (/\b(nav|share price|stock price|market price|live quote|live price|today.{0,25}(?:price|nav|value)|latest.{0,25}(?:price|nav|value))\b/.test(input)) {
+    const fund = valid.find(row => row.type === 'Mutual fund' && row.granularity !== 'fund_house' && row.units);
+    return answer('I do not have a live market feed here. Use a dated value from your broker or fund statement, then update the holding in this browser.' +
+      (fund ? ` If you checked the exact scheme NAV and still own its ${fund.units} statement units, say “set NAV of holding ${holdings.indexOf(fund) + 1} to ₹125.4321 as of YYYY-MM-DD” to preview a dated estimate.` : ''),
       result.asOfSummary,
-      'A recent statement value may still differ from the current market value.', '#holdings', 'Check entered dates');
+      'A recent statement value may still differ from the current market value. An entered NAV times old units is only an estimate until you confirm the units have not changed.', '#holdings', 'Check entered dates');
+  }
   if (/\b(?:reserve|emergency buffer|emergency fund)\b/.test(input)) {
     const months = reserveMonths(reserve);
     return months === null ? answer('No separate reserve totals are saved in this review. If you want the arithmetic, say “monthly essentials ₹50,000” and “accessible money outside holdings ₹3 lakh”, then confirm both.',

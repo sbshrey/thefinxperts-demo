@@ -30,6 +30,7 @@ const DEVICE_KEY = 'thefinxperts:encrypted-review:v1';
 let devicePassphrase = null;
 let deviceSaveRevision = 0;
 let deviceBusy = false;
+let assistantStatusRevision = 0;
 function deviceRecord() {
   try { return localStorage.getItem(DEVICE_KEY); }
   catch { return null; }
@@ -65,6 +66,8 @@ const state = { confirmed: [], drafts: [], history: [], file: null, busy: false,
   goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
   correction: null, refresh: null, casAvailable: false, casLocal: false,
   capacityReached: false, coveragePrompted: false };
+const creditChannel = !browserOnly && typeof BroadcastChannel !== 'undefined' ?
+  new BroadcastChannel('thefinxperts-assistant-credits') : null;
 const toolsToggle = $('#tools-toggle');
 const mobileTools = window.matchMedia('(max-width: 600px)');
 function setToolsOpen(open) {
@@ -129,7 +132,7 @@ function renderCredits() {
   if (!label.hidden) {
     const total = state.credits.freeTotal;
     label.textContent = `${remaining} of ${total} free AI credits left`;
-    $('#credit-meter-title').textContent = `${total} free AI answers`;
+    $('#credit-meter-title').textContent = `${total} free AI replies`;
     $('#credit-meter-detail').textContent = remaining ?
       `${remaining} remaining on this account` : 'All used. Your saved review and no-credit actions still work.';
     $('#credit-pips').replaceChildren(...Array.from({ length: total }, (_, index) => {
@@ -280,13 +283,23 @@ function renderCorrection() {
   const box = $('#correction-draft');
   if (!box) return;
   box.hidden = !state.correction;
-  if (!state.correction) return;
+  const nav = state.correction?.kind === 'nav';
+  $('#nav-correction-checks').hidden = !nav;
+  if (!state.correction) {
+    $('#nav-scheme-checked').checked = false;
+    $('#nav-units-checked').checked = false;
+    return;
+  }
   const stale = state.account?.revision !== state.correction.revision;
   $('#correction-preview').textContent = stale ?
     'The confirmed review changed after this correction was prepared. Discard it and describe the correction again.' :
     state.correction.description;
-  $('#confirm-correction').disabled = state.busy || stale;
+  $('#confirm-correction').disabled = state.busy || stale ||
+    (nav && (!$('#nav-scheme-checked').checked || !$('#nav-units-checked').checked));
 }
+
+for (const selector of ['#nav-scheme-checked', '#nav-units-checked'])
+  $(selector).addEventListener('change', renderCorrection);
 
 function renderRefresh() {
   const box = $('#refresh-draft');
@@ -322,7 +335,10 @@ function renderReview() {
   $('#count').textContent = String(rows.length);
   $('#stale-count').textContent = String(stale);
   $('#review-badge').textContent = rows.length ? `${rows.length} confirmed` : 'No holdings yet';
-  $('#date-note').textContent = rows.length ? 'Based on supplied values and dates, not live market quotes.' : 'Add a holding to begin. Values are dated, not live quotes.';
+  const hasNavEstimate = state.account?.portfolio?.holdings?.some(row => row.navEstimate);
+  $('#date-note').textContent = rows.length ?
+    `Based on supplied values and dates, not live market quotes.${hasNavEstimate ? ' Includes your dated NAV estimate with unchanged units.' : ''}` :
+    'Add a holding to begin. Values are dated, not live quotes.';
   const bars = $('#asset-bars');
   bars.replaceChildren();
   if (!rows.length) {
@@ -371,9 +387,10 @@ function renderReview() {
   if (!rows.length) {
     const empty = document.createElement('p'); empty.textContent = 'Confirmed rows will appear here.'; holdings.append(empty);
   } else for (const [index, row] of rows.entries()) {
+    const savedRow = state.account?.portfolio?.holdings?.[index];
     const item = document.createElement('div'); item.className = 'holding-item';
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
-    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
+    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
     item.append(name, meta); holdings.append(item);
   }
   renderGoalReview();
@@ -595,6 +612,7 @@ async function aiTurn(message, pdf = null) {
     say('note', 'The assistant is unavailable for this account. Your confirmed dashboard still works in this tab.');
     return;
   }
+  assistantStatusRevision++;
   state.busy = true; $('#send').disabled = true; $('#service-status').textContent = 'Reviewing…';
   try {
     const response = await fetch('/api/assistant', { method: 'POST',
@@ -607,6 +625,7 @@ async function aiTurn(message, pdf = null) {
     if (result.credits && Number.isInteger(result.credits.remaining)) {
       state.credits = result.credits;
       renderCredits();
+      creditChannel?.postMessage({ type: 'balance-changed' });
     }
     if (result.code === 'service_capacity') state.capacityReached = true;
     if (!response.ok) throw new Error(result.error || 'The assistant could not answer.');
@@ -1148,6 +1167,8 @@ $('#discard-reserve').addEventListener('click', () => {
 $('#confirm-correction')?.addEventListener('click', async () => {
   const correction = state.correction;
   if (state.busy || !correction || !state.account || correction.revision !== state.account.revision) return;
+  if (correction.kind === 'nav' &&
+      (!$('#nav-scheme-checked').checked || !$('#nav-units-checked').checked)) return;
   state.busy = true; renderAccountActions();
   try {
     await writeAccount(correction.portfolio,
@@ -1261,18 +1282,40 @@ $('#clear-review').addEventListener('click', () => {
   renderDrafts(); renderGoalDraft(); renderReserveDraft(); renderReview();
 });
 
+function applyAssistantStatus(status) {
+  state.available = Boolean(status?.available);
+  state.hosted = status?.local === false;
+  state.capacityReached = Boolean(status?.capacityReached);
+  if (status?.credits && Number.isInteger(status.credits.remaining)) state.credits = status.credits;
+  renderCredits();
+  $('#service-status').textContent = assistantStatusText();
+}
+
+async function refreshAssistantStatus() {
+  if (browserOnly || !state.hosted || state.busy) return;
+  const revision = ++assistantStatusRevision;
+  try {
+    const response = await fetch('/api/assistant/status', { cache: 'no-store' });
+    if (!response.ok) return;
+    const status = await response.json();
+    if (revision === assistantStatusRevision && !state.busy) applyAssistantStatus(status);
+  } catch { /* Keep the last known balance until the account is reachable. */ }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) void refreshAssistantStatus();
+});
+window.addEventListener('focus', () => { void refreshAssistantStatus(); });
+creditChannel?.addEventListener('message', event => {
+  if (event.data?.type === 'balance-changed') void refreshAssistantStatus();
+});
+
 if (browserOnly) {
   $('#service-status').textContent = 'Browser-only answers · no AI credits';
   renderAccountActions();
   if (deviceRecord()) say('note', 'An encrypted review is saved on this device. Choose “Unlock here” and enter its passphrase to continue.');
 } else fetch('/api/assistant/status').then(response => response.ok ? response.json() : null).then(async status => {
-  state.available = Boolean(status?.available);
-  state.hosted = status?.local === false;
-  state.capacityReached = Boolean(status?.capacityReached);
-  renderAccountActions();
-  if (status?.credits && Number.isInteger(status.credits.remaining)) state.credits = status.credits;
-  renderCredits();
-  $('#service-status').textContent = assistantStatusText();
+  applyAssistantStatus(status);
   if (state.hosted && !state.confirmed.length) {
     try {
       const response = await fetch('/api/portfolio', { cache: 'no-store' });
