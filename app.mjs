@@ -1345,9 +1345,9 @@ $('#cancel-import').addEventListener('click', () => {
 function updateAccountActions() {
   if (!accountAuthenticated || !accountPortfolioAccess) return;
   const unconfirmedGoals = state.goals.some(goal => goal.confirmed === false);
-  $('#account-save').disabled = accountRevision === null || state.source !== 'user' || state.holdings.length === 0 || unconfirmedGoals;
+  $('#account-save').disabled = accountRevision === null || state.source !== 'user' || state.holdings.length === 0;
   $('#account-description').textContent = unconfirmedGoals && state.source === 'user'
-    ? 'Confirm each goal’s details before saving. Original CAS PDFs and passwords are not saved.' : state.source === 'user'
+    ? 'Save your holdings and unfinished goal details now; goal figures stay paused until you confirm them. Original CAS PDFs and passwords are not saved.' : state.source === 'user'
     ? 'Save normalized holdings and goal inputs for later. Original CAS PDFs and passwords are not saved.'
     : 'Clear the fictional example or import your own holdings before saving. Original CAS PDFs and passwords are not saved.';
   $('#account-load').hidden = !hasSavedPortfolio;
