@@ -20,13 +20,18 @@ export function summarizeUnrealizedChange(holdings, today = new Date()) {
   let invested = 0;
   let coveredCount = 0;
   let missingCount = 0;
+  let costAfterValueCount = 0;
   const valueDates = [];
   for (const holding of holdings || []) {
     if (!holding || !Number.isFinite(holding.value) || holding.value <= 0 ||
         holding.value > 10_000_000_000) continue;
     if (holding.granularity === 'fund_house' ||
         !validCostBasis(holding.costBasis, holding.costBasisAsOf, today) ||
-        !realDay(holding.asOf) || holding.asOf > indiaToday) {
+        !realDay(holding.asOf) || holding.asOf > indiaToday ||
+        holding.costBasisAsOf > holding.asOf) {
+      if (holding.granularity !== 'fund_house' && realDay(holding.asOf) && holding.asOf <= indiaToday &&
+          validCostBasis(holding.costBasis, holding.costBasisAsOf, today) &&
+          holding.costBasisAsOf > holding.asOf) costAfterValueCount++;
       missingCount++;
       continue;
     }
@@ -37,5 +42,6 @@ export function summarizeUnrealizedChange(holdings, today = new Date()) {
   }
   valueDates.sort();
   return { coveredValue, invested, change: coveredValue - invested, coveredCount, missingCount,
+    costAfterValueCount,
     earliestValueDate: valueDates[0] || null, latestValueDate: valueDates.at(-1) || null };
 }

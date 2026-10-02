@@ -26,14 +26,16 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       'The goal growth assumption is an illustration, not your historical return.', '#holdings', 'Check source statements');
   if (/\b(profit|gains?|loss(?:es)?|invested|returns?)\b/.test(input)) {
     const change = result.unrealizedChange;
-    if (!change?.coveredCount) return answer('No unrealized gain or loss can be calculated yet. Enter the amount invested in the units or shares you still hold and a dated current value for an individual fund or stock.',
-      `${valid.length} entered holding rows; none has both a checked current-position invested amount and a dated current value.`,
+    if (!change?.coveredCount) return answer(change?.costAfterValueCount ?
+      'The checked invested amount is dated after the holding value. Refresh the value for the same units or shares before calculating an unrealized gain or loss.' :
+      'No unrealized gain or loss can be calculated yet. Enter the amount invested in the units or shares you still hold and a dated current value for an individual fund or stock.',
+      `${valid.length} entered holding rows; none has cost checked on or before its dated value${change?.costAfterValueCount ? `; ${change.costAfterValueCount} cost ${change.costAfterValueCount === 1 ? 'date is' : 'dates are'} later than the value date` : ''}.`,
       'A total purchase amount that includes sold units is not the cost of the units still held. Complete dated cash flows would be needed for XIRR.', '#holdings', 'Check holding details');
     const direction = change.change >= 0 ? 'gain' : 'loss';
     const percentChange = (Math.abs(change.change) / change.invested * 100).toFixed(1);
     return answer(`${lead}${change.coveredCount} covered ${change.coveredCount === 1 ? 'holding has' : 'holdings have'} an entered unrealized ${direction} of ${money(Math.abs(change.change))} (${percentChange}% of the invested amount).`,
-      `${money(change.coveredValue)} entered current value minus ${money(change.invested)} entered cost for the covered positions; value dates ${change.earliestValueDate}${change.latestValueDate !== change.earliestValueDate ? ` to ${change.latestValueDate}` : ''}. ${change.missingCount} ${change.missingCount === 1 ? 'row' : 'rows'} excluded.`,
-      'This is not total lifetime profit or an annual return. It excludes sold positions, cash distributions, taxes, exit loads, and rows without checked cost or dated value.', '#holdings', 'Check covered holdings');
+      `${money(change.coveredValue)} entered current value minus ${money(change.invested)} entered cost for the covered positions; value dates ${change.earliestValueDate}${change.latestValueDate !== change.earliestValueDate ? ` to ${change.latestValueDate}` : ''}. ${change.missingCount} ${change.missingCount === 1 ? 'row' : 'rows'} excluded${change.costAfterValueCount ? `, including ${change.costAfterValueCount} with cost checked after the value date` : ''}.`,
+      'This is not total lifetime profit or an annual return. It excludes sold positions, cash distributions, taxes, exit loads, rows without checked cost or dated value, and cost checked after the value date.', '#holdings', 'Check covered holdings');
   }
   if (/\b(nav|share price|stock price|market price|live quote|live price|today.{0,25}(?:price|nav|value)|latest.{0,25}(?:price|nav|value))\b/.test(input))
     return answer('I do not have a live market feed here. Use a dated value from your broker or fund statement, then update the holding in this browser.',
