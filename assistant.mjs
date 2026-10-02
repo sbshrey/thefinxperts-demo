@@ -13,7 +13,8 @@ import { parseReviewBackup } from './review-backup.mjs';
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
 import { parseBrowserGoalFact, parseBrowserHoldingStatement, nextBrowserGoalQuestion } from './assistant-local.mjs';
-import { parseHoldingCorrection, prepareHoldingCorrection } from './assistant-correction.mjs';
+import { parseHoldingCorrection, prepareHoldingCorrection,
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh } from './assistant-refresh.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -56,7 +57,7 @@ async function saveDeviceReview(portfolio) {
 const state = { confirmed: [], drafts: [], history: [], file: null, busy: false, available: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
   goalFacts: null, goalDraftGoalId: null, correction: null, refresh: null, casAvailable: false, casLocal: false,
-  capacityReached: false };
+  capacityReached: false, coveragePrompted: false };
 const toolsToggle = $('#tools-toggle');
 const mobileTools = window.matchMedia('(max-width: 600px)');
 function setToolsOpen(open) {
@@ -278,6 +279,12 @@ function renderReview() {
       const pct = document.createElement('strong'); pct.textContent = `${Math.round(value / total * 100)}%`;
       line.append(label, track, pct); bars.append(line);
     }
+    const scope = document.createElement('p'); scope.className = 'coverage-note';
+    const label = value => ({ all: 'all included', some: 'some missing', none: 'none owned',
+      unsure: 'unsure' })[value] || 'not answered';
+    const coverage = state.account?.portfolio?.coverage;
+    scope.textContent = `Self-reported coverage: mutual funds ${label(coverage?.mutualFunds)}; direct stocks ${label(coverage?.directStocks)}. Only confirmed rows count here. To update this, say “I included all my mutual funds” or “I included some of my direct stocks”.`;
+    bars.append(scope);
   }
   const checks = buildAssistantReviewChecks(rows, state.account?.portfolio);
   const checkList = $('#review-questions');
@@ -767,6 +774,7 @@ $('#composer').addEventListener('submit', async event => {
   if (correction) {
     say('user', message); $('#message').value = '';
     if (correction.error) { say('note', correction.error); return; }
+    if (state.correction) { say('note', 'Apply or discard the change already shown before preparing another.'); return; }
     if (state.drafts.length || state.goalFacts) {
       say('note', 'Confirm or discard the current holding or goal draft before correcting a confirmed row.'); return;
     }
@@ -778,6 +786,20 @@ $('#composer').addEventListener('submit', async event => {
     state.correction = { ...prepared, revision: state.account.revision };
     renderCorrection();
     say('assistant', 'I prepared this change to your confirmed review. Check the holding and supplied facts in the preview, then choose “Apply correction” or discard it.');
+    return;
+  }
+  const coverageAnswer = message && !state.file ? parseCoverageAnswer(message) : null;
+  if (coverageAnswer) {
+    say('user', message); $('#message').value = '';
+    if (state.correction) { say('note', 'Apply or discard the change already shown before preparing another.'); return; }
+    if (state.drafts.length || state.goalFacts) {
+      say('note', 'Confirm or discard the current holding or goal draft before changing review coverage.'); return;
+    }
+    const prepared = prepareCoverageAnswer(state.account?.portfolio, coverageAnswer);
+    if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
+    state.correction = { ...prepared, revision: state.account.revision };
+    renderCorrection();
+    say('assistant', 'I staged your coverage answer. Check it against current statements, then apply or discard it.');
     return;
   }
   if (browserOnly && message && !state.file) {
@@ -852,6 +874,10 @@ $('#confirm-drafts').addEventListener('click', async () => {
         'The saved portfolio changed in another tab. Its latest holdings are shown here; your drafts are still waiting. Check them, then confirm again.');
       state.drafts = []; renderDrafts();
       say('note', `${prepared.addedCount} checked holding${prepared.addedCount === 1 ? '' : 's'} ${browserOnly ? 'added to this tab' : 'saved to your account'}. Ask a question when you are ready.`);
+      if (!state.coveragePrompted && !state.account?.portfolio?.coverage) {
+        state.coveragePrompted = true;
+        say('assistant', 'Before treating this as your full portfolio, have you included all your mutual funds and directly held stocks? You can reply “I included all my mutual funds”, “I included some of my direct stocks”, or “I have no mutual funds”. I will ask you to confirm the answer.');
+      }
     } catch (error) { say('note', error.message || 'The account save failed. Your drafts are still here.'); }
     finally { state.busy = false; renderDrafts(); renderCredits(); renderGoalReview(); renderGoalDraft(); }
     return;
@@ -1001,7 +1027,7 @@ $('#clear-review').addEventListener('click', () => {
     return;
   }
   if (browserOnly) state.account = { portfolio: null, revision: 0 };
-  state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.history = []; clearFile();
+  state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; clearFile();
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Describe one holding or attach a CAMS Active Statement or holdings report. After you confirm a draft, this browser review can answer factual questions.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');

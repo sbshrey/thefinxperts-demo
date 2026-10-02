@@ -99,5 +99,9 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
     return { portfolio: null, errors: ['The saved coverage answer says this asset type is absent. Check that answer before saving new holdings.'] };
   }
   portfolio.holdings.push(...added);
+  if (portfolio.coverage?.mutualFunds === 'all' && added.some(row => row.type === 'Mutual fund'))
+    portfolio.coverage.mutualFunds = 'unsure';
+  if (portfolio.coverage?.directStocks === 'all' && added.some(row => row.type === 'Stock'))
+    portfolio.coverage.directStocks = 'unsure';
   return { portfolio, addedCount: added.length, errors: [] };
 }

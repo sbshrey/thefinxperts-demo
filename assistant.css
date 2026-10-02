@@ -115,6 +115,7 @@ body{margin:0}
 .asset-row{display:grid;grid-template-columns:58px 1fr 38px;align-items:center;gap:9px;margin:9px 0;font-size:12px}
 .asset-track{height:7px;background:#e8eee9;border-radius:10px;overflow:hidden}
 .asset-fill{height:100%;background:#58a979;border-radius:10px}
+.asset-bars .coverage-note{margin:12px 0 0;padding-top:10px;border-top:1px solid #e9eee9;font-size:11px;line-height:1.45;color:#61776b}
 .holding-item{border-top:1px solid #eef1ee;padding:10px 0;font-size:12px}
 .holding-item:first-child{border-top:0}
 .holding-item strong{display:block;font-size:13px}

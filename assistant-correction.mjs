@@ -36,6 +36,41 @@ export function parseHoldingCorrection(message, today = new Date()) {
   return null;
 }
 
+/** One self-reported completeness answer; an import never proves coverage. */
+export function parseCoverageAnswer(message) {
+  if (typeof message !== 'string' || message.length > 1500) return null;
+  const input = message.trim();
+  const included = /^i (?:have )?included (all|some) (?:of )?my (mutual funds|direct stocks)[.!]?$/i.exec(input);
+  const none = /^i have no (mutual funds|direct stocks)[.!]?$/i.exec(input);
+  const unsure = /^i(?: am|'m) (?:unsure|not sure) (?:whether i included (?:all of )?)?my (mutual funds|direct stocks)[.!]?$/i.exec(input);
+  if (!included && !none && !unsure) return null;
+  const type = (included?.[2] || none?.[1] || unsure?.[1]).toLowerCase();
+  return { field: type === 'mutual funds' ? 'mutualFunds' : 'directStocks',
+    answer: included?.[1].toLowerCase() || (none ? 'none' : 'unsure') };
+}
+
+export function prepareCoverageAnswer(saved, parsed) {
+  if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(saved.goals))
+    return { portfolio: null, errors: ['Add a confirmed holding before checking review coverage.'] };
+  if (!parsed || !['mutualFunds', 'directStocks'].includes(parsed.field) ||
+      !['all', 'some', 'none', 'unsure'].includes(parsed.answer))
+    return { portfolio: null, errors: ['Answer whether all, some or none are included, or say you are unsure.'] };
+  const label = parsed.field === 'mutualFunds' ? 'mutual funds' : 'direct stocks';
+  if (parsed.answer === 'none' && saved.holdings.some(row => row.type ===
+      (parsed.field === 'mutualFunds' ? 'Mutual fund' : 'Stock')))
+    return { portfolio: null, errors: [`This review already includes ${label}. Check those rows before saying you have none.`] };
+  if (saved.coverage?.[parsed.field] === parsed.answer)
+    return { portfolio: null, errors: [`Your ${label} coverage answer already says ${parsed.answer}.`] };
+  const portfolio = structuredClone(saved);
+  portfolio.coverage = { mutualFunds: 'unsure', directStocks: 'unsure', ...portfolio.coverage,
+    [parsed.field]: parsed.answer };
+  const words = { all: 'all included', some: 'some included; others missing',
+    none: 'none owned', unsure: 'unsure' };
+  return { portfolio, errors: [],
+    description: `Set self-reported ${label} coverage to “${words[parsed.answer]}”. The other coverage answer stays ${words[portfolio.coverage[parsed.field === 'mutualFunds' ? 'directStocks' : 'mutualFunds']]}. This answer changes only the scope label; it does not add or remove a holding. Check it against your current statements.`,
+    result: `Your self-reported ${label} coverage is now ${words[parsed.answer]}. The review still uses only confirmed holdings; no accounts or statements were independently checked.` };
+}
+
 function findRow(holdings, selector) {
   const numbered = /^(?:holding\s+)?#?(\d{1,3})$/i.exec(selector);
   if (numbered) {
