@@ -49,7 +49,9 @@ export function prepareAssistantGoalCommand(saved, command, { newId = () => cryp
     if (portfolio.goals.length >= 10) return { portfolio: null, errors: ['This account already has ten goals.'] };
     const id = newId();
     portfolio.goals.push({ id, name: command.goalName, age: null, years: null, target: null,
-      monthlyContribution: 0, returnPct: 0, inflationPct: 0, confirmed: false, linkedIds: [] });
+      monthlyContribution: 0, returnPct: 0, inflationPct: 0,
+      assumptionsChecked: { monthlyContribution: false, returnPct: false, inflationPct: false },
+      confirmed: false, linkedIds: [] });
     portfolio.activeGoalId = id;
     return { portfolio, errors: [], description: `Created ${command.goalName} as an unfinished goal and selected it.` };
   }
@@ -136,6 +138,11 @@ export function prepareAssistantGoalSave(saved, facts, { newId = () => crypto.ra
         (['age', 'years'].includes(field) && !Number.isInteger(value)))
       return { portfolio: null, errors: [`Check the ${field} value before saving.`] };
     goal[field] = value;
+  }
+  for (const field of ['monthlyContribution', 'returnPct', 'inflationPct']) {
+    if (facts[field] === undefined) continue;
+    goal.assumptionsChecked = { monthlyContribution: false, returnPct: false, inflationPct: false,
+      ...goal.assumptionsChecked, [field]: true };
   }
   if (Object.hasOwn(facts, 'targetMix')) {
     if (facts.targetMix === null) delete goal.targetMix;

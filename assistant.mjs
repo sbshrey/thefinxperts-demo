@@ -330,8 +330,14 @@ function renderGoalReview() {
       root.append(button);
     }
   }
-  if (review.scenario) root.append(paragraph(
-    `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Entered assumptions: ${money(review.assumptions.monthlyContribution)}/month, ${review.assumptions.returnPct}% annual growth and ${review.assumptions.inflationPct}% inflation. Zero values may be initial placeholders. This is arithmetic, not a forecast.`));
+  if (review.scenarioStatus === 'assumptions') {
+    const names = { monthlyContribution: 'monthly contribution', returnPct: 'annual growth assumption',
+      inflationPct: 'annual inflation assumption' };
+    root.append(paragraph(`Future illustration paused until you confirm your ${review.missingAssumptions.map(field => names[field]).join(', ')}. In chat, use “monthly contribution ₹5,000”, “growth assumption 0%” and “inflation assumption 0%” with values you choose. A zero is valid when you deliberately choose it.`));
+  } else if (review.scenarioStatus === 'valuation_dates') {
+    root.append(paragraph('Future illustration paused until the linked holding dates are checked. Refresh missing, future or old values from their source.'));
+  } else if (review.scenario) root.append(paragraph(
+    `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Your confirmed assumptions: ${money(review.assumptions.monthlyContribution)}/month, ${review.assumptions.returnPct}% annual growth and ${review.assumptions.inflationPct}% inflation. This is arithmetic, not a forecast.`));
 }
 
 async function assignGoalHoldings() {

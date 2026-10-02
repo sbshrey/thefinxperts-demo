@@ -17,7 +17,13 @@ import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
-    returnPct: 0, inflationPct: 0, equityDropPct: 20, confirmed: false, linkedIds: sampleHoldings.map(holding => holding.id) };
+    returnPct: 0, inflationPct: 0, confirmed: false, linkedIds: sampleHoldings.map(holding => holding.id) };
+}
+function resetExampleGoal(goal) {
+  const { assumptionsChecked, equityDropPct, affordableLoss, tolerableLoss,
+    emergencyFunding, ...rest } = goal;
+  return { ...rest, age: null, years: null, target: null, monthlyContribution: 0,
+    returnPct: 0, inflationPct: 0, confirmed: false };
 }
 const firstGoal = demoGoal();
 const state = { holdings: structuredClone(sampleHoldings), source: 'demo', goals: [firstGoal], activeGoalId: firstGoal.id, goal: firstGoal, reserve: null, coverage: null };
@@ -953,7 +959,12 @@ $('#goal-form').addEventListener('submit', event => {
     return;
   }
   $('#form-error').textContent = '';
-  const details = { name: $('#goal-name').value.trim() || 'My goal', years, target, age, monthlyContribution, returnPct, inflationPct, equityDropPct, confirmed: true };
+  const assumptionsOpen = $('#goal-assumptions').open;
+  const checked = assumptionsOpen ? { monthlyContribution: true, returnPct: true, inflationPct: true } :
+    creatingGoal ? null : state.goal.assumptionsChecked;
+  const details = { name: $('#goal-name').value.trim() || 'My goal', years, target, age, monthlyContribution, returnPct, inflationPct,
+    ...(checked ? { assumptionsChecked: { ...checked } } : {}),
+    ...(assumptionsOpen ? { equityDropPct } : {}), confirmed: true };
   if (emergencyFunding) details.emergencyFunding = emergencyFunding;
   if (creatingGoal) {
     const added = { id: crypto.randomUUID(), ...details, linkedIds: [] };
@@ -1104,8 +1115,8 @@ function clearCurrentReview() {
   state.reserve = null;
   fillReserveForm();
   const fromExample = state.source === 'demo';
-  state.goals = state.goals.map(({ allocationPct: ignored, ...goal }) => ({ ...goal, linkedIds: [],
-    ...(fromExample ? { age: null, years: null, target: null, confirmed: false } : {}) }));
+  state.goals = state.goals.map(({ allocationPct: ignored, ...goal }) => ({
+    ...(fromExample ? resetExampleGoal(goal) : goal), linkedIds: [] }));
   state.goal = state.goals.find(goal => goal.id === state.activeGoalId);
   state.source = 'user';
   if (fromExample) fillGoalForm(state.goal);
@@ -1660,8 +1671,7 @@ function applyImport(mode) {
     return { ...checked, name, id: crypto.randomUUID(), exposure: holding.type === 'Stock' ? { [name]: 1 } : null };
   });
   const fromExample = mode === 'replace' && state.source === 'demo';
-  if (fromExample) state.goals = state.goals.map(goal =>
-    ({ ...goal, age: null, years: null, target: null, confirmed: false }));
+  if (fromExample) state.goals = state.goals.map(resetExampleGoal);
   state.goals = mode === 'add'
     ? linkAddedHoldings(state.goals, state.activeGoalId, imported)
     : relinkAfterReplacingHoldings(state.goals, state.activeGoalId, imported);

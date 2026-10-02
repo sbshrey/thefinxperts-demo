@@ -18,7 +18,7 @@ function validCoverage(value) {
     COVERAGE.has(value.mutualFunds) && COVERAGE.has(value.directStocks);
 }
 const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin', 'valuationOrigin', 'navEstimate', 'shares', 'stockEstimate', 'costBasis', 'costBasisAsOf'];
-const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
+const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'assumptionsChecked', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
 export function buildReviewBackup(state) {
@@ -121,6 +121,10 @@ export function parseReviewBackup(text) {
         !(draft && goal.target === null || boundedNumber(goal.target, 1_000, 1_000_000_000_000)) ||
         !boundedNumber(goal.monthlyContribution, 0, 100_000_000) ||
         !boundedNumber(goal.returnPct, -20, 13) || !boundedNumber(goal.inflationPct, -5, 15) ||
+        (goal.assumptionsChecked !== undefined && (!record(goal.assumptionsChecked) ||
+          Object.keys(goal.assumptionsChecked).length !== 3 ||
+          !['monthlyContribution', 'returnPct', 'inflationPct'].every(key =>
+            typeof goal.assumptionsChecked[key] === 'boolean'))) ||
         (goal.equityDropPct !== undefined && !boundedNumber(goal.equityDropPct, 0, 60)) ||
         (goal.affordableLoss !== undefined && !boundedNumber(goal.affordableLoss, 0, 10_000_000_000)) ||
         (goal.tolerableLoss !== undefined && !boundedNumber(goal.tolerableLoss, 0, 10_000_000_000)) ||

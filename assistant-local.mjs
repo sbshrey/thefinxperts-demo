@@ -84,11 +84,26 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
   }
   const limitRequest = /^loss i can (cover|tolerate)\s+(.+?)[.!]?$/i.exec(input);
   if (limitRequest) {
-    const raw = limitRequest[2].trim();
-    const value = /^(?:₹\s*)?0$/.test(raw) ? 0 : parseAmount(raw);
+    const value = enteredAmount(limitRequest[2]);
     if (value === null || value > 10_000_000_000)
       return { error: 'Enter an amount in rupees for the loss you can cover or tolerate, such as “loss I can cover ₹50,000”.' };
     return { facts: { [limitRequest[1].toLowerCase() === 'cover' ? 'affordableLoss' : 'tolerableLoss']: value } };
+  }
+  const contribution = /^monthly contribution(?: is)?\s+(.+?)[.!]?$/i.exec(input);
+  if (contribution) {
+    const value = enteredAmount(contribution[1]);
+    if (value === null || value > 100_000_000)
+      return { error: 'Enter the monthly amount you plan to add in rupees, such as “monthly contribution ₹5,000”, or 0.' };
+    return { facts: { monthlyContribution: value } };
+  }
+  const assumption = /^(growth|inflation) assumption(?: is)?\s+(.+?)[.!]?$/i.exec(input);
+  if (assumption) {
+    const match = /^(-?\d{1,2}(?:\.\d{1,2})?)%$/.exec(assumption[2].trim());
+    const value = Number(match?.[1]);
+    const growth = assumption[1].toLowerCase() === 'growth';
+    if (!match || value < (growth ? -20 : -5) || value > (growth ? 13 : 15))
+      return { error: `Choose your own ${growth ? 'growth' : 'inflation'} assumption from ${growth ? '-20% to 13%' : '-5% to 15%'}. This is an illustration, not a forecast.` };
+    return { facts: { [growth ? 'returnPct' : 'inflationPct']: value } };
   }
   let field;
   let value;
@@ -119,10 +134,21 @@ function amount(digits, unit) {
   return base * ({ lakh: 100_000, crore: 10_000_000 }[unit?.toLowerCase()] || 1);
 }
 
+function enteredAmount(raw) {
+  const input = raw.trim();
+  return /^(?:₹\s*)?0$/.test(input) ? 0 : parseAmount(input);
+}
+
 export function nextBrowserGoalQuestion(goal, pending = {}) {
   if (!goal) return 'Name a goal by saying “create goal named Retirement”.';
   if (goal.age == null && pending.age == null) return 'How old are you now? You can reply “age 32”.';
   if (goal.years == null && pending.years == null) return 'How many years until this goal? You can reply “in 10 years”.';
   if (goal.target == null && pending.target == null) return 'What amount would you need in today’s rupees? You can reply “target 50 lakh”.';
+  if (!goal.assumptionsChecked?.monthlyContribution && pending.monthlyContribution === undefined)
+    return 'Optional for a future illustration: what monthly amount do you plan to add? Reply “monthly contribution ₹5,000” or “monthly contribution 0”.';
+  if (!goal.assumptionsChecked?.returnPct && pending.returnPct === undefined)
+    return 'Optional: what annual growth assumption do you want to test? Reply “growth assumption 0%” for a no-growth baseline, or choose your own rate.';
+  if (!goal.assumptionsChecked?.inflationPct && pending.inflationPct === undefined)
+    return 'Optional: what annual inflation assumption do you want to test? Reply “inflation assumption 0%” for a fixed-cost baseline, or choose your own rate.';
   return 'Check the goal facts shown above, then choose “Save goal facts”.';
 }

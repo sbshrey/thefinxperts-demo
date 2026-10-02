@@ -13,6 +13,7 @@ function basePortfolio(newId) {
   const goalId = newId();
   return { version: 2, holdings: [], goals: [{ id: goalId, name: 'My goal', age: null, years: null,
     target: null, monthlyContribution: 0, returnPct: 0, inflationPct: 0,
+    assumptionsChecked: { monthlyContribution: false, returnPct: false, inflationPct: false },
     confirmed: false, linkedIds: [] }], activeGoalId: goalId };
 }
 
