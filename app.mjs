@@ -1,7 +1,7 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs';
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
-import { validateImportReview, validateImportMerge } from './import-review.mjs';
+import { validateImportReview, validateImportMerge, planActiveStatementRefresh } from './import-review.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { buildReadableReport } from './readable-report.mjs';
@@ -987,6 +987,8 @@ function refreshImportSummary() {
   mergeButton.disabled = errors.length > 0 || mergeErrors.length > 0;
   mergeValidation.hidden = !canAdd || mergeErrors.length === 0;
   mergeValidation.textContent = mergeErrors.join(' ');
+  $('#refresh-statement').hidden = label !== 'Active Statement' || !canAdd ||
+    !planActiveStatementRefresh(state.holdings, pendingImport);
 }
 
 function renderImportRows() {
@@ -1179,6 +1181,21 @@ $('#preview-cas').addEventListener('click', async () => {
 });
 function applyImport(mode) {
   if (!pendingImport || validateImportReview(pendingImport).length) return;
+  if (mode === 'refresh') {
+    if (state.source !== 'user' || $('#import-preview').dataset.source !== 'Active Statement') return;
+    const refresh = planActiveStatementRefresh(state.holdings, pendingImport);
+    if (!refresh) return;
+    state.holdings = refresh.holdings;
+    pendingImport = null;
+    pendingPerformance.clear();
+    $('#active-file').value = '';
+    $('#active-password').value = '';
+    $('#import-preview').hidden = true;
+    render();
+    $('#live-status').textContent = `${refresh.updatedCount} statement holdings refreshed. Stocks and goal links kept.`;
+    $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
   if (mode === 'add' && (state.source !== 'user' || !state.holdings.length || validateImportMerge(state.holdings, pendingImport).length)) return;
   const imported = pendingImport.map(holding => {
     const name = holding.name.trim();
@@ -1206,6 +1223,7 @@ function applyImport(mode) {
 }
 $('#confirm-import').addEventListener('click', () => applyImport('replace'));
 $('#merge-import').addEventListener('click', () => applyImport('add'));
+$('#refresh-statement').addEventListener('click', () => applyImport('refresh'));
 $('#cancel-import').addEventListener('click', () => {
   pendingImport = null;
   pendingPerformance.clear();

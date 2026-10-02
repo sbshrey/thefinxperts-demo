@@ -68,6 +68,39 @@ export function validateImportMerge(existing, incoming) {
   return [];
 }
 
+/** Refresh one complete Active Statement snapshot without changing holding IDs or goal links. */
+export function planActiveStatementRefresh(existing, incoming) {
+  if (!Array.isArray(existing) || !Array.isArray(incoming) || validateImportReview(incoming).length ||
+      !incoming.length || incoming.some(holding => holding.type !== 'Mutual fund')) return null;
+  const funds = existing.filter(holding => holding.type === 'Mutual fund');
+  if (!funds.length || funds.length !== incoming.length ||
+      funds.some(holding => holding.granularity !== 'fund_house' &&
+        !(holding.statementCategory && holding.units)) ||
+      incoming.some(holding => holding.granularity !== 'fund_house' &&
+        !(holding.statementCategory && holding.units))) return null;
+  const key = holding => JSON.stringify([holding.amc?.trim().toLocaleLowerCase('en-IN'),
+    holding.name?.trim().toLocaleLowerCase('en-IN'), holding.asset,
+    holding.granularity || 'scheme']);
+  const currentByKey = new Map(funds.map(holding => [key(holding), holding]));
+  const incomingByKey = new Map(incoming.map(holding => [key(holding), holding]));
+  if (currentByKey.size !== funds.length || incomingByKey.size !== incoming.length ||
+      [...incomingByKey.keys()].some(item => !currentByKey.has(item))) return null;
+  const date = incoming[0].asOf;
+  const indiaToday = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  if (!isRealIsoDate(date) || incoming.some(holding => holding.asOf !== date) ||
+      date > indiaToday || funds.some(holding => !isRealIsoDate(holding.asOf) || holding.asOf >= date)) return null;
+  const refreshed = existing.map(holding => {
+    if (holding.type !== 'Mutual fund') return holding;
+    const next = incomingByKey.get(key(holding));
+    return { ...holding, value: next.value, asOf: next.asOf,
+      ...(next.units ? { units: next.units } : {}),
+      ...(next.statementCategory ? { statementCategory: next.statementCategory } : {}) };
+  });
+  if (refreshed.reduce((sum, holding) => sum + Number(holding.value), 0) > 1_000_000_000_000)
+    return null;
+  return { holdings: refreshed, updatedCount: funds.length };
+}
+
 function isRealIsoDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
