@@ -310,7 +310,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
 }
 
 /** Leave ambiguous or absent plan names unknown; an AMC summary is handled by the caller. */
-function planFromName(name) {
+export function planFromName(name) {
   if (typeof name !== 'string') return 'Unclear';
   const direct = /\bdirect\s*plan\b|(?:^|[-–(])\s*direct\s*(?=$|[-–)])/i.test(name);
   const regular = /\bregular\s*plan\b|(?:^|[-–(])\s*regular\s*(?=$|[-–)])/i.test(name);

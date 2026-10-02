@@ -1,4 +1,4 @@
-import { valuationDateIssue } from './analysis.mjs';
+import { planFromName, valuationDateIssue } from './analysis.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
@@ -17,7 +17,26 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
   const answer = (text, basis, limitation, href = '#holdings', action = 'Check my holdings') =>
     ({ text, basis, limitation, href, action });
 
-  if (/\b(buy|sell|switch|redeem|rebalance|rebalancing|optimi[sz](?:e|ation|ing)?|recommend|what should i do|should i hold|which fund|best fund|right mix|ideal mix|suitable|how much should i invest)\b/.test(input))
+  const planQuestion = /\b(?:regular|direct)\s+plans?\b/.test(input) &&
+    /^(?:which|what|how many|how much|do i|show|list)\b/.test(input);
+  const planAction = /\b(?:buy|sell|switch|redeem|rebalance|optimi[sz]\w*|recommend\w*|advis\w*|should|best|choose|pick|prefer|better|convert|move|invest|suitable|trade)\b/.test(input);
+  if (planQuestion && !planAction) {
+    const funds = valid.filter(row => row.type === 'Mutual fund');
+    const regular = funds.filter(row => row.granularity !== 'fund_house' && planFromName(row.name) === 'Regular');
+    const direct = funds.filter(row => row.granularity !== 'fund_house' && planFromName(row.name) === 'Direct');
+    const unclear = funds.filter(row => row.granularity === 'fund_house' || planFromName(row.name) === 'Unclear');
+    const value = rows => rows.reduce((sum, row) => sum + Number(row.value), 0);
+    const examples = (label, rows) => rows.length ?
+      ` ${label}: ${rows.slice(0, 3).map(row => row.name).join('; ')}${rows.length > 3 ? `; and ${rows.length - 3} more` : ''}.` : '';
+    const named = examples('Regular-labelled rows', regular) + examples('Direct-labelled rows', direct);
+    return answer(funds.length ?
+      `${lead}${regular.length} mutual-fund ${regular.length === 1 ? 'row says' : 'rows say'} Regular Plan (${money(value(regular))}); ${direct.length} ${direct.length === 1 ? 'row says' : 'rows say'} Direct Plan (${money(value(direct))}); ${unclear.length} ${unclear.length === 1 ? 'row has' : 'rows have'} no clear plan label (${money(value(unclear))}).${named}` :
+      'No mutual-fund holdings are entered, so there are no plan labels to compare.',
+      `Classified only explicit Regular Plan or Direct Plan words in ${funds.length} entered mutual-fund names; fund-house summaries count as unclear. The entered values are dated, not current quotes.`,
+      'Names and expense ratios are not independently verified. A plan label alone does not establish current TER, tax, exit load, service value or whether to switch.', '#holdings', 'Check fund plan labels');
+  }
+
+  if (/\b(buy|sell|switch|redeem|rebalance|rebalancing|optimi[sz](?:e|ation|ing)?|recommend\w*|what should i do|should i hold|which fund|best fund|right mix|ideal mix|suitable|how much should i invest|choose|pick|prefer|better|convert|move)\b/.test(input))
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
