@@ -334,7 +334,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.statementCategory ? ` · statement category: ${holding.statementCategory}` : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const goalLink = document.createElement('label');
     goalLink.className = 'holding-goal-link';
     const goalCheckbox = document.createElement('input');
@@ -528,6 +528,7 @@ function render() {
         const identifierChanged = isinInput && isin !== (item.isin || '');
         const updated = { ...item, value, asOf: asOf || null, asset,
           ...((asset !== item.asset || (identifierChanged && item.type === 'Mutual fund')) ? { exposure: null } : {}) };
+        if (asset !== item.asset || identifierChanged) delete updated.statementCategory;
         if (isinInput) {
           if (isin) updated.isin = isin;
           else delete updated.isin;
@@ -1006,6 +1007,7 @@ function renderImportRows() {
       if (holding.isin) parts.push(`ISIN as supplied: ${holding.isin}`);
       if (holding.amfi) parts.push(`AMFI code: ${holding.amfi}`);
       if (holding.units) parts.push(`Statement units: ${holding.units}`);
+      if (holding.statementCategory) parts.push(`Statement category: ${holding.statementCategory}`);
       if (pendingPerformance.has(holding.id)) parts.push(`Indicative statement-period XIRR: ${pendingPerformance.get(holding.id).toFixed(2)}% a year`);
       if (holding.granularity === 'fund_house') parts.push('Fund-house summary, not an individual scheme');
       metadata.textContent = parts.length ? parts.join(' · ') : 'No fund-house or instrument identifier supplied.';
@@ -1027,7 +1029,7 @@ function renderImportRows() {
     name.type = 'text'; name.maxLength = 200; name.value = holding.name;
     name.disabled = holding.granularity === 'fund_house';
     name.addEventListener('input', () => {
-      if (name.value !== holding.name) { holding.name = name.value; holding.isin = null; holding.amfi = null; pendingPerformance.delete(holding.id); refreshMetadata(); }
+      if (name.value !== holding.name) { holding.name = name.value; holding.isin = null; holding.amfi = null; delete holding.statementCategory; pendingPerformance.delete(holding.id); refreshMetadata(); }
       rowSummary(); refreshImportSummary();
     });
     field('Fund or stock name', name);
@@ -1066,7 +1068,7 @@ function renderImportRows() {
     asset.addEventListener('change', () => {
       const previous = holding.asset;
       holding.asset = asset.value || null;
-      if (previous && previous !== holding.asset) { holding.isin = null; holding.amfi = null; pendingPerformance.delete(holding.id); }
+      if (previous && previous !== holding.asset) { holding.isin = null; holding.amfi = null; delete holding.statementCategory; pendingPerformance.delete(holding.id); }
       refreshMetadata(); rowSummary(); refreshImportSummary();
     });
     field('Asset category', asset);

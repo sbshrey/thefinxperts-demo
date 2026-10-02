@@ -7,7 +7,7 @@ const AMFI = /^\d{5,8}$/;
 const TYPES = new Set(['Mutual fund', 'Stock']);
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId', 'reserve'];
-const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'expenseRatioPct', 'expenseRatioAsOf'];
+const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
@@ -18,6 +18,7 @@ export function buildReviewBackup(state) {
       id: holding.id, name: holding.name, type: holding.type, asset: holding.asset, value: holding.value,
       asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
       granularity: holding.granularity || null, units: holding.units || null,
+      ...(holding.statementCategory ? { statementCategory: holding.statementCategory } : {}),
       ...(holding.expenseRatioPct !== undefined ? { expenseRatioPct: holding.expenseRatioPct,
         expenseRatioAsOf: holding.expenseRatioAsOf } : {}),
     })),
@@ -58,6 +59,11 @@ export function parseReviewBackup(text) {
         (holding.units != null && (typeof holding.units !== 'string' ||
           !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/.test(holding.units) || !/[1-9]/.test(holding.units) ||
           holding.type !== 'Mutual fund' || holding.granularity === 'fund_house')) ||
+        (holding.statementCategory !== undefined &&
+          (typeof holding.statementCategory !== 'string' ||
+           !/^[A-Za-z][A-Za-z0-9 &/().,+-]{0,79}$/.test(holding.statementCategory) ||
+           /\d{8,}/.test(holding.statementCategory) || holding.type !== 'Mutual fund' ||
+           holding.granularity === 'fund_house')) ||
         (holding.expenseRatioPct !== undefined && (!boundedNumber(holding.expenseRatioPct, 0, 10) ||
           !isRealIsoDate(holding.expenseRatioAsOf) || holding.expenseRatioAsOf > indiaToday() ||
           holding.type !== 'Mutual fund' || holding.granularity === 'fund_house')) ||

@@ -26,6 +26,12 @@ export function validateImportReview(holdings) {
         !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/.test(holding.units) ||
         !/[1-9]/.test(holding.units) || holding.type !== 'Mutual fund' || holding.granularity === 'fund_house'))
       errors.push(`Holding ${row}: check the scheme units.`);
+    if (holding.statementCategory != null &&
+        (typeof holding.statementCategory !== 'string' ||
+         !/^[A-Za-z][A-Za-z0-9 &/().,+-]{0,79}$/.test(holding.statementCategory) ||
+         /\d{8,}/.test(holding.statementCategory) || holding.type !== 'Mutual fund' ||
+         holding.granularity === 'fund_house'))
+      errors.push(`Holding ${row}: check the statement category.`);
     if (holding.type === 'Stock' && (holding.amc || holding.amfi)) errors.push(`Holding ${row}: stock rows cannot carry fund-house or AMFI fields.`);
     if (holding.granularity != null &&
         (holding.granularity !== 'fund_house' || holding.type !== 'Mutual fund' || !holding.amc || holding.isin || holding.amfi))

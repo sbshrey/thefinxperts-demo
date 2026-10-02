@@ -103,7 +103,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     const share = goalShare(goal, holding.id);
     const label = share ? `${share}% (${rupees(Number(holding.value) * share / 100)}) linked to selected goal` : 'not linked to selected goal';
     const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
-    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
+    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
   }
   lines.push('', 'IMPORTANT LIMITS',
     'Values and asset labels are as entered or imported; this is not a live price feed.',

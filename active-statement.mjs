@@ -95,15 +95,17 @@ function parseSchemeRows(html, summaries, asOf) {
     if (!schemeMatch || cells.length !== 8 || cells[1] || cells[0].length > 30)
       return fail();
     const name = cleanText(schemeMatch[1]);
+    const statementCategory = cleanText(cells[2]);
     const units = numericString(cells[3], 6, true);
     const nav = numericString(cells[4], 6, true);
     const valuePaise = amountPaise(cells[5]);
-    if (!name || name.length > 200 || units === null || !nav || valuePaise === null ||
+    if (!name || name.length > 200 || !/^[A-Za-z][A-Za-z0-9 &/().,+-]{0,79}$/.test(statementCategory) ||
+        /\d{8,}/.test(statementCategory) || units === null || !nav || valuePaise === null ||
         (valuePaise > 0 && (Number(units) === 0 || Number(nav) === 0)) ||
         Math.abs(Number(units) * Number(nav) - valuePaise / 100) > Math.max(1, valuePaise / 10_000_000))
       return fail();
     if (!groups.has(code)) groups.set(code, []);
-    if (valuePaise > 0) groups.get(code).push({ name, units, valuePaise });
+    if (valuePaise > 0) groups.get(code).push({ name, statementCategory, units, valuePaise });
   }
   if (!detected) return { detected: false, holdings: null };
   const positiveSummaries = [...summaries].map(([amc, values]) => ({ amc, ...values,
@@ -133,7 +135,8 @@ function parseSchemeRows(html, summaries, asOf) {
     items.forEach((item, part) => holdings.push({
       id: `active-scheme-${holdings.length + 1}`, name: item.name, type: 'Mutual fund',
       asset: uniqueMask & (1 << part) ? 'Equity' : 'Other', value: item.valuePaise / 100,
-      asOf, amc: summary.amc, isin: null, amfi: null, units: item.units, exposure: null,
+      asOf, amc: summary.amc, isin: null, amfi: null, units: item.units,
+      statementCategory: item.statementCategory, exposure: null,
     }));
   }
   return { detected: true, holdings: holdings.length && used.size === positiveSummaries.length ? holdings : null };
