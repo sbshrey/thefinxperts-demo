@@ -1,7 +1,7 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent } from './analysis.mjs';
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
-import { validateImportReview, validateImportMerge, planActiveStatementRefresh } from './import-review.mjs';
+import { validateImportReview, validateImportMerge, isRepeatedActiveStatement, planActiveStatementRefresh } from './import-review.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { buildReadableReport } from './readable-report.mjs';
@@ -1003,13 +1003,19 @@ function refreshImportSummary() {
   mergeButton.disabled = errors.length > 0 || mergeErrors.length > 0;
   mergeValidation.hidden = !canAdd || mergeErrors.length === 0;
   mergeValidation.textContent = mergeErrors.join(' ');
-  const refresh = label === 'Active Statement' && canAdd ?
+  const repeated = label === 'Active Statement' && canAdd &&
+    isRepeatedActiveStatement(state.holdings, pendingImport);
+  const refresh = label === 'Active Statement' && canAdd && !repeated ?
     planActiveStatementRefresh(state.holdings, pendingImport) : null;
-  $('#refresh-statement').hidden = !refresh;
-  $('#refresh-explanation').hidden = !refresh;
+  $('#refresh-statement').hidden = !refresh && !repeated;
+  $('#refresh-explanation').hidden = !refresh && !repeated;
   $('#refresh-changes').hidden = !refresh;
   const changeList = $('#refresh-change-list');
   changeList.replaceChildren();
+  if (repeated) {
+    $('#refresh-statement').textContent = 'Keep my review — no changes';
+    $('#refresh-explanation').textContent = `These ${count} fund rows already match the statement date and values in your review, including scheme units where available. Keep existing goal links, any added fund details and direct stocks.`;
+  }
   if (refresh) {
     $('#refresh-statement').textContent = refresh.added.length || refresh.removed.length ?
       'Update funds from this statement' : 'Refresh matched funds';
@@ -1227,6 +1233,16 @@ function applyImport(mode) {
   if (!pendingImport || validateImportReview(pendingImport).length) return;
   if (mode === 'refresh') {
     if (state.source !== 'user' || $('#import-preview').dataset.source !== 'Active Statement') return;
+    if (isRepeatedActiveStatement(state.holdings, pendingImport)) {
+      pendingImport = null;
+      pendingPerformance.clear();
+      $('#active-file').value = '';
+      $('#active-password').value = '';
+      $('#import-preview').hidden = true;
+      $('#live-status').textContent = 'This Active Statement is already in the review. No holdings or goal links changed.';
+      $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     const refresh = planActiveStatementRefresh(state.holdings, pendingImport);
     if (!refresh) return;
     if (refresh.removed.length && !window.confirm(`${refresh.removed.length} existing fund ${refresh.removed.length === 1 ? 'row is' : 'rows are'} absent from this newer statement. Remove those rows and their goal links? Check the statement is complete before continuing.`)) return;
