@@ -20,8 +20,9 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
   const scenarioStatus = missingAssumptions.length ? 'assumptions' :
     result.goalDateCheck.count ? 'valuation_dates' : result.goalAccessCheck.count ? 'access_uncertain' :
       result.scenario ? 'ready' : 'invalid';
-  return { kind: 'confirmed', name: goal.name, years: goal.years, target: goal.target,
+  return { kind: 'confirmed', name: goal.name, age: goal.age, years: goal.years, target: goal.target,
     linkedValue: result.goalTotal, linkedCount: result.goalHoldingCount, gapToday: result.goalGap,
+    coverage: portfolio.coverage || null,
     dateCheckCount: result.goalDateCheck.count, accessCheck: result.goalAccessCheck,
     scenario: scenarioStatus === 'ready' ? result.scenario : null,
     scenarioStatus, missingAssumptions,

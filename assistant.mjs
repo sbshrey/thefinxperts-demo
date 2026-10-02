@@ -362,6 +362,11 @@ function renderGoalReview() {
     cell.append(small, strong); stats.append(cell);
   }
   root.append(stats);
+  if (Number.isInteger(review.age)) root.append(paragraph(
+    `You entered your age as ${review.age} today. This should be your age, even if the goal is for someone else; it does not set an asset mix.`));
+  const coverageLabel = value => ({ all: 'all included', some: 'some missing',
+    none: 'none owned', unsure: 'unsure' })[value] || 'not answered';
+  root.append(paragraph(`Snapshot scope: mutual funds ${coverageLabel(review.coverage?.mutualFunds)}; direct stocks ${coverageLabel(review.coverage?.directStocks)}. These are your answers, not verified account coverage. Goal figures use only confirmed holdings assigned here; missing investments are outside the calculation.`));
   root.append(paragraph(`${review.linkedCount} confirmed holding${review.linkedCount === 1 ? '' : 's'} assigned to this goal; ${review.dateCheckCount} need a valuation-date check. Other confirmed holdings are excluded from these goal figures.`));
   if (review.accessCheck.count) root.append(paragraph(
     `${money(review.accessCheck.value)} in manually entered other investments is linked to this goal. The gap today includes that gross value; access at the goal date has not been checked.`));
@@ -426,7 +431,7 @@ function renderGoalReview() {
   } else if (review.scenarioStatus === 'access_uncertain') {
     root.append(paragraph('Future illustration paused while linked other investments have no checked access date. Check the product terms and unlink them if they should not fund this goal.'));
   } else if (review.scenario) root.append(paragraph(
-    `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Your confirmed assumptions: ${money(review.assumptions.monthlyContribution)}/month, ${review.assumptions.returnPct}% annual growth and ${review.assumptions.inflationPct}% inflation. This is arithmetic, not a forecast.`));
+    `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Your confirmed assumptions: ${money(review.assumptions.monthlyContribution)}/month added at each month’s end, ${review.assumptions.returnPct}% constant annual growth and ${review.assumptions.inflationPct}% constant inflation. Only the assigned confirmed holdings start this calculation. This is arithmetic, not a forecast.`));
 }
 
 async function assignGoalHoldings() {
