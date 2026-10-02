@@ -101,7 +101,7 @@ function renderDrafts() {
   const list = document.createElement('ul');
   for (const row of state.drafts) {
     const item = document.createElement('li');
-    item.textContent = `${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}`;
+    item.textContent = `${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}`;
     list.append(item);
   }
   $('#draft-list').append(list);

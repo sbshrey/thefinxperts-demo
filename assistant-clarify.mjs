@@ -8,6 +8,9 @@ function focus(drafts) {
   if (value >= 0) return { index: value, field: 'value' };
   const stock = drafts.findIndex(row => row.type === 'Stock' && row.asset !== 'Equity');
   if (stock >= 0) return { index: stock, field: 'asset' };
+  const fund = drafts.findIndex(row => row.type === 'Mutual fund' && row.asset === 'Other' &&
+    row.granularity !== 'fund_house' && !row.assetChecked);
+  if (fund >= 0) return { index: fund, field: 'asset' };
   const date = drafts.findIndex(row => !row.asOf);
   return date >= 0 ? { index: date, field: 'asOf' } : null;
 }
@@ -19,7 +22,9 @@ export function nextDraftQuestion(drafts) {
   return {
     type: `Is “${name}” a mutual fund or a directly held stock?`,
     value: `What is the current value in rupees of “${name}”? Reply with an amount such as ₹50,000.`,
-    asset: `A directly held stock is equity. Please confirm “${name}” is a stock.`,
+    asset: drafts[pending.index].type === 'Stock' ?
+      `A directly held stock is equity. Please confirm “${name}” is a stock.` :
+      `Optional: is “${name}” an Equity, Debt or Gold fund? Reply with one category, or “mixed/unknown” and I will keep its category unknown. You can also confirm it as unknown.`,
     asOf: `Optional: what date was the value of “${name}” checked? Reply YYYY-MM-DD, or confirm without a date.`,
   }[pending.field];
 }
@@ -57,7 +62,13 @@ export function clarifyDrafts(drafts, message, today = new Date()) {
     const value = parseAmount(clean);
     if (value !== null) update = { value };
   } else if (field === 'asset') {
-    if (/^(?:(?:yes|correct|it is|it's|a)\s+)?(?:stock|equity)$/i.test(clean)) update = { asset: 'Equity' };
+    if (row.type === 'Stock') {
+      if (/^(?:(?:yes|correct|it is|it's|a)\s+)?(?:stock|equity)$/i.test(clean)) update = { asset: 'Equity' };
+    } else {
+      const category = /^(?:(?:it is|it's|an?|the fund is)\s+)?(equity|debt|gold|mixed|hybrid|unknown|not sure)$/i.exec(clean)?.[1]?.toLowerCase();
+      if (category) update = { asset: ['equity', 'debt', 'gold'].includes(category) ?
+        category[0].toUpperCase() + category.slice(1) : 'Other', assetChecked: true };
+    }
   } else if (field === 'asOf') {
     const date = /^(?:(?:as of|dated|on)\s+)?(\d{4}-\d{2}-\d{2})$/i.exec(clean)?.[1];
     const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
