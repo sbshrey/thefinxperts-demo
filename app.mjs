@@ -64,10 +64,11 @@ for (const prompt of document.querySelectorAll('[data-review-question]')) {
 $('#context-goal-link').addEventListener('click', () => { $('#goal-assumptions').open = true; });
 $('#deeper-review').open = window.matchMedia('(min-width: 800px)').matches;
 const indiaToday = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
-if (contextNeedsReview($('#market-context-card').dataset.nextReview, indiaToday())) {
-  $('#market-context-title').textContent = 'Earlier public data to recheck';
-  $('#market-context-status').textContent = 'This August update may have been superseded. Check the latest MoSPI CPI tables before revisiting your goal assumption.';
-  $('#market-context-status').classList.add('needs-review');
+for (const card of document.querySelectorAll('.market-context-card')) {
+  if (!contextNeedsReview(card.dataset.nextReview, indiaToday())) continue;
+  const status = card.querySelector('.market-context-status');
+  status.textContent = card.dataset.staleMessage;
+  status.classList.add('needs-review');
 }
 function validEnteredDate(value) {
   if (!value) return true;
