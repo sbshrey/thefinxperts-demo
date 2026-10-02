@@ -88,6 +88,16 @@ export function parseBrowserHoldingList(message, today = new Date()) {
 export function parseBrowserGoalFact(message, goal, pending = {}) {
   if (typeof message !== 'string' || !goal) return null;
   const input = message.trim();
+  const bundle = /^(?:i am |my age is |age )(\d{1,3})(?: years old)?\s*[,;]\s*(?:this )?goal (?:is )?in (\d{1,2}) years?\s*[,;]\s*target(?: in today['’]?s rupees)?(?: is)?\s+(?:₹\s*)?([\d,]+(?:\.\d{1,2})?)(?:\s*(lakh|crore))?(?:\s+in today['’]?s rupees)?[.!]?$/i.exec(input);
+  if (bundle) {
+    const age = Number(bundle[1]);
+    const years = Number(bundle[2]);
+    const target = amount(bundle[3], bundle[4]);
+    if (age < 18 || age > 100 || years < 1 || years > 50 ||
+        !Number.isInteger(target) || target < 1000 || target > 1_000_000_000_000)
+      return { error: 'Check your own age, the goal horizon and the target amount in today’s rupees before saving.' };
+    return { facts: { age, years, target } };
+  }
   if (/^clear goal mix[.!]?$/i.test(input)) return { facts: { targetMix: null } };
   const mixRequest = /^(?:my )?(?:goal|target) mix(?: is)?\s+(.+?)[.!]?$/i.exec(input);
   if (mixRequest) {
@@ -175,7 +185,7 @@ function enteredAmount(raw) {
 
 export function nextBrowserGoalQuestion(goal, pending = {}) {
   if (!goal) return 'Name a goal by saying “create goal named Retirement”.';
-  if (goal.age == null && pending.age == null) return 'How old are you now? You can reply “age 32”.';
+  if (goal.age == null && pending.age == null) return 'How old are you now? Reply “age 32”, or give all three facts together: “I am 32, goal in 20 years, target 50 lakh in today’s rupees”.';
   if (goal.years == null && pending.years == null) return 'How many years until this goal? You can reply “in 10 years”.';
   if (goal.target == null && pending.target == null) return 'What amount would you need in today’s rupees? You can reply “target 50 lakh”.';
   if (!goal.assumptionsChecked?.monthlyContribution && pending.monthlyContribution === undefined)

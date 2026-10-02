@@ -904,7 +904,8 @@ $('#composer').addEventListener('submit', async event => {
       state.goalFacts = { ...(state.goalFacts || {}), ...parsed.facts };
       state.goalDraftGoalId = selected.id;
       renderGoalDraft();
-      say('assistant', 'I staged that goal fact for you to check.', nextBrowserGoalQuestion(selected, state.goalFacts));
+      say('assistant', `I staged ${Object.keys(parsed.facts).length === 1 ? 'that goal fact' : 'those goal facts'} for you to check.`,
+        nextBrowserGoalQuestion(selected, state.goalFacts));
       return;
     }
   }
