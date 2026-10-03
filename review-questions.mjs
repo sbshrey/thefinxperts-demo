@@ -1,13 +1,13 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=89e259bb5b55';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=89e259bb5b55';
-import { reserveMonths } from './reserve.mjs?v=89e259bb5b55';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=a89bfb381950';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=a89bfb381950';
+import { reserveMonths } from './reserve.mjs?v=a89bfb381950';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=89e259bb5b55';
-import { asksForAdvice } from './question-scope.mjs?v=89e259bb5b55';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=89e259bb5b55';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=89e259bb5b55';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=89e259bb5b55';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=a89bfb381950';
+import { asksForAdvice } from './question-scope.mjs?v=a89bfb381950';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=a89bfb381950';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=a89bfb381950';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=a89bfb381950';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -1049,7 +1049,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(Math.abs(gapChange))} ${gapChange > 0 ? 'higher' : 'lower'}`;
     const resultText = kind === 'inflation' ?
       `At your saved ${base.inflationPct}% inflation rate, ${goal.name}’s ${money(goal.target)} target in today’s rupees illustrates ${money(base.futureCost)} at the goal date and a ${money(base.futureGap)} gap. At your alternative ${alternative}%, the illustrated goal-date cost is ${money(changed.futureCost)} and the gap is ${money(changed.futureGap)} (${gapDifference}).` :
-      `At your saved ${base.returnPct}% growth rate, ${money(result.goalTotal)} assigned now plus your planned monthly amount illustrates ${money(base.projectedValue)} at the goal date and a ${money(base.futureGap)} gap. At your alternative ${alternative}%, the illustrated value is ${money(changed.projectedValue)} and the gap is ${money(changed.futureGap)} (${gapDifference}).`;
+      `At your saved ${base.returnPct}% growth rate, ${money(result.goalTotal)} assigned now with ${money(goal.monthlyContribution)} added at each month’s end illustrates ${money(base.projectedValue)} at the goal date and a ${money(base.futureGap)} gap. At your alternative ${alternative}%, the illustrated value is ${money(changed.projectedValue)} and the gap is ${money(changed.futureGap)} (${gapDifference}).`;
     return answer(`${resultText} This temporary comparison has not changed your saved goal.`,
       `${money(result.goalTotal)} assigned now; ${money(goal.target)} target in today's rupees; ${goal.years} years; ${money(goal.monthlyContribution)} added at each month’s end. Only annual ${kind} changed from ${goal[field]}% to ${alternative}%; ${kind === 'inflation' ? `growth stayed ${goal.returnPct}%` : `inflation stayed ${goal.inflationPct}%`}.`,
       `Both results are fixed-assumption illustrations, not forecasts, expected returns or a monthly investment instruction. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
