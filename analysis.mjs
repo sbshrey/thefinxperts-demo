@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=d04a035bb051';
-import { compareMixPlan } from './mix-plan.mjs?v=d04a035bb051';
-import { goalShare } from './goals.mjs?v=d04a035bb051';
-import { reserveMonths } from './reserve.mjs?v=d04a035bb051';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=d04a035bb051';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=ec75d21db933';
+import { compareMixPlan } from './mix-plan.mjs?v=ec75d21db933';
+import { goalShare } from './goals.mjs?v=ec75d21db933';
+import { reserveMonths } from './reserve.mjs?v=ec75d21db933';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=ec75d21db933';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
