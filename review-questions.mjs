@@ -58,6 +58,7 @@ const definitionAliases = new Map([
   ['regular plan', 'direct and regular plans'], ['direct plan', 'direct and regular plans'],
   ['direct vs regular plan', 'direct and regular plans'],
   ['difference between direct and regular plans', 'direct and regular plans'],
+  ['difference between regular and direct plans', 'direct and regular plans'],
   ['regular and direct plans', 'direct and regular plans'],
   ['systematic investment plan', 'sip'],
 ]);

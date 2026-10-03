@@ -19,5 +19,12 @@ export function asksForAdvice(message) {
     /\bwhat should my\s+(?:equity.{0,15}debt\s+split|asset mix|allocation)\s+be\b/i.test(message) ||
     /\bwhat would you\s+(?:change|improve)\s+(?:about|in)\s+my\s+(?:portfolio|holdings?|investments?)\b/i.test(message) ||
     /\b(?:optimi[sz]e|recommend)\b.{0,35}\b(?:my\s+)?(?:portfolio|investments?|allocation)\b/i.test(message) ||
-    /\b(?:right|ideal)\s+(?:asset\s+)?mix\s+for\s+me\b/i.test(message);
+    /\b(?:right|ideal)\s+(?:asset\s+)?mix\s+for\s+me\b/i.test(message) ||
+    /\bcan\s+(?:i|we)\s+(?:buy|sell|redeem|exit|switch|hold|keep|invest|allocate|rebalance|move|shift|replace|top\s+up)\b.{0,70}\b(?:fund|stock|share|investment|portfolio|sip|plan|equity|debt)\b/i.test(message) ||
+    /\bcan\s+(?:i|we)\s+(?:switch|move|shift|convert)\s+from\s+regular\s+to\s+direct\b/i.test(message) ||
+    /\bwould\s+it\s+be\s+(?:wise|smart|better|good)\s+to\s+(?:buy|sell|redeem|exit|switch|hold|keep|invest|allocate|rebalance|move|shift|replace)\b/i.test(message) ||
+    /\b(?:is\s+(?:now|this)\s+(?:a\s+)?good\s+time\s+to|is\s+it\s+(?:a\s+)?good\s+idea\s+to)\s+(?:buy|sell|redeem|exit|switch|invest|rebalance)\b/i.test(message) ||
+    /\bwhat\s+should\s+i\s+do\s+with\s+my\s+(?:investments?|holdings?|funds?|stocks?|shares?)\b/i.test(message) ||
+    /\b(?:is|would)\s+my\s+(?:asset\s+allocation|asset\s+mix|equity.{0,15}debt\s+split)\b.{0,45}\b(?:right|suitable|appropriate|ideal)\s+for\s+(?:my\s+)?(?:retirement|goal|age|me)\b/i.test(message) ||
+    /\bhow\s+(?:can|do|should)\s+i\s+(?:improve|optimi[sz]e)\s+my\s+(?:portfolio|investments?|holdings?)\b/i.test(message);
 }
