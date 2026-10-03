@@ -1,8 +1,8 @@
-import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=281711f6ba37';
-import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=281711f6ba37';
-import { readBrokerWorkbook } from './broker-xlsx-browser.mjs?v=281711f6ba37';
-import { validShares } from './stock-estimate.mjs?v=281711f6ba37';
-import { rupees } from './assistant-import-audit.mjs?v=281711f6ba37';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=471b6d5981eb';
+import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=471b6d5981eb';
+import { readBrokerWorkbook } from './broker-xlsx-browser.mjs?v=471b6d5981eb';
+import { validShares } from './stock-estimate.mjs?v=471b6d5981eb';
+import { rupees } from './assistant-import-audit.mjs?v=471b6d5981eb';
 
 const MAX_CHAT_DRAFTS = 30;
 const MAX_BROWSER_IMPORT_DRAFTS = 200;

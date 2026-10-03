@@ -1,12 +1,12 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=281711f6ba37';
-import { rupeesWithPaise } from './cost-basis.mjs?v=281711f6ba37';
-import { reserveMonths } from './reserve.mjs?v=281711f6ba37';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=281711f6ba37';
-import { asksForAdvice } from './question-scope.mjs?v=281711f6ba37';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=281711f6ba37';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=281711f6ba37';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=281711f6ba37';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=471b6d5981eb';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=471b6d5981eb';
+import { reserveMonths } from './reserve.mjs?v=471b6d5981eb';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=471b6d5981eb';
+import { asksForAdvice } from './question-scope.mjs?v=471b6d5981eb';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=471b6d5981eb';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=471b6d5981eb';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=471b6d5981eb';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -147,9 +147,9 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `The current calculation belongs to the selected goal ${goal?.name || 'unnamed'}; no value for ${otherNamedGoal.name} was used.`,
       'Goal totals and allocations must come from the goal you actually mean.', '#goals', 'Select the named goal');
 
-  if (goalScopeRequested && /\b(?:invested|profit|gains?|ter|expense ratio|regular plans?|direct plans?|overlap)\b/.test(input))
+  if (goalScopeRequested && /\b(?:invested|profit|gains?|loss(?:es)?|underperform\w*|outperform\w*|performance|returns?|ter|expense ratio|regular plans?|direct plans?|overlap)\b/.test(input))
     return answer(`I cannot calculate that metric separately for ${goal?.name || 'the selected goal'} from this review. Ask about the goal’s assigned value or asset mix, or ask for the whole-portfolio metric without naming a goal.`,
-      'Goal links assign shares of current holding value; checked cost, fund fees and overlap are not allocated to individual goals here.',
+      'Goal links assign shares of current holding value; checked cost, historical performance, fund fees and overlap are not allocated to individual goals here.',
       'Using a whole-portfolio figure as a goal figure would be misleading.', '#goals', 'Review goal assignments');
 
   const definition = investorDefinition(input);
@@ -675,6 +675,37 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Grouped ${rows.length} positive ${goalScopeRequested ? 'assigned shares of ' : ''}holding rows by their confirmed type. ${result.asOfSummary}.`,
       `A mutual fund may itself hold stocks or other assets, and a fund-house summary may contain multiple schemes. This is a product-type split, not underlying asset exposure. ${coverageNote}`,
       goalScopeRequested ? '#goals' : '#holdings', goalScopeRequested ? 'Review assigned holdings' : 'Inspect holdings');
+  }
+  if (/\b(?:underperform\w*|outperform\w*|beat(?:ing)? (?:the )?benchmark|lag(?:ging)? (?:the )?benchmark|doing well|performing (?:best|worst))\b/.test(input))
+    return answer('I cannot call an entered fund an underperformer from a holdings snapshot or a current-position gain or loss. Compare the exact scheme, plan and option with its stated benchmark over the same period, using verified historical figures. For your own return, complete dated cash flows are also needed.',
+      `${valid.filter(row => row.type === 'Mutual fund').length} entered mutual-fund rows; this browser review holds no verified benchmark series or complete transaction history.`,
+      'An entered loss does not prove benchmark underperformance, and a gain does not prove outperformance. This answer does not rank funds or suggest an exit.', '#holdings', 'Check scheme factsheet');
+  const positionChangeQuestion = /\b(?:which|what|show|list|biggest|largest|top)\b.{0,70}\b(?:holdings?|positions?|funds?|stocks?|shares?)\b.{0,50}\b(?:in (?:a )?loss|(?:making|showing) (?:a )?loss|loss(?:es)?|lost|losing|gains?|profitable|profit|up|down|in the red)\b/.test(input) ||
+    /\b(?:losing|loss.making|profitable|gaining)\b.{0,40}\b(?:holdings?|positions?|funds?|stocks?|shares?)\b/.test(input);
+  if (positionChangeQuestion) {
+    const kind = /\b(?:fund|funds|mutual fund|mutual funds)\b/.test(input) && !/\b(?:stock|stocks|shares?)\b/.test(input) ? 'Mutual fund' :
+      /\b(?:stock|stocks|shares?)\b/.test(input) && !/\b(?:fund|funds|mutual fund|mutual funds)\b/.test(input) ? 'Stock' : null;
+    const scope = kind === 'Mutual fund' ? 'mutual-fund' : kind === 'Stock' ? 'direct-stock' : 'holding';
+    const rows = valid.flatMap(row => !kind || row.type === kind ? [{ row, number: holdings.indexOf(row) + 1 }] : []);
+    if (!rows.length) return answer(`No ${scope} rows are entered for this review.`,
+      `0 positive entered ${scope} rows.`, 'This does not establish what you own outside the review.', '#holdings', 'Add a holding');
+    const covered = rows.flatMap(item => summarizeUnrealizedChange([item.row], today).coveredCount ?
+      [{ ...item, difference: Number(item.row.value) - item.row.costBasis }] : []);
+    if (!covered.length) return answer(`No ${scope} row has both a checked cost for its currently held units or shares and a usable dated value. Check those facts before asking which positions show a gain or loss.`,
+      `${rows.length} entered ${scope} rows; 0 have a usable current-position cost and dated value pair.`,
+      'A fund-house summary or a purchase total including sold units cannot establish a current-position gain or loss.', '#holdings', 'Check holding costs');
+    const losing = /\b(?:loss|losses|lost|losing|down|red)\b/.test(input);
+    const ranked = covered.filter(item => losing ? item.difference < 0 : item.difference > 0)
+      .sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference) || a.number - b.number);
+    const direction = losing ? 'loss' : 'gain';
+    const total = ranked.reduce((sum, item) => sum + Math.abs(item.difference), 0);
+    const list = ranked.slice(0, 5).map(item => `#${item.number} ${item.row.name}: ${rupeesWithPaise(Math.abs(item.difference))} as of ${item.row.asOf}`).join('; ');
+    const dateChecks = covered.filter(item => valuationDateIssue(item.row.asOf, today)).length;
+    return answer(ranked.length ?
+      `${lead}${ranked.length} of ${covered.length} covered ${scope} ${covered.length === 1 ? 'row' : 'rows'} show an entered unrealized ${direction}, totaling ${rupeesWithPaise(total)}: ${list}${ranked.length > 5 ? `; and ${ranked.length - 5} more` : ''}.` :
+      `${lead}none of the ${covered.length} covered ${scope} ${covered.length === 1 ? 'row shows' : 'rows show'} an entered unrealized ${direction}.`,
+      `Compared each of ${covered.length} covered current-position values with its checked cost; ${rows.length - covered.length} ${scope} ${rows.length - covered.length === 1 ? 'row lacks' : 'rows lack'} a usable pair.${dateChecks ? ` ${dateChecks} covered ${dateChecks === 1 ? 'value date needs' : 'value dates need'} a freshness check.` : ''}`,
+      `These are per-row, dated differences, not annual returns, benchmark performance, lifetime profit or a reason to trade. They exclude sold positions, distributions, taxes, exit loads and unchecked costs. ${coverageNote}`, '#holdings', 'Inspect covered holdings');
   }
   if (/\b(xirr|cagr|annual(?:ized)? return|performance)\b/.test(input))
     return answer('A holdings snapshot cannot establish your annual return or XIRR. Complete dated cash flows are needed before calculating those figures.',
