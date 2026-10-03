@@ -1,8 +1,19 @@
 import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh,
   planDematCasRefresh } from './import-review.mjs';
 import { removeHoldingAllocation } from './goals.mjs';
+import { rupees } from './assistant-import-audit.mjs';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+const paise = rows => rows.reduce((total, row) => total + Math.round(row.value * 100), 0);
+
+function refreshValueCoverage(incoming, matched) {
+  const report = paise(incoming);
+  const included = paise(matched.map(pair => pair.next));
+  const excluded = report - included;
+  return `Parsed report value ${rupees(report / 100)}: ${rupees(included / 100)} in exact matched rows; ${excluded ?
+    `${rupees(excluded / 100)} in unmatched rows stays outside this refresh` :
+    'no unmatched value stays outside this refresh'}.`;
+}
 
 /** Prepare a complete, newer CAMS Active Statement refresh without changing the saved review. */
 export function prepareAssistantActiveRefresh(saved, incoming, makeId = () => crypto.randomUUID()) {
@@ -31,7 +42,7 @@ export function prepareAssistantActiveRefresh(saved, incoming, makeId = () => cr
     ...plan.removed.map(row => `Remove absent fund ${row.name}: ${money(row.value)} (${row.asOf}); goal links removed`),
   ];
   return { portfolio, errors: [], addedCount: added.length, removedCount: plan.removed.length,
-    description: `CAMS Active Statement refresh. Confirm this is a complete newer statement for the same investments. ${plan.updatedCount} existing fund ${plan.updatedCount === 1 ? 'row' : 'rows'} will use its newer dated value; ${added.length} new ${added.length === 1 ? 'row stays' : 'rows stay'} unassigned; ${plan.removed.length} absent ${plan.removed.length === 1 ? 'fund row is' : 'fund rows are'} removed. Direct stocks and matched goal links stay. Checked invested costs and manual NAV estimates on updated funds clear. ${added.length || plan.removed.length ? 'Your self-reported portfolio coverage answer clears. ' : ''}No trade is placed.`,
+    description: `CAMS Active Statement refresh. Confirm this is a complete newer statement for the same investments. Current confirmed fund value ${rupees(paise(funds) / 100)}; parsed newer fund snapshot ${rupees(paise(incoming) / 100)}. ${plan.updatedCount} existing fund ${plan.updatedCount === 1 ? 'row' : 'rows'} will use its newer dated value; ${added.length} new ${added.length === 1 ? 'row stays' : 'rows stay'} unassigned; ${plan.removed.length} absent ${plan.removed.length === 1 ? 'fund row is' : 'fund rows are'} removed. Direct stocks and matched goal links stay. Checked invested costs and manual NAV estimates on updated funds clear. ${added.length || plan.removed.length ? 'Your self-reported portfolio coverage answer clears. ' : ''}No trade is placed.`,
     changes,
     result: `CAMS refresh applied: ${plan.updatedCount} existing fund ${plan.updatedCount === 1 ? 'row' : 'rows'} updated, ${added.length} added, ${plan.removed.length} removed. Direct stocks and matched goal links stayed. Recheck cost and goal assignment for new rows.` };
 }
@@ -49,7 +60,7 @@ export function prepareAssistantBrokerRefresh(saved, incoming, origin) {
   const changes = plan.matched.map(({ current, next }) =>
     `${current.name} · ISIN ${current.isin}: ${money(current.value)} (${current.asOf}) → ${money(next.value)} (${next.asOf})`);
   return { portfolio, errors: [], kind: 'broker', changes,
-    description: `Newer broker report. Confirm this covers the same account and positions, not another account or an extra lot. ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'} will receive the newer dated value. ${plan.skipped} unmatched report ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out of this review. No holding is removed; goal links stay. Prior units, shares, price estimates and checked invested amounts on matched rows clear because this report does not verify them. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
+    description: `Newer broker report. Confirm this covers the same account and positions, not another account or an extra lot. ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'} will receive the newer dated value. ${plan.skipped} unmatched report ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out of this review. ${refreshValueCoverage(incoming, plan.matched)} No holding is removed; goal links stay. Prior units, shares, price estimates and checked invested amounts on matched rows clear because this report does not verify them. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
     result: `Broker report refresh applied to ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. Check saved units, invested amounts and the report source before relying on the newer values.` };
 }
 
@@ -66,18 +77,18 @@ export function prepareAssistantDematRefresh(saved, incoming) {
       const portfolio = structuredClone(saved);
       delete portfolio.coverage;
       return { portfolio, errors: [], kind: 'demat', scopeOnly: true, changes: [],
-        description: `The matched demat positions already use these dated values and fund units. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out. Confirm this is the same account; your self-reported coverage answer will clear so you can review it again. Holdings and goal links stay.`,
+        description: `The matched demat positions already use these dated values and fund units. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out. ${refreshValueCoverage(incoming, plan.matched)} Confirm this is the same account; your self-reported coverage answer will clear so you can review it again. Holdings and goal links stay.`,
         result: `Matched demat values stayed the same. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. Your coverage answer was cleared for review.` };
     }
     return { repeated: true, errors: [],
-      description: `The ${plan.matched.length} matched demat ${plan.matched.length === 1 ? 'position already uses' : 'positions already use'} the same dated value and units. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} left out. No holdings or goal links changed.` };
+      description: `The ${plan.matched.length} matched demat ${plan.matched.length === 1 ? 'position already uses' : 'positions already use'} the same dated value and units. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} left out. ${refreshValueCoverage(incoming, plan.matched)} No holdings or goal links changed.` };
   }
   const portfolio = structuredClone({ ...saved, holdings: plan.holdings });
   if (plan.skipped) delete portfolio.coverage;
   return { portfolio, errors: [], kind: 'demat',
     changes: plan.changed.map(({ current, next }) =>
       `${current.name} · ISIN ${current.isin}: ${money(current.value)} (${current.asOf}) → ${money(next.value)} (${next.asOf})${current.type === 'Mutual fund' ? ` · units ${current.units} → ${next.units}` : ''}`),
-    description: `Newer demat CAS. Confirm this covers the same account and positions, not another account with the same ISIN. ${plan.changed.length} unique matched ${plan.changed.length === 1 ? 'position' : 'positions'} will use newer dated values; ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out. No holding is removed and goal links stay. Earlier price estimates, share counts and checked invested costs on updated rows clear; fund units update from the new statement. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
+    description: `Newer demat CAS. Confirm this covers the same account and positions, not another account with the same ISIN. ${plan.changed.length} unique matched ${plan.changed.length === 1 ? 'position' : 'positions'} will use newer dated values; ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out. ${refreshValueCoverage(incoming, plan.matched)} No holding is removed and goal links stay. Earlier price estimates, share counts and checked invested costs on updated rows clear; fund units update from the new statement. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
     result: `Demat CAS refresh applied to ${plan.changed.length} matched ${plan.changed.length === 1 ? 'position' : 'positions'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. Check source account, unit counts and dated values.` };
 }
 
@@ -134,11 +145,11 @@ export function prepareAssistantCasRefresh(saved, incoming, { detailed = false }
       const portfolio = structuredClone(saved);
       delete portfolio.coverage;
       return { portfolio, errors: [], kind: 'cas', scopeOnly: true, changes: [],
-        description: `The matched CAS positions already use these dated values and units. ${skipped} unmatched ${skipped === 1 ? 'row stays' : 'rows stay'} out. Confirm this is the same investment account; your self-reported coverage answer will clear so you can review it again. Holdings and goal links stay.`,
+        description: `The matched CAS positions already use these dated values and units. ${skipped} unmatched ${skipped === 1 ? 'row stays' : 'rows stay'} out. ${refreshValueCoverage(incoming, matches)} Confirm this is the same investment account; your self-reported coverage answer will clear so you can review it again. Holdings and goal links stay.`,
         result: `Matched CAS values stayed the same. ${skipped} unmatched ${skipped === 1 ? 'row was' : 'rows were'} not added. Your coverage answer was cleared for review.` };
     }
     return { repeated: true, errors: [],
-      description: `These matched CAS positions already use the same dated values and units. ${skipped} unmatched ${skipped === 1 ? 'row was' : 'rows were'} not added. No values or goal links changed.` };
+      description: `These matched CAS positions already use the same dated values and units. ${skipped} unmatched ${skipped === 1 ? 'row was' : 'rows were'} not added. ${refreshValueCoverage(incoming, matches)} No values or goal links changed.` };
   }
   const byId = new Map(changed.map(({ current, next }) => [current.id, next]));
   const holdings = saved.holdings.map(row => {
@@ -156,6 +167,6 @@ export function prepareAssistantCasRefresh(saved, incoming, { detailed = false }
   return { portfolio, errors: [], kind: 'cas',
     changes: changed.map(({ current, next }) =>
       `${current.name} · ISIN ${current.isin}: ${money(current.value)} (${current.asOf}) → ${money(next.value)} (${next.asOf})`),
-    description: `Newer mutual-fund CAS. Confirm this is the same investment position, not another account or extra lot. ${changed.length} exact unique ISIN ${changed.length === 1 ? 'match' : 'matches'} will use newer dated values and units. ${skipped} unmatched CAS ${skipped === 1 ? 'row stays' : 'rows stay'} out; no holding is removed. Existing goal links and source-checked asset labels stay. Checked invested costs and manual NAV estimates on updated rows clear. ${skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
+    description: `Newer mutual-fund CAS. Confirm this is the same investment position, not another account or extra lot. ${changed.length} exact unique ISIN ${changed.length === 1 ? 'match' : 'matches'} will use newer dated values and units. ${skipped} unmatched CAS ${skipped === 1 ? 'row stays' : 'rows stay'} out; no holding is removed. ${refreshValueCoverage(incoming, matches)} Existing goal links and source-checked asset labels stay. Checked invested costs and manual NAV estimates on updated rows clear. ${skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
     result: `CAS refresh applied to ${changed.length} exact ISIN ${changed.length === 1 ? 'match' : 'matches'}. ${skipped} unmatched ${skipped === 1 ? 'row was' : 'rows were'} not added. Check any newly bought or exited schemes separately.` };
 }
