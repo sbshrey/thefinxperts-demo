@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=a76a80c45627';
-import { compareMixPlan } from './mix-plan.mjs?v=a76a80c45627';
-import { goalShare } from './goals.mjs?v=a76a80c45627';
-import { reserveMonths } from './reserve.mjs?v=a76a80c45627';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=a76a80c45627';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=7c0f7987ef9e';
+import { compareMixPlan } from './mix-plan.mjs?v=7c0f7987ef9e';
+import { goalShare } from './goals.mjs?v=7c0f7987ef9e';
+import { reserveMonths } from './reserve.mjs?v=7c0f7987ef9e';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=7c0f7987ef9e';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -314,6 +314,19 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       question: 'What is inside this position, and how would a setback affect this goal?',
       basis: `${rupees(largestGoalPosition.value)} in ${largestGoalPosition.entries} ${largestGoalPosition.entries === 1 ? 'entry' : 'entries'} ÷ ${rupees(goalTotal)} linked to this goal = ${share.toFixed(1)}%. Entries are combined only when their supplied ISIN and classification agree.`,
       limitation: 'The 50% trigger is a review prompt, not a target allocation. One fund may hold many securities, and unlinked holdings are outside this calculation; this share alone does not prove a need to trade.' });
+  }
+  if (!validGoal && total > 0) {
+    const largestFundPosition = positionsByIsin(valid.filter(holding => holding.type === 'Mutual fund'))[0];
+    if (largestFundPosition && largestFundPosition.granularity !== 'fund_house' &&
+        largestFundPosition.value / total >= 0.5) {
+      const share = largestFundPosition.value / total * 100;
+      findings.push({ key: 'portfolio-position', tone: 'blue', label: 'Entered fund concentration',
+        title: 'One fund position carries much of the entered value',
+        detail: `${String(largestFundPosition.name).replace(/\s+/g, ' ').trim()} is ${share.toFixed(1)}% of the entered investment value. Check what this exact scheme holds and whether other investments are missing from this review.`,
+        question: 'What does this scheme contain, and do your other accounts change this picture?',
+        basis: `${rupees(largestFundPosition.value)} across ${largestFundPosition.entries} ${largestFundPosition.entries === 1 ? 'entry' : 'entries'} ÷ ${rupees(total)} entered value = ${share.toFixed(1)}%. Matching supplied ISINs are grouped; unidentified rows remain separate.`,
+        limitation: 'The 50% trigger only chooses a review question. One fund may itself hold many securities, its contents and unentered investments are unknown, and this share does not establish a suitable allocation or a trade.' });
+    }
   }
   if (largestIssuer && total && largestIssuer[1] / total >= 0.10) {
     const sources = largestIssuerSources;

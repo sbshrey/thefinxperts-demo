@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=a76a80c45627';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=a76a80c45627';
-import { reserveMonths } from './reserve.mjs?v=a76a80c45627';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=7c0f7987ef9e';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=7c0f7987ef9e';
+import { reserveMonths } from './reserve.mjs?v=7c0f7987ef9e';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=a76a80c45627';
-import { asksForAdvice } from './question-scope.mjs?v=a76a80c45627';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=a76a80c45627';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=a76a80c45627';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=a76a80c45627';
-import { parseAmount } from './assistant-clarify.mjs?v=a76a80c45627';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=a76a80c45627';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=7c0f7987ef9e';
+import { asksForAdvice } from './question-scope.mjs?v=7c0f7987ef9e';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=7c0f7987ef9e';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7c0f7987ef9e';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=7c0f7987ef9e';
+import { parseAmount } from './assistant-clarify.mjs?v=7c0f7987ef9e';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=7c0f7987ef9e';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=a76a80c45627';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=7c0f7987ef9e';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -1012,6 +1012,10 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         `Selected goal ${goal.name}; confirmed target ${money(goal.target)}; 0 positive holding values entered.`,
         'The empty review does not mean you own no investments. It cannot establish your actual shortfall.', '#holdings', 'Add holdings');
     }
+    if (/\b(diversif(?:y|ied|ication)?|spread across assets)\b/.test(input))
+      return answer('Add and confirm at least one dated fund or stock holding before I can describe its share of your entered investments.',
+        'No positive confirmed holding value is entered in this review.',
+        'I cannot assess diversification, a goal mix or investments that have not been entered.', '#holdings', 'Add a holding');
     return answer('Add a fund, stock or other investment, or import a supported statement, and I can answer from that review.',
       'There are no positive holding values in this tab.',
       'No portfolio calculation is available yet.', '#input-choice', 'Choose an input');
