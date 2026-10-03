@@ -84,6 +84,19 @@ export function parseBrowserHoldingList(message, today = new Date()) {
   return { drafts };
 }
 
+/** Recognize a bounded, single-goal start request without inferring an allocation. */
+export function parseBrowserGoalStart(message) {
+  if (typeof message !== 'string') return null;
+  const match = /^(?:i (?:want|would like|need) to plan for|(?:can you )?help me plan for|let['’]s plan for) (?:my |a |the )?(.+?)(?: goal)?[.!?]?$/i.exec(message.trim());
+  if (!match) return null;
+  const name = match[1].trim().replace(/\s+/g, ' ');
+  if (name.length < 2 || name.length > 60 || name.split(' ').length > 5 ||
+      !/^[a-z][a-z'’ -]*$/i.test(name) ||
+      /\b(?:and|but|buy|sell|switch|trade|invest|recommend|advice|should|rebalance)\b/i.test(name))
+    return { error: 'Name one goal briefly, such as “I want to plan for retirement”. Leave out account details and investment actions.' };
+  return { goalName: name[0].toUpperCase() + name.slice(1) };
+}
+
 /** Narrow, explicit goal answers for the browser-only guided review. */
 export function parseBrowserGoalFact(message, goal, pending = {}) {
   if (typeof message !== 'string' || !goal) return null;

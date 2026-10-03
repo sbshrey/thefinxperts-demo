@@ -16,7 +16,7 @@ import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
-import { parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
+import { parseBrowserGoalStart, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   nextBrowserGoalQuestion } from './assistant-local.mjs';
 import { parseHoldingCorrection, prepareHoldingCorrection,
   parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs';
@@ -1075,7 +1075,12 @@ $('#composer').addEventListener('submit', async event => {
     await assignGoalHoldings();
     return;
   }
-  const goalCommand = message && !state.file ? parseAssistantGoalCommand(message) : null;
+  const goalStart = browserOnly && message && !state.file ? parseBrowserGoalStart(message) : null;
+  const goalCommand = goalStart?.goalName ? { kind: 'create', goalName: goalStart.goalName } :
+    message && !state.file ? parseAssistantGoalCommand(message) : null;
+  if (goalStart?.error) {
+    say('user', message); $('#message').value = ''; say('note', goalStart.error); return;
+  }
   if (goalCommand) {
     say('user', message); $('#message').value = '';
     if (!state.account) { say('note', 'Saved goal commands need a signed-in portfolio account.'); return; }
@@ -1288,6 +1293,10 @@ $('#upload-trigger').addEventListener('click', () => $('#upload').click());
 $('#starter-open')?.addEventListener('click', () => {
   if (deviceRecord()) $('#device-review-action').click();
   else $('#restore-tab-file').click();
+});
+$('#starter-goal')?.addEventListener('click', () => {
+  say('assistant', 'What goal would you like to plan for? Say “I want to plan for retirement” or name one other goal. I will ask for your age, time horizon and amount before showing goal figures.');
+  $('#message').focus();
 });
 $('#starter-report')?.addEventListener('click', () => $('#report-help-dialog').showModal());
 for (const prompt of document.querySelectorAll('[data-guided-question]')) {
