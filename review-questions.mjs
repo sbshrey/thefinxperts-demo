@@ -82,6 +82,54 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  if (/\b(?:goal readiness|goal checks|check my goal|check this goal|what needs checking for (?:my|this) goal)\b/.test(input)) {
+    if (goal?.confirmed !== true) {
+      const missing = [['age', 'your current age'], ['years', 'years until the goal'],
+        ['target', 'the goal amount in today’s rupees']].find(([key]) => goal?.[key] == null);
+      return answer(`For ${goal?.name || 'your selected goal'}, first confirm ${missing?.[1] || 'your age, horizon and target'} in chat.`,
+        `The selected goal is unfinished; ${missing?.[1] || 'at least one required fact'} is not confirmed.`,
+        'A statement does not establish your goal timing or a suitable allocation.', '#goals', 'Confirm goal details');
+    }
+    if (!valid.length) return answer(`For ${goal.name}, first add and confirm a current holding or supported statement.`,
+      `You entered age ${goal.age} and ${goal.years} years until this goal, but no positive holding value is in the review.`,
+      'An empty review does not mean you own no investments.', '#holdings', 'Add a holding');
+    if (!result.goalTotal) return answer(`For ${goal.name}, first link the holdings you intend to count toward it.`,
+      `You entered age ${goal.age} and ${goal.years} years until this goal; ₹0 of ${money(result.total)} entered value is assigned to it.`,
+      'Only assigned shares count toward a goal. The link does not prove the money can be used then.', '#goals', 'Review goal assignments');
+    const context = `For ${goal.name}, you entered age ${goal.age}, ${goal.years} years until the goal, and ${money(result.goalTotal)} of assigned value. `;
+    const basis = `${result.goalHoldingCount} assigned holding ${result.goalHoldingCount === 1 ? 'row' : 'rows'}; ${result.asOfSummary}.`;
+    const incomplete = [['mutualFunds', 'mutual funds'], ['directStocks', 'direct stocks'],
+      ['otherInvestments', 'other investments']].find(([key]) =>
+      !['all', 'none'].includes(coverage?.[key]));
+    if (incomplete) return answer(context + `First check whether the entered ${incomplete[1]} cover everything you own in that group. Say “I included all my ${incomplete[1]}”, “I included some of my ${incomplete[1]}”, or say you are unsure, using your latest statement.`,
+      `${basis} Coverage for ${incomplete[1]} is ${coverage?.[incomplete[0]] || 'not answered'}.`,
+      'Coverage is self reported. This review cannot inspect accounts you have not provided.', '#holdings', 'Check review coverage');
+    if (result.goalDateCheck.count) return answer(context + `Next check ${result.goalDateCheck.count} assigned ${result.goalDateCheck.count === 1 ? 'value with a missing, future or old date' : 'values with missing, future or old dates'} against a newer source.`,
+      `${basis} ${money(result.goalDateCheck.value)} of assigned value needs a valuation-date check.`,
+      'A newer price alone does not confirm the same units or shares are still held.', '#holdings', 'Check dated values');
+    if (result.goalAccessCheck.count) return answer(context + 'Next check the withdrawal or maturity terms for the other investments linked to this goal.',
+      `${basis} ${money(result.goalAccessCheck.value)} of assigned other-investment value has no checked access date.`,
+      'A gross balance does not prove it is spendable when the goal arrives.', '#holdings', 'Check access to savings');
+    if (result.goalAssets.Other > 0) return answer(context + 'Next check the asset category of holdings labelled Other against their original source.',
+      `${basis} ${money(result.goalAssets.Other)} of assigned value has no confirmed Equity, Debt or Gold label.`,
+      'An unknown category cannot support a reliable asset-mix comparison.', '#holdings', 'Check asset labels');
+    if (!goal.emergencyFunding) return answer(context + 'Next say whether a nearer unexpected essential expense would use separate money, these goal holdings, or whether you are unsure.',
+      `${basis} No unexpected-expense funding answer is confirmed for this goal.`,
+      'Age and time horizon alone do not show whether this goal can stay invested through an earlier need.', '#goals', 'Check nearer expenses');
+    if (!goal.targetMix) return answer(context + 'If you already have a mix chosen for this goal, enter it to compare with the assigned holdings. The review cannot choose percentages for you.',
+      `${basis} Assigned labels: Equity ${percent(result.goalAssets.Equity, result.goalTotal)}, Debt ${percent(result.goalAssets.Debt, result.goalTotal)}, Gold ${percent(result.goalAssets.Gold, result.goalTotal)}.`,
+      'These are supplied labels and dated values. A chosen mix is optional and should not be inferred from age.', '#goals', 'Compare a chosen mix');
+    if (result.mixComparison) {
+      const largest = result.mixComparison.reduce((best, row) =>
+        !best || Math.abs(row.differencePct) > Math.abs(best.differencePct) ? row : best, null);
+      return answer(context + `${largest.asset} is ${largest.currentPct.toFixed(1)}% of assigned value versus ${largest.plannedPct.toFixed(1)}% in the mix you entered. Review whether your chosen mix still reflects this goal.`,
+        `${basis} ${money(result.goalAssets[largest.asset])} assigned to ${largest.asset} ÷ ${money(result.goalTotal)} = ${largest.currentPct.toFixed(1)}%.`,
+        'This comparison does not assess whether the chosen mix is suitable or tell you to trade. Fund constituents, tax and transaction costs are unknown.', '#goals', 'Review chosen mix');
+    }
+    return answer(context + 'Check the original fund or broker detail behind this goal before interpreting its mix.',
+      `${basis} Chosen-mix comparison status: ${result.mixPause || 'unavailable'}.`,
+      'The current inputs do not support a reliable mix comparison or a personalized allocation.', '#holdings', 'Check source details');
+  }
   if (/\bnet worth\b/.test(input))
     return answer(valid.length ?
       `The entered investment holdings total ${money(result.total)}. That is a gross, dated investment subtotal, not your net worth.` :
