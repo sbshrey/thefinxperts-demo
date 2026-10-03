@@ -1,6 +1,6 @@
-import { analyzePortfolio } from './analysis.mjs?v=7c6562dc4330';
-import { goalShare } from './goals.mjs?v=7c6562dc4330';
-import { calculateStraightLineGap } from './goal-scenario.mjs?v=7c6562dc4330';
+import { analyzePortfolio } from './analysis.mjs?v=82ef263c5480';
+import { goalShare } from './goals.mjs?v=82ef263c5480';
+import { calculateStraightLineGap } from './goal-scenario.mjs?v=82ef263c5480';
 
 /** The chat dashboard reads saved facts; all scenario numbers come from the review engine. */
 export function buildAssistantGoalReview(portfolio, today = new Date()) {

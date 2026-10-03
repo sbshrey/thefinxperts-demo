@@ -17,7 +17,7 @@
  *   batchIsinLookup(isins)                     -> Map<isin, {symbol, exchange}>
  */
 
-import { Decimal } from './decimal.js?v=7c6562dc4330';
+import { Decimal } from './decimal.js?v=82ef263c5480';
 
 let provider = null;
 const directIsinCache = new Map();
