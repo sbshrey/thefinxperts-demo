@@ -82,6 +82,39 @@ function normalizeHeader(cell) {
     .replace(/[._-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function reportDate(text) {
+  const value = String(text ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return realDate(value) ? value : null;
+  const named = /^(\d{1,2})[\s-]([a-z]{3})[\s-](\d{4})$/i.exec(value);
+  if (!named) return null;
+  const month = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+    .indexOf(named[2].toLowerCase()) + 1;
+  if (!month) return null;
+  const iso = `${named[3]}-${String(month).padStart(2, '0')}-${named[1].padStart(2, '0')}`;
+  return realDate(iso) ? iso : null;
+}
+
+/** Use only an explicit holdings snapshot heading before the mapped header row. */
+export function detectBrokerHoldingsDate(rows, headerIndex,
+  todayIso = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10)) {
+  if (!Array.isArray(rows) || !Number.isInteger(headerIndex) || headerIndex < 0)
+    return { date: null, error: null };
+  const found = new Set();
+  for (const row of rows.slice(0, Math.min(headerIndex, 15))) {
+    if (!Array.isArray(row)) continue;
+    const label = row.map(cell => String(cell ?? '').trim()).filter(Boolean).join(' ');
+    const heading = /^(?:portfolio(?: holdings)?|holdings)\s+as\s+(?:on|of)\s*:?\s*(.+)$/i.exec(label);
+    if (!heading) continue;
+    const date = reportDate(heading[1]);
+    if (!date || date > todayIso) return { date: null,
+      error: 'The holdings-as-of heading has an invalid, future or unsupported date. Check the report before importing.' };
+    found.add(date);
+  }
+  if (found.size > 1) return { date: null,
+    error: 'The report has conflicting holdings-as-of dates. Check which snapshot the values describe.' };
+  return { date: found.values().next().value ?? null, error: null };
+}
+
 /** Normalize only confirmed name, current market value and optional ISIN columns. */
 export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
   { strictWidth = false, allowUnknownDate = false, stageUndatedCost = false } = {}) {

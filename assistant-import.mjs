@@ -1,8 +1,8 @@
-import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=169d43a83b97';
-import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=169d43a83b97';
-import { readBrokerWorkbook } from './broker-xlsx-browser.mjs?v=169d43a83b97';
-import { validShares } from './stock-estimate.mjs?v=169d43a83b97';
-import { rupees } from './assistant-import-audit.mjs?v=169d43a83b97';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=4e7c99c734ee';
+import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=4e7c99c734ee';
+import { readBrokerWorkbook } from './broker-xlsx-browser.mjs?v=4e7c99c734ee';
+import { validShares } from './stock-estimate.mjs?v=4e7c99c734ee';
+import { rupees } from './assistant-import-audit.mjs?v=4e7c99c734ee';
 
 const MAX_CHAT_DRAFTS = 30;
 const MAX_BROWSER_IMPORT_DRAFTS = 200;
@@ -68,6 +68,8 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable, maxDrafts =
   if (suggested.name === '' || suggested.value === '' || suggested.name === suggested.value) {
     return { drafts: [], errors: ['I could not identify separate security and current market value columns. Use a broker holdings report with those headings.'] };
   }
+  const datedHeading = detectBrokerHoldingsDate(rows, suggested.headerIndex);
+  if (datedHeading.error) return { drafts: [], errors: [datedHeading.error] };
   const result = parseBrokerHoldingsRows(rows, suggested.headerIndex, {
     name: Number(suggested.name), value: Number(suggested.value),
     isin: suggested.isin === '' ? null : Number(suggested.isin),
@@ -94,7 +96,7 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable, maxDrafts =
     const { row, number } = dataRows[index];
     const type = metadata.type === null ? 'Other' : explicitType(row[metadata.type]);
     const asset = metadata.asset === null ? 'Other' : explicitAsset(row[metadata.asset]);
-    const asOf = metadata.asOf === null ? null : explicitDate(row[metadata.asOf]);
+    const asOf = metadata.asOf === null ? datedHeading.date : explicitDate(row[metadata.asOf]);
     const rawShares = metadata.shares === null ? '' : String(row[metadata.shares] ?? '').trim();
     const shares = type === 'Stock' && rawShares ? rawShares : null;
     if (type === null || asset === null || asOf === false || type === 'Stock' && asset !== 'Other' && asset !== 'Equity') {
@@ -114,9 +116,13 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable, maxDrafts =
   const costCandidates = drafts.filter(row => row._costCandidate !== undefined).length;
   const metadataNote = metadata.type !== null || metadata.asset !== null || metadata.asOf !== null ?
     `Used explicit report fields for ${typed} type${typed === 1 ? '' : 's'} and ${dated} valuation date${dated === 1 ? '' : 's'}; check every row. Missing fields remain unknown.` :
-    'Please confirm each row is a fund or directly held stock; its valuation date remains unknown until you provide one.';
+    `Please confirm each row is a fund or directly held stock; ${datedHeading.date ?
+      `the explicit holdings-as-of heading supplied ${datedHeading.date} for its valuation date` :
+      'its valuation date remains unknown until you provide one'}.`;
+  const headingNote = datedHeading.date && metadata.asOf === null ?
+    ` Check the ${datedHeading.date} holdings-as-of date against your report before confirming.` : '';
   const audit = importAudit(drafts, result.reportedTotal);
-  return { drafts, errors: [], audit, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the broker report. ${audit} The file stayed in this browser. ${metadataNote}${counted ? ` ${counted} stock share count${counted === 1 ? ' was' : 's were'} staged; check the current settled shares after trades, splits or bonuses before confirming.` : ''}${costCandidates ? ` ${costCandidates} invested amount${costCandidates === 1 ? ' is' : 's are'} unconfirmed; check each against the position still held and its value date before using gain or loss.` : ''} ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
+  return { drafts, errors: [], audit, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the broker report. ${audit} The file stayed in this browser. ${metadataNote}${headingNote}${counted ? ` ${counted} stock share count${counted === 1 ? ' was' : 's were'} staged; check the current settled shares after trades, splits or bonuses before confirming.` : ''}${costCandidates ? ` ${costCandidates} invested amount${costCandidates === 1 ? ' is' : 's are'} unconfirmed; check each against the position still held and its value date before using gain or loss.` : ''} ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
 }
 
 /** Prepare unconfirmed chat rows from supported CSV or XLSX exports without an upload. */
