@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=91629911783d';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=91629911783d';
-import { reserveMonths } from './reserve.mjs?v=91629911783d';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=6cb9558b4dfa';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=6cb9558b4dfa';
+import { reserveMonths } from './reserve.mjs?v=6cb9558b4dfa';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=91629911783d';
-import { asksForAdvice } from './question-scope.mjs?v=91629911783d';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=91629911783d';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=91629911783d';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=91629911783d';
-import { parseAmount } from './assistant-clarify.mjs?v=91629911783d';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=91629911783d';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=6cb9558b4dfa';
+import { asksForAdvice } from './question-scope.mjs?v=6cb9558b4dfa';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=6cb9558b4dfa';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=6cb9558b4dfa';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=6cb9558b4dfa';
+import { parseAmount } from './assistant-clarify.mjs?v=6cb9558b4dfa';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=6cb9558b4dfa';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=91629911783d';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=6cb9558b4dfa';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -309,6 +309,43 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  const reviewsHoldings = /\b(?:review|analy[sz]e|assess|improv\w*)\b/.test(input);
+  const reviewsFunds = /\b(?:mutual funds?|funds?)\b/.test(input);
+  const reviewsStocks = /\b(?:stocks?|shares?)\b/.test(input);
+  if (reviewsHoldings && reviewsFunds !== reviewsStocks) {
+    const kind = reviewsFunds ? 'Mutual fund' : 'Stock';
+    const label = reviewsFunds ? 'mutual funds' : 'direct stocks';
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const rows = valid.filter(row => row.type === kind).flatMap(row => {
+      const share = goalScopeRequested ? goalShare(goal, row.id) : 100;
+      return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+    });
+    if (!rows.length) return answer(`No ${label} are ${goalScopeRequested ? `assigned to ${goal.name}` : 'entered in this review'} yet. Add or assign a current holding before I review that group.`,
+      `0 positive ${kind} rows in ${goalScopeRequested ? `the selected goal ${goal.name}` : 'the entered snapshot'}.`,
+      `This does not establish that you own no ${label} elsewhere. ${coverageNote}`, '#holdings', 'Add or assign a holding');
+    const groupTotal = rows.reduce((sum, row) => sum + row.value, 0);
+    const largest = positionsByIsin(rows)[0];
+    const datedChecks = rows.filter(row => valuationDateIssue(row.asOf, today));
+    const oldValue = datedChecks.reduce((sum, row) => sum + row.value, 0);
+    const fundSummary = reviewsFunds && rows.some(row => row.granularity === 'fund_house');
+    const unknownAsset = rows.some(row => row.asset === 'Other');
+    const next = datedChecks.length ?
+      `First check the value dates for ${datedChecks.length} ${datedChecks.length === 1 ? 'row' : 'rows'} (${money(oldValue)} of this group) against a current ${reviewsFunds ? 'CAS or AMC statement' : 'broker holdings report'}.` :
+      fundSummary ? 'First get scheme-level detail behind the fund-house summary before comparing individual funds.' :
+      unknownAsset ? 'First check the asset labels against the exact scheme or listed security.' :
+      reviewsFunds ? 'Next compare each exact scheme’s current disclosed holdings, plan and dated costs; a fund count alone does not show company overlap.' :
+        'Next check the settled share count and recent corporate actions against your broker report; a value snapshot alone does not show that the position is current.';
+    const introduction = source === 'demo' ? goalScopeRequested ?
+      `In the fictional example, for ${goal.name}, ` : 'In the fictional example, ' :
+      goalScopeRequested ? `For ${goal.name}, ` : 'In this review, ';
+    return answer(`${introduction}${rows.length} entered ${reviewsFunds ? 'fund' : 'stock'} ${rows.length === 1 ? 'row has' : 'rows have'} ${money(groupTotal)} of ${goalScopeRequested ? 'assigned' : 'entered'} value. The largest ${largest.granularity === 'fund_house' ? 'fund-house summary' : 'position'} is ${largest.name} at ${money(largest.value)} (${percent(largest.value, groupTotal)} of this group). ${next}`,
+      `Used ${rows.length} positive ${kind} rows${goalScopeRequested ? ` and only their assignment shares for ${goal.name}` : ''}; grouped exact matching supplied ISINs and fund-house summaries for the largest position. ${money(largest.value)} ÷ ${money(groupTotal)} = ${percent(largest.value, groupTotal)}. ${datedChecks.length} ${datedChecks.length === 1 ? 'row needs' : 'rows need'} a value-date check.`,
+      `These are supplied values and labels, not verified current account coverage${reviewsFunds ? ' or fund look-through' : ''}. This review does not choose a fund, stock, trade or suitable personal mix. ${coverageNote}`,
+      goalScopeRequested ? '#goals' : '#holdings', 'Inspect this group');
+  }
   if (isSipAmountQuestion(input)) {
     const historical = /\b(?:invested|paid|deposited|contributed|total|purchases?|payments?)\b/.test(input);
     const currentSchedule = /\b(?:monthly|per month|each month|every month|running|active|mandate|scheduled|currently)\b/.test(input);
