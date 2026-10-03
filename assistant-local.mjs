@@ -1,6 +1,6 @@
-import { parseAmount } from './assistant-clarify.mjs?v=82ef263c5480';
-import { validShares } from './stock-estimate.mjs?v=82ef263c5480';
-import { validUnits } from './nav-estimate.mjs?v=82ef263c5480';
+import { parseAmount } from './assistant-clarify.mjs?v=dd058b21b176';
+import { validShares } from './stock-estimate.mjs?v=dd058b21b176';
+import { validUnits } from './nav-estimate.mjs?v=dd058b21b176';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {

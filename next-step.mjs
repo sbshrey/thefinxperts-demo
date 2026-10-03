@@ -1,10 +1,10 @@
-import { valuationDateIssue } from './analysis.mjs?v=82ef263c5480';
-import { goalShare } from './goals.mjs?v=82ef263c5480';
-import { confirmedGoalAssumptions } from './goal-scenario.mjs?v=82ef263c5480';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=82ef263c5480';
+import { valuationDateIssue } from './analysis.mjs?v=dd058b21b176';
+import { goalShare } from './goals.mjs?v=dd058b21b176';
+import { confirmedGoalAssumptions } from './goal-scenario.mjs?v=dd058b21b176';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=dd058b21b176';
 
 /** Choose one concrete next action for the selected goal, without scoring suitability. */
-export function chooseNextReviewStep({ source, holdings, goal, coverage }, today = new Date()) {
+export function chooseNextReviewStep({ source, holdings, goal, coverage, findings = [] }, today = new Date()) {
   if (source !== 'user' || !Array.isArray(holdings) || holdings.length === 0) return null;
   if (goal?.confirmed !== true) return {
     kind: 'goal', href: '#goal-form', label: 'Enter goal details →',
@@ -48,6 +48,13 @@ export function chooseNextReviewStep({ source, holdings, goal, coverage }, today
   if (linkedIndices.some(index => holdings[index].granularity === 'fund_house')) return {
     kind: 'detail', href: '#input-choice', label: 'Check scheme details →',
     text: 'A fund-house total may contain several schemes. A detailed statement will make the fund part of this review clearer.',
+  };
+  const reviewFinding = Array.isArray(findings) ? findings.find(finding =>
+    ['reserve', 'emergency', 'loss-capacity', 'chosen-mix', 'horizon', 'position',
+      'portfolio-position', 'issuer', 'plan', 'funds'].includes(finding?.key)) : null;
+  if (reviewFinding) return {
+    kind: 'finding', href: '#finding-list', label: 'Read this review check →',
+    text: `${reviewFinding.title}. ${reviewFinding.question}`,
   };
   if (!confirmedGoalAssumptions(goal)) return {
     kind: 'assumptions', href: '#goal-assumptions', label: 'Confirm goal assumptions →',
