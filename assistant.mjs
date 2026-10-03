@@ -603,6 +603,14 @@ function renderRefresh() {
 
 function renderReview() {
   const rows = state.confirmed;
+  const selectedGoal = state.account?.portfolio?.goals?.find(goal =>
+    goal.id === state.account.portfolio.activeGoalId);
+  $('#count').closest('.stat-grid').hidden = !rows.length;
+  $('#goal-card').hidden = !rows.length && (!selectedGoal || isEmptyGoalPlaceholder(selectedGoal));
+  $('#asset-bars').closest('.section-card').hidden = !rows.length;
+  $('#holding-list').closest('.section-card').hidden = !rows.length;
+  const inflationCard = $('#inflation-context');
+  if (inflationCard) inflationCard.hidden = selectedGoal?.confirmed !== true;
   const quickGoal = $('#quick-goal');
   if (quickGoal) {
     const goals = state.account?.portfolio?.goals || [];
@@ -654,7 +662,7 @@ function renderReview() {
   checkList.replaceChildren();
   if (!checks.length) {
     const item = document.createElement('li');
-    item.textContent = browserOnly ? 'Describe one holding in chat, or upload a CAMS Active Statement or holdings CSV/XLSX to start.' :
+    item.textContent = browserOnly ? 'After you confirm holdings, this view can show your asset mix, largest positions, dated values and goal gap. Start with a supported statement, broker file or one checked holding.' :
       'Upload a statement or describe an investment to start.';
     checkList.append(item);
   } else for (const check of checks) {
