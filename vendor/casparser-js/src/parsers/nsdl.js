@@ -20,14 +20,14 @@
  * Amounts are parsed here, commas stripped, rather than left to the model layer.
  */
 
-import { FileType } from '../enums.js?v=c8b6b13284a0';
-import { Decimal, ZERO } from '../decimal.js?v=c8b6b13284a0';
+import { FileType } from '../enums.js?v=2a1028e6d02e';
+import { Decimal, ZERO } from '../decimal.js?v=2a1028e6d02e';
 import {
   Bond, DematAccount, DematOwner, Equity, MutualFund, NPSAccount, NPSScheme, NSDLCASData,
   StatementPeriod,
-} from '../types.js?v=c8b6b13284a0';
-import * as pageobj from './pageobj.js?v=c8b6b13284a0';
-import { extractNsdlCdslInvestor } from './investor.js?v=c8b6b13284a0';
+} from '../types.js?v=2a1028e6d02e';
+import * as pageobj from './pageobj.js?v=2a1028e6d02e';
+import { extractNsdlCdslInvestor } from './investor.js?v=2a1028e6d02e';
 
 // ---------------------------------------------------------------------- patterns
 

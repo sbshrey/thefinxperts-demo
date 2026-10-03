@@ -1,4 +1,4 @@
-importScripts('./vendor/read-excel-file/read-excel-file.min.js?v=c8b6b13284a0');
+importScripts('./vendor/read-excel-file/read-excel-file.min.js?v=2a1028e6d02e');
 
 self.onmessage = async event => {
   try {
