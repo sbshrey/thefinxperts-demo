@@ -948,7 +948,7 @@ function render() {
   $('#live-status').textContent = `Review updated. ${state.holdings.length} holdings, ${result.findings.length + result.additionalFindings.length} review items.`;
   const hasPersonalHoldings = state.source === 'user' && state.holdings.length > 0;
   $('#download-review').disabled = !hasPersonalHoldings;
-  $('#download-readable').disabled = !hasPersonalHoldings || state.goal.confirmed !== true;
+  $('#download-readable').disabled = !hasPersonalHoldings;
   updateAccountActions();
 }
 
@@ -1952,7 +1952,7 @@ function downloadFile(content, mimeType, filename) {
 $('#download-readable').addEventListener('click', () => {
   const report = buildReadableReport(state);
   if (!report) {
-    $('#backup-status').textContent = 'Add your holdings and confirm the selected goal before downloading its summary.';
+    $('#backup-status').textContent = 'Add your holdings before downloading a readable snapshot.';
     return;
   }
   downloadFile(report, 'text/plain;charset=utf-8', 'thefinxperts-readable-review.txt');

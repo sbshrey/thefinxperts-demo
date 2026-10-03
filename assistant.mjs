@@ -2004,7 +2004,7 @@ $('#download-readable-review')?.addEventListener('click', () => {
   if (!portfolio) return;
   const report = buildReadableReport({ ...portfolio, source: 'user' });
   if (!report) {
-    say('note', 'Confirm the selected goal’s age, time and target to download its readable report. Your restorable review file is available now.');
+    say('note', 'Add and confirm a holding before downloading a readable portfolio snapshot.');
     return;
   }
   downloadPrivateFile(report, 'text/plain;charset=utf-8', 'thefinxperts-readable-review.txt');

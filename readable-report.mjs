@@ -16,7 +16,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
       !Array.isArray(state.goals) ||
       !(preparedAt instanceof Date) || Number.isNaN(preparedAt.getTime())) return null;
   const goal = state.goals.find(item => item.id === state.activeGoalId);
-  if (!goal || goal.confirmed !== true) return null;
+  if (!goal || goal.confirmed !== true) return buildPortfolioOnlyReport(state, preparedAt);
   const result = analyzePortfolio(state.holdings, goal, preparedAt, state.reserve, state.coverage);
   const assumptionsReady = confirmedGoalAssumptions(goal);
   const monthsOfEssentials = reserveMonths(state.reserve);
@@ -128,16 +128,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
   if (!result.findings.length) lines.push('No findings yet. Check the entered holdings and goal.');
 
   lines.push('', 'ENTERED HOLDINGS');
-  for (const holding of state.holdings) {
-    const share = goalShare(goal, holding.id);
-    const label = share ? `${share}% (${rupees(Number(holding.value) * share / 100)}) linked to selected goal` : 'not linked to selected goal';
-    const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
-    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` | latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
-    if (holding.navEstimate) lines.push(`  User-entered NAV estimate: ${holding.units} statement units × ₹${holding.navEstimate.nav} on ${holding.navEstimate.navAsOf}; original statement value ${rupees(holding.navEstimate.originalValue)} on ${holding.navEstimate.originalAsOf || 'unknown'}. Units and exact scheme were confirmed by the investor, not independently verified here.`);
-    if (holding.shares) lines.push(`  Entered direct-stock shares: ${holding.shares}. Check trades and corporate actions against a current broker report.`);
-    if (holding.costBasis !== undefined) lines.push(`  Entered invested amount for current units or shares: ${rupeesWithPaise(holding.costBasis)} checked ${holding.costBasisAsOf}. This is investor-supplied, not a verified transaction history.`);
-    if (holding.stockEstimate) lines.push(`  User-entered stock-price estimate: ${holding.shares} shares × ₹${holding.stockEstimate.price} on ${holding.stockEstimate.priceAsOf}; earlier entered value ${rupees(holding.stockEstimate.originalValue)} on ${holding.stockEstimate.originalAsOf}. Shares, security and quote were confirmed by the investor, not independently verified here.`);
-  }
+  appendHoldings(lines, state.holdings, goal);
   lines.push('', 'IMPORTANT LIMITS',
     'Values and asset labels are as entered or imported; a user-entered NAV or stock-price estimate is not a live price feed.',
     'Unknown fund constituents remain unknown. A fund-house summary is not a scheme-level review.',
@@ -145,6 +136,64 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     'This educational review does not recommend buying, selling or rebalancing a security.',
     'Keep the separate JSON backup if you want to restore this review later.', '');
   return lines.join('\n');
+}
+
+function buildPortfolioOnlyReport(state, preparedAt) {
+  // Only portfolio fields are used; the empty goal prevents unconfirmed goal arithmetic.
+  const result = analyzePortfolio(state.holdings, { linkedIds: [], years: 0, target: 0 },
+    preparedAt, state.reserve, state.coverage);
+  const dated = state.holdings.filter(holding => typeof holding.asOf === 'string' && holding.asOf).length;
+  const unknownAssets = state.holdings.filter(holding => holding.asset === 'Other').length;
+  const houseTotals = state.holdings.filter(holding => holding.granularity === 'fund_house').length;
+  const lines = [
+    'THEFINXPERTS | PRIVATE PORTFOLIO SNAPSHOT',
+    `Prepared (India): ${indiaDate(preparedAt)}`,
+    'This file contains your holdings and values. Keep it private.',
+    '', 'PORTFOLIO SNAPSHOT',
+    `Entered value: ${rupees(result.total)} across ${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`,
+    'Scope: only the holdings entered or imported here; check other fund and broker statements before treating this as your full portfolio.',
+    ...(state.coverage ? [`Self reported coverage (unverified): mutual funds ${coverageText(state.coverage.mutualFunds)}; direct stocks ${coverageText(state.coverage.directStocks)}; other investments ${coverageText(state.coverage.otherInvestments)}. Other assets count only if entered.`] : ['Self reported coverage: not answered; this snapshot may be partial.']),
+    `Valuation dates: ${result.asOfSummary}`,
+    `Asset mix: ${MIX_ASSETS.map(asset => `${asset} ${result.total ? (result.assets[asset] / result.total * 100).toFixed(1) : '0.0'}%`).join(' | ')}`,
+    `Fund plan labels from entered names: Regular ${rupees(result.fundPlans.Regular)} | Direct ${rupees(result.fundPlans.Direct)} | unclear ${rupees(result.fundPlans.Unclear)}; current expense ratios not verified`,
+    ...(result.unrealizedChange.coveredCount ? [`Entered unrealized ${result.unrealizedChange.change >= 0 ? 'gain' : 'loss'} on ${result.unrealizedChange.coveredCount} cost-covered ${result.unrealizedChange.coveredCount === 1 ? 'holding' : 'holdings'}: ${rupeesWithPaise(Math.abs(result.unrealizedChange.change))}. ${result.unrealizedChange.missingCount} ${result.unrealizedChange.missingCount === 1 ? 'row' : 'rows'} excluded. This is not lifetime profit or annual return.`] : []),
+    '', 'GOAL CONTEXT',
+    'No confirmed selected goal. Age, time horizon and target have not been used to calculate a gap, future value or suitable mix.',
+    ...(goalName(state) ? [`Draft selected goal: ${clean(goalName(state))}; its details remain unconfirmed.`] : []),
+    '', 'QUESTIONS TO CHECK',
+    '1. Are all your mutual funds, direct stocks and other investments included in this snapshot?',
+    `2. Can you check current values and dates against your statements? ${state.holdings.length - dated} ${state.holdings.length - dated === 1 ? 'holding has' : 'holdings have'} no entered valuation date. A dated value is still investor supplied or imported, not a live quote.`,
+    ...(unknownAssets ? [`3. Can you classify the ${unknownAssets} ${unknownAssets === 1 ? 'holding' : 'holdings'} labelled Other from a detailed source before interpreting the mix?`] : []),
+    ...(houseTotals ? [`${unknownAssets ? 4 : 3}. Can you get scheme-level details for ${houseTotals} fund-house ${houseTotals === 1 ? 'total' : 'totals'}? These are summaries, not individual schemes.`] : []),
+    'Set and confirm a goal when you want goal-date arithmetic. For personal investment decisions, discuss these facts and your full circumstances with a SEBI-registered investment adviser.',
+    '', 'ENTERED HOLDINGS',
+  ];
+  appendHoldings(lines, state.holdings);
+  lines.push('', 'IMPORTANT LIMITS',
+    'Values and asset labels are as entered or imported; a user-entered NAV or stock-price estimate is not a live price feed.',
+    'Unknown fund constituents remain unknown. A fund-house summary is not a scheme-level review.',
+    'A checked invested amount can show only an unrealized change on covered holdings; a holdings snapshot cannot establish annualized return, lifetime profit, taxes, exit loads or precise overlap.',
+    'This educational snapshot does not recommend buying, selling or rebalancing a security.',
+    'Keep the separate JSON backup if you want to restore this review later.', '');
+  return lines.join('\n');
+}
+
+function goalName(state) {
+  const goal = state.goals.find(item => item.id === state.activeGoalId);
+  return goal?.name && goal.name !== 'My goal' ? goal.name : null;
+}
+
+function appendHoldings(lines, holdings, goal = null) {
+  for (const holding of holdings) {
+    const share = goal ? goalShare(goal, holding.id) : 0;
+    const label = goal ? (share ? `${share}% (${rupees(Number(holding.value) * share / 100)}) linked to selected goal` : 'not linked to selected goal') : 'goal allocation not yet confirmed';
+    const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
+    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` | latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
+    if (holding.navEstimate) lines.push(`  User-entered NAV estimate: ${holding.units} statement units × ₹${holding.navEstimate.nav} on ${holding.navEstimate.navAsOf}; original statement value ${rupees(holding.navEstimate.originalValue)} on ${holding.navEstimate.originalAsOf || 'unknown'}. Units and exact scheme were confirmed by the investor, not independently verified here.`);
+    if (holding.shares) lines.push(`  Entered direct-stock shares: ${holding.shares}. Check trades and corporate actions against a current broker report.`);
+    if (holding.costBasis !== undefined) lines.push(`  Entered invested amount for current units or shares: ${rupeesWithPaise(holding.costBasis)} checked ${holding.costBasisAsOf}. This is investor-supplied, not a verified transaction history.`);
+    if (holding.stockEstimate) lines.push(`  User-entered stock-price estimate: ${holding.shares} shares × ₹${holding.stockEstimate.price} on ${holding.stockEstimate.priceAsOf}; earlier entered value ${rupees(holding.stockEstimate.originalValue)} on ${holding.stockEstimate.originalAsOf}. Shares, security and quote were confirmed by the investor, not independently verified here.`);
+  }
 }
 
 function coverageText(value) {
