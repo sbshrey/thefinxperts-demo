@@ -10,7 +10,7 @@ import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQ
 import { previewAssistantImport } from './assistant-import.mjs';
 import { importValueAndDates, rupees } from './assistant-import-audit.mjs';
 import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
-import { analyzePortfolio, valuationDateIssue } from './analysis.mjs';
+import { analyzePortfolio, valuationDateIssue, valuationRowsNeedingCheck } from './analysis.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
@@ -581,7 +581,9 @@ function renderReview() {
   const total = rows.reduce((sum, row) => sum + row.value, 0);
   const assets = { Equity: 0, Debt: 0, Gold: 0, Other: 0 };
   for (const row of rows) assets[row.asset] += row.value;
-  const stale = rows.filter(row => valuationDateIssue(row.asOf)).length;
+  const datedChecks = valuationRowsNeedingCheck(rows);
+  const stale = datedChecks.length;
+  const dateCheckValue = datedChecks.reduce((sum, item) => sum + Number(item.row.value), 0);
   $('#total').textContent = money(total);
   $('#count').textContent = String(rows.length);
   $('#stale-count').textContent = String(stale);
@@ -589,7 +591,7 @@ function renderReview() {
   const hasNavEstimate = state.account?.portfolio?.holdings?.some(row => row.navEstimate);
   const hasStockEstimate = state.account?.portfolio?.holdings?.some(row => row.stockEstimate);
   $('#date-note').textContent = rows.length ?
-    `Based on supplied values and dates, not live market quotes.${hasNavEstimate ? ' Includes your dated NAV estimate with unchanged units.' : ''}${hasStockEstimate ? ' Includes your dated stock-price estimate with unchanged shares.' : ''}` :
+    `Based on supplied values and dates, not live market quotes.${stale ? ` ${money(dateCheckValue)} of entered value needs a date check.` : ''}${hasNavEstimate ? ' Includes your dated NAV estimate with unchanged units.' : ''}${hasStockEstimate ? ' Includes your dated stock-price estimate with unchanged shares.' : ''}` :
     'Add a holding to begin. Values are dated, not live quotes.';
   const bars = $('#asset-bars');
   bars.replaceChildren();
@@ -633,13 +635,13 @@ function renderReview() {
     why.append(summary, basis, limitation);
     const action = document.createElement('button'); action.type = 'button';
     action.className = 'review-check-action';
-    const firstDated = rows.findIndex(row => valuationDateIssue(row.asOf));
+    const firstDated = datedChecks[0]?.index ?? -1;
     const firstOther = rows.findIndex(row => row.asset === 'Other' && row.type === 'Mutual fund' && row.granularity !== 'fund_house');
     const targetRow = check.key === 'classification' ? firstOther :
       check.key === 'goal-access' ? rows.findIndex(row => row.type === 'Other investment' &&
         goalShare(state.account?.portfolio?.goals?.find(goal => goal.id === state.account.portfolio.activeGoalId), row.id) > 0) : -1;
     if (check.key === 'valuation' && firstDated >= 0) {
-      action.textContent = 'Check first flagged value';
+      action.textContent = 'Check largest flagged value';
       action.addEventListener('click', () => guideValueRefresh(firstDated, rows[firstDated], valuationDateIssue(rows[firstDated].asOf)));
     } else if (check.key === 'summary') {
       action.textContent = 'How to get a detailed CAS';

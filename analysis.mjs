@@ -400,6 +400,17 @@ export function valuationDateIssue(asOf, today = new Date()) {
   return date < staleCutoff ? 'stale' : null;
 }
 
+/** Keep the original row number while showing the largest dated-value gaps first. */
+export function valuationRowsNeedingCheck(holdings, today = new Date()) {
+  if (!Array.isArray(holdings)) return [];
+  return holdings.flatMap((row, index) => {
+    const value = Number(row?.value);
+    if (!Number.isFinite(value) || value <= 0) return [];
+    const issue = valuationDateIssue(row.asOf, today);
+    return issue ? [{ row, index, issue }] : [];
+  }).sort((a, b) => Number(b.row.value) - Number(a.row.value) || a.index - b.index);
+}
+
 export function overlapPercent(exposureA, exposureB) {
   if (!exposureA || !exposureB) return null;
   const keys = new Set([...Object.keys(exposureA), ...Object.keys(exposureB)]);

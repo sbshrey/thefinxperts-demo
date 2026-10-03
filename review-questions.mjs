@@ -1,4 +1,5 @@
-import { hasDatedFundTer, planFromName, positionsByIsin, valuationDateIssue } from './analysis.mjs';
+import { hasDatedFundTer, planFromName, positionsByIsin, valuationDateIssue,
+  valuationRowsNeedingCheck } from './analysis.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
 import { reserveMonths } from './reserve.mjs';
 import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs';
@@ -541,20 +542,22 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   }
   if (/\b(as.?of|dated?|stale|outdated|recent|refresh\w*|old values?)\b/.test(input) ||
       /\b(?:values?|holdings?) need(?:s)? (?:an? )?updat\w*\b/.test(input)) {
-    const issues = valid.map(row => ({ row, issue: valuationDateIssue(row.asOf, today),
-      number: holdings.indexOf(row) + 1 }));
+    const issues = valuationRowsNeedingCheck(holdings, today);
+    if (!issues.length) return answer(`${lead}none of the ${valid.length} entered holding values has a missing, future or over-90-day valuation date. ${result.asOfSummary}.`,
+      `Compared ${valid.length} entered holding dates with today's date in India using a 90-day review threshold.`,
+      'Dates and amounts are supplied, not verified live quotes. A recent date does not prove the holding quantity is still current.', '#holdings', 'Review source dates');
     const count = issue => issues.filter(item => item.issue === issue).length;
     const missing = count('missing');
     const stale = count('stale');
     const future = count('future');
-    const needingCheck = issues.filter(item => item.issue);
-    const first = needingCheck.slice(0, 5).map(({ row, issue, number }) =>
-      `#${number} ${row.name} (${issue === 'missing' ? 'date missing' :
+    const affectedValue = issues.reduce((sum, item) => sum + Number(item.row.value), 0);
+    const first = issues.slice(0, 5).map(({ row, issue, index }) =>
+      `#${index + 1} ${row.name} (${issue === 'missing' ? 'date missing' :
         `${row.asOf}; ${issue === 'future' ? 'future date' : 'over 90 days old'}`})`);
-    const list = first.length ? ` Check ${first.join('; ')}${needingCheck.length > first.length ?
-      `; and ${needingCheck.length - first.length} more flagged ${needingCheck.length - first.length === 1 ? 'row' : 'rows'}` : ''}.` : '';
-    return answer(`${lead}${missing} ${missing === 1 ? 'holding lacks' : 'holdings lack'} a date, ${stale} ${stale === 1 ? 'is' : 'are'} dated over 90 days ago, and ${future} ${future === 1 ? 'has a' : 'have'} future ${future === 1 ? 'date' : 'dates'}.${list} ${String(result.asOfSummary).replace(/\.$/, '')}.`,
-      `Compared the dates on ${valid.length} entered ${valid.length === 1 ? 'holding' : 'holdings'} with today's date in India; the 90-day threshold is a review prompt.`,
+    const list = first.length ? ` Check the largest affected entered values first: ${first.join('; ')}${issues.length > first.length ?
+      `; and ${issues.length - first.length} more flagged ${issues.length - first.length === 1 ? 'row' : 'rows'}` : ''}.` : '';
+    return answer(`${lead}${missing} ${missing === 1 ? 'holding lacks' : 'holdings lack'} a date, ${stale} ${stale === 1 ? 'is' : 'are'} dated over 90 days ago, and ${future} ${future === 1 ? 'has a' : 'have'} future ${future === 1 ? 'date' : 'dates'}. ${money(affectedValue)} of entered value needs a date check.${list} ${String(result.asOfSummary).replace(/\.$/, '')}.`,
+      `Compared the dates on ${valid.length} entered ${valid.length === 1 ? 'holding' : 'holdings'} with today's date in India and added ${money(affectedValue)} across ${issues.length} flagged rows. Rows are listed by entered value, with original row numbers retained. The 90-day threshold is a review prompt.`,
       'A dated entry is not a verified live quote. Refresh values from the original source.', '#holdings', 'Check dated values');
   }
   const monthlyGoalQuestion = /\b(?:per month|monthly)\b/.test(input) &&
