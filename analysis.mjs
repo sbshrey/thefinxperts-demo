@@ -346,7 +346,7 @@ export function hasDatedFundTer(holding, today = new Date()) {
 }
 
 /** Combine only entries with the same valid-format ISIN and classification. */
-export function positionsByIsin(holdings) {
+export function positionsByIsin(holdings, { withSourceIndexes = false } = {}) {
   const positions = new Map();
   holdings.forEach((holding, index) => {
     const identified = typeof holding.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin);
@@ -354,9 +354,12 @@ export function positionsByIsin(holdings) {
     const key = summarized ? `amc:${holding.amc.toLocaleLowerCase('en-IN')}` :
       identified ? `isin:${holding.isin}|${holding.type}|${holding.asset}` : `row:${index}`;
     const previous = positions.get(key);
-    positions.set(key, previous ? { ...previous, value: previous.value + Number(holding.value), entries: previous.entries + 1 } :
+    positions.set(key, previous ? { ...previous, value: previous.value + Number(holding.value),
+      entries: previous.entries + 1,
+      ...(withSourceIndexes ? { sourceIndexes: [...previous.sourceIndexes, index] } : {}) } :
       { name: summarized ? holding.amc : holding.name || 'Unnamed holding', value: Number(holding.value),
-        entries: 1, ...(summarized ? { granularity: 'fund_house' } : {}) });
+        entries: 1, ...(withSourceIndexes ? { sourceIndexes: [index] } : {}),
+        ...(summarized ? { granularity: 'fund_house' } : {}) });
   });
   return [...positions.values()].sort((a, b) => b.value - a.value);
 }

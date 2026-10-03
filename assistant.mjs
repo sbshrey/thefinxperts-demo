@@ -475,6 +475,13 @@ function renderReview() {
         $('#message').value = 'How complete is my portfolio?';
         $('#composer').requestSubmit();
       });
+    } else if (check.key === 'position') {
+      action.textContent = 'Test a fall you choose';
+      action.addEventListener('click', () => {
+        if (mobileReview.matches) setReviewExpanded(false);
+        $('#message').value = 'What if my largest holding falls for my goal?';
+        $('#composer').requestSubmit();
+      });
     } else {
       const goalCheck = ['chosen-mix', 'horizon', 'emergency', 'reserve'].includes(check.key);
       action.textContent = goalCheck ? 'Review selected goal' : targetRow >= 0 ? 'See related holding' : 'Review holdings';

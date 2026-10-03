@@ -82,6 +82,57 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  if (/\b(?:largest|biggest|top)\s+(?:holding|position)\b/.test(input) &&
+      /\b(?:fall|falls|fell|drop|drops|dropped|halve|halves|halved)\b/.test(input)) {
+    const scoped = Boolean(goalScopeRequested);
+    if (scoped) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const values = input.match(/\d+(?:\.\d+)?\s*%/g) || [];
+    const half = /\b(?:halve|halves|halved)\b/.test(input);
+    const dropPct = half ? 50 : values.length === 1 ? Number.parseFloat(values[0]) : null;
+    if (values.length > 1 || half && values.length || dropPct === null || dropPct < 1 || dropPct > 100)
+      return answer('Choose one hypothetical fall between 1% and 100%, such as “What if my largest holding falls 20%?” I will keep the other entered values fixed.',
+        'No single valid fall percentage was supplied for this question.',
+        'The percentage is your what-if input, not a predicted market move.', scoped ? '#goals' : '#holdings', 'Choose one fall');
+    const rows = scoped ? valid.flatMap(row => {
+      const share = goalShare(goal, row.id);
+      return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+    }) : valid;
+    const total = scoped ? result.goalTotal : result.total;
+    if (!rows.length) return answer(`Add and confirm ${scoped ? 'a holding assigned to this goal' : 'a fund or stock'} before testing a hypothetical fall.`,
+      `No positive ${scoped ? 'assigned ' : ''}holding value is available in this review.`,
+      'An empty review does not mean you own no investments.', scoped ? '#goals' : '#holdings', 'Add a holding');
+    const datedIssues = rows.filter(row => valuationDateIssue(row.asOf, today)).length;
+    if (datedIssues || scoped && result.goalAccessCheck.count)
+      return answer(`Check ${datedIssues ? `${datedIssues} missing, future or over-90-day value date${datedIssues === 1 ? '' : 's'}` : 'the linked value dates'}${scoped && result.goalAccessCheck.count ? `${datedIssues ? ' and ' : ''}access to ${money(result.goalAccessCheck.value)} of linked other investments` : ''} before applying a fall to this ${scoped ? 'goal' : 'portfolio'} snapshot.`,
+        `${rows.length} entered ${scoped ? 'assigned ' : ''}holding rows; ${datedIssues} need a date check${scoped ? `; ${result.goalAccessCheck.count} linked other-investment rows need an access check` : ''}.`,
+        'A hypothetical fall applied to an old or unavailable starting amount would be misleading.', '#holdings', 'Check entered values');
+    const labelsByIsin = new Map();
+    for (const row of rows) {
+      if (!/^[A-Z]{2}[A-Z0-9]{10}$/.test(row.isin || '')) continue;
+      const labels = labelsByIsin.get(row.isin) || new Set();
+      labels.add(`${row.type}|${row.asset}`);
+      labelsByIsin.set(row.isin, labels);
+    }
+    if ([...labelsByIsin.values()].some(labels => labels.size > 1))
+      return answer('Check the conflicting type or asset labels on rows with the same supplied ISIN before choosing the largest position.',
+        'At least one supplied ISIN appears with different classifications in this review.',
+        'The same identifier cannot be ranked safely as separate instruments until its source rows are checked.', '#holdings', 'Check identifiers');
+    const largest = positionsByIsin(rows, { withSourceIndexes: true })[0];
+    if (!largest || largest.granularity === 'fund_house' ||
+        rows[largest.sourceIndexes[0]]?.type === 'Other investment')
+      return answer('The largest entered amount is a fund-house summary or manually valued other investment. Check a scheme-level statement or ask about a specific fund or stock before testing a single-position fall.',
+        `Largest entered amount: ${largest ? `${largest.name} ${money(largest.value)}` : 'none'}.`,
+        'A fund-house total can contain several schemes, and access or value behavior of other savings is not verified.', '#holdings', 'Check holding detail');
+    const loss = largest.value * dropPct / 100;
+    const after = total - loss;
+    const goalGap = scoped ? Math.max(0, Number(goal.target) - after) : null;
+    return answer(`If ${largest.name} fell ${dropPct}% once while every other entered value stayed fixed, ${scoped ? `the value assigned to ${goal.name}` : 'the entered portfolio'} would fall by ${money(loss)} to ${money(after)} (${percent(loss, total)} lower).${scoped ? ` The gap to your goal target in today’s rupees would be ${money(goalGap)}.` : ''}`,
+      `${money(largest.value)} in ${largest.entries} ${largest.entries === 1 ? 'entry' : 'entries'} × ${dropPct}% = ${money(loss)} hypothetical loss; ${money(total)} entered ${scoped ? 'assigned ' : ''}value − ${money(loss)} = ${money(after)}. Exact matching supplied ISINs and classifications are grouped. ${result.asOfSummary}.`,
+      `This is a one-time arithmetic what-if, not a forecast, risk score or trade instruction. Fund constituents, other price moves, taxes and unentered holdings are unknown. ${coverageNote}`, scoped ? '#goals' : '#holdings', 'Review entered positions');
+  }
   if (/\b(?:on track|can i retire|ready to retire|enough to retire|afford to retire)\b/.test(input)) {
     if (/\bretir\w*\b/.test(input) && !/\bretir\w*\b/i.test(goal?.name || ''))
       return answer(`The selected goal is ${goal?.name || 'unfinished'}, not Retirement. Select or create your retirement goal so this question uses its own target and assigned holdings.`,
