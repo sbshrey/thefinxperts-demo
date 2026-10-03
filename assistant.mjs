@@ -640,8 +640,14 @@ function renderReview() {
     const hasNamedGoal = goals.some(goal => !isEmptyGoalPlaceholder(goal));
     quickGoal.hidden = goals.some(goal => !goal.confirmed && !isEmptyGoalPlaceholder(goal));
     quickGoal.textContent = hasNamedGoal ? 'Add a goal' : 'Start a goal';
-    for (const prompt of document.querySelectorAll('.suggested-questions [data-guided-question]'))
-      prompt.hidden = rows.length === 0;
+    const quickNext = $('#quick-next');
+    quickNext.dataset.guidedQuestion = hasNamedGoal ? 'Goal readiness' : 'What should I check first?';
+    quickNext.textContent = hasNamedGoal ? 'Goal checks' : 'Next check';
+    for (const prompt of document.querySelectorAll('.suggested-questions [data-guided-question]')) {
+      prompt.hidden = rows.length === 0 ||
+        (prompt.dataset.requires === 'fund' && !rows.some(row => row.type === 'Mutual fund')) ||
+        (prompt.dataset.requires === 'confirmed-goal' && selectedGoal?.confirmed !== true);
+    }
     $('.suggested-questions span').textContent = rows.length ? 'Ask this review' : 'Start here';
   }
   const total = rows.reduce((sum, row) => sum + row.value, 0);

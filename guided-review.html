@@ -36,10 +36,10 @@
             <button id="quick-goal" type="button">Start a goal</button>
             <button type="button" data-guided-question="What do I own?" hidden>What do I own?</button>
             <button type="button" data-guided-question="How diversified am I?" hidden>Diversification</button>
-            <button type="button" data-guided-question="Which of my funds say Regular or Direct Plan?" hidden>Fund plans</button>
-            <button type="button" data-guided-question="Goal readiness" hidden>Goal checks</button>
-            <button type="button" data-guided-question="Am I on track?" hidden>On track?</button>
-            <button type="button" data-guided-question="What is my goal gap?" hidden>Goal gap</button>
+            <button type="button" data-guided-question="Which of my funds say Regular or Direct Plan?" data-requires="fund" hidden>Fund plans</button>
+            <button id="quick-next" type="button" data-guided-question="What should I check first?" hidden>Next check</button>
+            <button type="button" data-guided-question="Am I on track?" data-requires="confirmed-goal" hidden>On track?</button>
+            <button type="button" data-guided-question="What is my goal gap?" data-requires="confirmed-goal" hidden>Goal gap</button>
           </div>
           <div id="file-chip" class="file-chip" hidden><span id="file-label"></span><button id="remove-file" type="button" class="quiet" hidden>Remove file</button></div>
           <div id="active-option" class="cas-option" hidden><span>This PDF needs a password. Try reading a CAMS Active Statement in this browser; the password and PDF stay in this tab.</span><input id="active-password" type="password" maxlength="200" autocomplete="off" placeholder="PDF password" aria-label="Active Statement PDF password"><button id="active-preview" type="button">Read in browser</button></div>

@@ -80,6 +80,8 @@ body{margin:0}
 .suggested-questions span{font-size:11px;color:#688073;font-weight:700;margin-right:3px}
 .composer .suggested-questions button{border:1px solid #cbdccf;border-radius:99px;background:#f5faf4;color:#285940;font:700 11px Arial,sans-serif;padding:6px 9px;cursor:pointer}
 .composer .suggested-questions button:hover{background:#e8f3e8}
+.message.note .holding-review-action{display:block;margin-top:8px;border:1px solid #9dbfa8;border-radius:8px;background:#fff;color:#174d3f;padding:7px 10px;font:700 12px Arial,Helvetica,sans-serif;cursor:pointer}
+.message.note .holding-review-action:hover{background:#edf6ee}
 .composer-row{display:flex;gap:10px;align-items:flex-end;border:1px solid #cfddd3;border-radius:17px;padding:7px;background:#fff}
 .composer-row:focus-within{border-color:#2b7960;box-shadow:0 0 0 3px #dceddf}
 .composer .attach{border:0;border-radius:11px;background:#eaf3eb;color:#173f35;cursor:pointer;padding:12px 13px;font:700 12px Arial,Helvetica,sans-serif;white-space:nowrap}
