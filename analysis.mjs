@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=80cb7fde6994';
-import { compareMixPlan } from './mix-plan.mjs?v=80cb7fde6994';
-import { goalShare } from './goals.mjs?v=80cb7fde6994';
-import { reserveMonths } from './reserve.mjs?v=80cb7fde6994';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=80cb7fde6994';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=0fb98de82454';
+import { compareMixPlan } from './mix-plan.mjs?v=0fb98de82454';
+import { goalShare } from './goals.mjs?v=0fb98de82454';
+import { reserveMonths } from './reserve.mjs?v=0fb98de82454';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=0fb98de82454';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -317,10 +317,20 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       basis: `${rupees(largestIssuer[1])} visible exposure ÷ ${rupees(total)} entered portfolio = ${(largestIssuer[1] / total * 100).toFixed(1)}%. Direct stock rows with the same supplied ISIN are grouped; any supplied fund constituent weights are added by issuer name.`,
       limitation: `Only ${(classifiedValue / total * 100).toFixed(1)}% of entered value has named-company coverage. ISINs and fund issuer names are not registry-verified; unknown or differently named fund holdings may add exposure.` });
   }
-  const identifiedEquityFunds = new Set(valid.filter(holding => holding.asset === 'Equity' &&
-    holding.type === 'Mutual fund' && holding.granularity !== 'fund_house' &&
-    typeof holding.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin))
-    .map(holding => holding.isin));
+  const equityFundRows = valid.filter(holding => holding.asset === 'Equity' &&
+    holding.type === 'Mutual fund' && holding.granularity !== 'fund_house');
+  const identifiedEquityFunds = new Set();
+  const identifiedNames = new Set();
+  const nameOnlyFunds = new Set();
+  for (const holding of equityFundRows) {
+    const name = typeof holding.name === 'string' ? holding.name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-IN') : '';
+    if (typeof holding.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin)) {
+      identifiedEquityFunds.add(holding.isin);
+      if (name) identifiedNames.add(name);
+    } else if (name) nameOnlyFunds.add(name);
+  }
+  for (const name of identifiedNames) nameOnlyFunds.delete(name);
+  const equityFundGroups = identifiedEquityFunds.size + nameOnlyFunds.size;
   if (fundPlans.Regular > 0) {
     findings.push({ key: 'plan', tone: 'blue', label: 'Fund costs', title: 'Check fund plan and ongoing cost',
       detail: `${rupees(fundPlans.Regular)} of entered fund value has an explicit Regular Plan label. Check each scheme's current expense ratio and what service you receive before deciding whether its plan still fits.`,
@@ -328,12 +338,12 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       basis: `Added ${rupees(fundPlans.Regular)} from mutual-fund names explicitly labelled Regular Plan; ${rupees(fundPlans.Direct)} is labelled Direct Plan and ${rupees(fundPlans.Unclear)} has no clear plan label.`,
       limitation: `Labels and any entered expense ratios are not registry-verified. Expense ratios cover ${rupees(costCoveredValue)} of ${rupees(fundValue)} entered fund value. Exit loads, tax lots and switching costs are unknown, so savings and a switch decision cannot be calculated.` });
   }
-  if (identifiedEquityFunds.size >= 3) {
+  if (equityFundGroups >= 3) {
     findings.push({ key: 'funds', tone: 'blue', label: 'Fund roles', title: 'Check what each equity fund adds',
-      detail: 'Several identified equity funds may own similar companies. Review their underlying holdings and the job each fund plays.',
-      question: 'What distinct exposure does each fund add, according to its latest disclosed holdings?',
-      basis: `Counted ${identifiedEquityFunds.size} distinct format-valid fund ISINs labelled Equity, excluding fund-house summaries and repeated folios.`,
-      limitation: 'An imported ISIN is not registry-verified, and a fund count does not prove overlap; current scheme holdings are needed to compare companies.' });
+      detail: 'Several entered equity-fund positions may own similar companies or represent different plans or options of one scheme. Check the exact schemes and their latest disclosed holdings.',
+      question: 'Which exact schemes are these, and what distinct exposure does each add according to its latest disclosed holdings?',
+      basis: `Counted ${equityFundGroups} supplied equity-fund groups: ${identifiedEquityFunds.size} distinct format-valid ISINs and ${nameOnlyFunds.size} distinct names without a valid ISIN. Excluded fund-house summaries, repeated ISINs and names matching an identified row.`,
+      limitation: 'Supplied ISINs and names are not registry-verified. A group count does not establish distinct schemes or company overlap; plan and option variants may share holdings, and current scheme disclosures are needed to compare companies.' });
   }
   if (findings.length === 0 && total > 0) {
     const hasStock = valid.some(holding => holding.type === 'Stock');
