@@ -73,6 +73,29 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  if ((/\b(?:mutual funds?|funds?)\b/.test(input) && /\b(?:stocks?|shares?)\b/.test(input) &&
+      /\b(?:how much|how many|percent(?:age)?|share|split|breakdown|versus|vs)\b/.test(input)) ||
+      /\b(?:product|investment)\s+(?:type|category)\s+(?:split|breakdown|mix)\b/.test(input)) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const rows = valid.flatMap(row => {
+      const share = goalScopeRequested ? goalShare(goal, row.id) : 100;
+      return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+    });
+    const total = rows.reduce((sum, row) => sum + row.value, 0);
+    const value = type => rows.filter(row => row.type === type).reduce((sum, row) => sum + row.value, 0);
+    const funds = value('Mutual fund');
+    const stocks = value('Stock');
+    const other = value('Other investment');
+    return answer(total ?
+      `${goalScopeRequested ? `For ${goal.name}, ` : lead}mutual funds are ${money(funds)} (${percent(funds, total)}), directly held stocks ${money(stocks)} (${percent(stocks, total)}), and other investments ${money(other)} (${percent(other, total)}) of ${money(total)} ${goalScopeRequested ? 'assigned' : 'entered'} value.` :
+      `No positive ${goalScopeRequested ? 'assigned' : 'entered'} holding value is available for a product-type breakdown.`,
+      `Grouped ${rows.length} positive ${goalScopeRequested ? 'assigned shares of ' : ''}holding rows by their confirmed type. ${result.asOfSummary}.`,
+      `A mutual fund may itself hold stocks or other assets, and a fund-house summary may contain multiple schemes. This is a product-type split, not underlying asset exposure. ${coverageNote}`,
+      goalScopeRequested ? '#goals' : '#holdings', goalScopeRequested ? 'Review assigned holdings' : 'Inspect holdings');
+  }
   if (/\b(xirr|cagr|annual(?:ized)? return|performance)\b/.test(input))
     return answer('A holdings snapshot cannot establish your annual return or XIRR. Complete dated cash flows are needed before calculating those figures.',
       `${valid.length} entered current holding ${valid.length === 1 ? 'value' : 'values'}; no complete transaction history is held in this browser review.`,
