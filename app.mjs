@@ -2106,4 +2106,6 @@ $('#account-delete').addEventListener('click', async () => {
 });
 render();
 showInputMode('manual');
+const requestedImport = new URLSearchParams(window.location.search).get('import');
+if (['active', 'broker', 'csv', 'cas'].includes(requestedImport)) showInputMode(requestedImport);
 initAccount();

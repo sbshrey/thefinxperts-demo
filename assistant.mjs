@@ -232,6 +232,19 @@ function say(role, text, question = null) {
     state.history.push({ role, content: `${text}${question ? ` ${question}` : ''}`.slice(0, 1000) });
     state.history = state.history.slice(-8);
   }
+  return item;
+}
+
+function sayDetailedHandoff(message, source) {
+  if (!['active', 'broker', 'csv', 'cas'].includes(source)) throw new Error('Unsupported detailed review source.');
+  const item = say('note', `${message} Select the file again there; it stays on your device and is not carried between tabs.${state.confirmed.length ? ' If you need the holdings already confirmed here, save a private review file and open it in the detailed review first.' : ''}`);
+  const link = document.createElement('a');
+  link.className = 'detailed-handoff';
+  link.href = `./index.html?import=${source}#input-choice`;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = 'Open detailed review ↗';
+  item.append(document.createTextNode('\n'), link);
 }
 
 function renderDrafts() {
@@ -721,7 +734,7 @@ $('#remove-file').addEventListener('click', () => {
 function stageActiveStatement(parsed) {
   if (!parsed.holdings.length || parsed.errors.length) return false;
   if (parsed.holdings.length > 30) {
-    say('note', 'This guided chat can confirm up to 30 holdings at once. Use the detailed review on the main page for a larger Active Statement.');
+    sayDetailedHandoff('This guided chat can confirm up to 30 holdings at once. Open the detailed review to inspect this larger Active Statement.', 'active');
     clearFile();
     return true;
   }
@@ -787,7 +800,11 @@ async function offerUnsupportedPdf(file, parsed, allowAi = true) {
 
 function stageCasResult(result) {
   const prepared = prepareAssistantCasDrafts(result, { local: state.casLocal, browser: browserOnly });
-  if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return false; }
+  if (prepared.errors.length) {
+    if (prepared.handoffSource) sayDetailedHandoff(prepared.errors.join(' '), prepared.handoffSource);
+    else say('note', prepared.errors.join(' '));
+    return false;
+  }
   const drafts = prepared.drafts.map(row => normalizedDraft(row));
   if (drafts.some(row => !row)) { say('note', 'A CAS row could not be staged safely. No rows were added.'); return false; }
   if (state.account?.portfolio) {
@@ -869,7 +886,10 @@ $('#upload').addEventListener('change', async event => {
     setFileLabel('Reading selected report in this browser…');
     try {
       const result = await previewAssistantImport(file, { aiAvailable: !browserOnly });
-      if (result.errors.length) say('note', result.errors.join(' '));
+      if (result.errors.length) {
+        if (result.handoffSource) sayDetailedHandoff(result.errors.join(' '), result.handoffSource);
+        else say('note', result.errors.join(' '));
+      }
       else {
         const drafts = result.drafts.map(row => normalizedDraft(row));
         if (drafts.some(row => !row)) say('note', 'A report row could not be staged safely. No rows were added. Use the detailed review to inspect the report.');

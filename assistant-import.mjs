@@ -73,7 +73,7 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable) {
   }, null, { strictWidth, allowUnknownDate: true });
   if (result.errors.length) return { drafts: [], errors: result.errors };
   if (result.holdings.length > MAX_CHAT_DRAFTS) {
-    return { drafts: [], errors: [`This chat can confirm up to ${MAX_CHAT_DRAFTS} rows at once. Split the report or use the guided import on the main page.`] };
+    return { drafts: [], handoffSource: 'broker', errors: [`This chat can confirm up to ${MAX_CHAT_DRAFTS} rows at once. The detailed review can preview this broker report (up to 200 positions).`] };
   }
   if (result.holdings.some(row => row.name.length > 80)) {
     return { drafts: [], errors: ['A security name exceeds the saved review limit of 80 characters. Use the guided import to check it.'] };
@@ -125,7 +125,7 @@ export async function previewAssistantImport(file, { aiAvailable = true } = {}) 
       const simple = parseHoldingsCsv(text);
       if (simple.holdings.length) {
         if (simple.holdings.length > MAX_CHAT_DRAFTS)
-          return { drafts: [], errors: [`This chat can confirm up to ${MAX_CHAT_DRAFTS} rows at once. Split the file or use the guided import on the main page.`] };
+          return { drafts: [], handoffSource: 'csv', errors: [`This chat can confirm up to ${MAX_CHAT_DRAFTS} rows at once. The detailed review can preview this CSV (up to 200 holdings).`] };
         return { drafts: simple.holdings.map(row => ({ ...row, entryOrigin: 'simple_csv' })),
           errors: [], message: `Found ${simple.holdings.length} possible holding${simple.holdings.length === 1 ? '' : 's'} in the simple CSV. ${importAudit(simple.holdings)} The file stayed in this browser. Check the rows before confirming them. ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
       }

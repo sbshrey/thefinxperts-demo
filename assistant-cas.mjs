@@ -17,7 +17,7 @@ export function prepareAssistantCasDrafts(result, { local = false, browser = fal
     return { drafts: [], errors: ['The CAS preview source was not recognized.'] };
   if (!result.holdings.length) return { drafts: [], errors: ['No current fund or stock holdings were found in this CAS.'] };
   if (result.holdings.length > 30)
-    return { drafts: [], errors: ['This chat can confirm up to 30 CAS holdings at once. Use Original CAS PDF in the detailed review on the main page for a larger statement.'] };
+    return { drafts: [], handoffSource: 'cas', errors: ['This chat can confirm up to 30 CAS holdings at once. Open the detailed review to inspect this larger statement.'] };
   const origin = result.source === 'Demat CAS' ? 'demat_cas' : 'cas';
   const drafts = [];
   for (const row of result.holdings) {
