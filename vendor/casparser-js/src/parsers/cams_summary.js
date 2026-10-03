@@ -12,14 +12,14 @@
  * KFin carries the same fields but splits the header across two or three baselines.
  */
 
-import { CASFileType, FileType } from '../enums.js?v=e001308747dc';
-import { Decimal, ZERO } from '../decimal.js?v=e001308747dc';
-import { CasDate } from '../dates.js?v=e001308747dc';
-import { CASData, Folio, Scheme, SchemeValuation, StatementPeriod } from '../types.js?v=e001308747dc';
-import { extractCamsKfinInvestor } from './investor.js?v=e001308747dc';
-import { isinSearch } from '../isin.js?v=e001308747dc';
-import { extractPages } from './extract.js?v=e001308747dc';
-import { AMC_RE, Column, collectAtoms, toDecimal } from './cams_detailed.js?v=e001308747dc';
+import { CASFileType, FileType } from '../enums.js?v=da73a34f0752';
+import { Decimal, ZERO } from '../decimal.js?v=da73a34f0752';
+import { CasDate } from '../dates.js?v=da73a34f0752';
+import { CASData, Folio, Scheme, SchemeValuation, StatementPeriod } from '../types.js?v=da73a34f0752';
+import { extractCamsKfinInvestor } from './investor.js?v=da73a34f0752';
+import { isinSearch } from '../isin.js?v=da73a34f0752';
+import { extractPages } from './extract.js?v=da73a34f0752';
+import { AMC_RE, Column, collectAtoms, toDecimal } from './cams_detailed.js?v=da73a34f0752';
 
 /**
  * Header words either dialect uses. Whichever appears, it maps to one canonical column.
