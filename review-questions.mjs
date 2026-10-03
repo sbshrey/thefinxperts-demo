@@ -2,6 +2,7 @@ import { planFromName, valuationDateIssue } from './analysis.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
 import { reserveMonths } from './reserve.mjs';
 import { confirmedGoalAssumptions } from './goal-scenario.mjs';
+import { asksForAdvice } from './question-scope.mjs';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -67,7 +68,7 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
   }
 
-  if (/\b(buy|sell|switch|redeem|rebalance|rebalancing|optimi[sz](?:e|ation|ing)?|recommend\w*|what should i do|should i hold|which fund|best fund|right mix|ideal mix|suitable|how much should i invest|choose|pick|prefer|better|convert|move)\b/.test(input))
+  if (asksForAdvice(input))
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
