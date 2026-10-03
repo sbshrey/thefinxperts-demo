@@ -17,6 +17,8 @@ export function asksForAdvice(message) {
     /\b(?:pick|choose|select)\s+(?:the\s+)?best\s+(?:fund|stock|share|investment|sip)\b/i.test(message) ||
     /\bwhere should my next\b.{0,50}\b(?:go|be invested|be allocated)\b/i.test(message) ||
     /\bwhat should my\s+(?:equity.{0,15}debt\s+split|asset mix|allocation)\s+be\b/i.test(message) ||
+    /\b(?:what|which)\s+(?:(?:asset|target|portfolio)\s+)?(?:allocation|mix|equity.{0,15}debt\s+split)\s+should\s+i\s+(?:use|have|choose|set|follow)\b/i.test(message) ||
+    /\bhow much\s+(?:equity|debt|gold)\s+should\s+i\s+(?:have|hold|allocate|use)\b/i.test(message) ||
     /\bwhat would you\s+(?:change|improve)\s+(?:about|in)\s+my\s+(?:portfolio|holdings?|investments?)\b/i.test(message) ||
     /\b(?:optimi[sz]e|recommend)\b.{0,35}\b(?:my\s+)?(?:portfolio|investments?|allocation)\b/i.test(message) ||
     /\b(?:right|ideal)\s+(?:asset\s+)?mix\s+for\s+me\b/i.test(message) ||

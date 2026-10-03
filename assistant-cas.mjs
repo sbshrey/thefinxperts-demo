@@ -1,5 +1,5 @@
-import { importValueAndDates } from './assistant-import-audit.mjs?v=622157b4b88f';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=622157b4b88f';
+import { importValueAndDates } from './assistant-import-audit.mjs?v=6a8ceab83386';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=6a8ceab83386';
 
 const ALLOWED_ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const today = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
