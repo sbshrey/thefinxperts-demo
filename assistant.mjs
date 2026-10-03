@@ -11,6 +11,7 @@ import { previewAssistantImport } from './assistant-import.mjs';
 import { importValueAndDates, rupees } from './assistant-import-audit.mjs';
 import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
 import { analyzePortfolio, valuationDateIssue } from './analysis.mjs';
+import { buildReadableReport } from './readable-report.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
@@ -184,6 +185,8 @@ function renderAccountActions() {
   $('#delete-saved').disabled = state.busy;
   const localDownload = $('#download-tab-review');
   if (localDownload) localDownload.disabled = state.busy || !saved;
+  const readableDownload = $('#download-readable-review');
+  if (readableDownload) readableDownload.disabled = state.busy || !saved;
   renderDeviceActions();
   renderCorrection();
   renderRefresh();
@@ -1454,15 +1457,31 @@ if (browserOnly) {
   }
 }).catch(() => { $('#service-status').textContent = 'Local AI unavailable'; });
 
+function downloadPrivateFile(content, mimeType, filename) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a'); link.href = url; link.download = filename;
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$('#download-readable-review')?.addEventListener('click', () => {
+  const portfolio = state.account?.portfolio;
+  if (!portfolio) return;
+  const report = buildReadableReport({ ...portfolio, source: 'user' });
+  if (!report) {
+    say('note', 'Confirm the selected goal’s age, time and target to download its readable report. Your restorable review file is available now.');
+    return;
+  }
+  downloadPrivateFile(report, 'text/plain;charset=utf-8', 'thefinxperts-readable-review.txt');
+  say('note', 'Readable report downloaded. Keep it private; it contains holdings and values. Save a separate review file if you want to restore this work later.');
+});
+
 $('#download-tab-review')?.addEventListener('click', () => {
   const portfolio = state.account?.portfolio;
   if (!browserOnly || !portfolio) return;
-  const blob = new Blob([JSON.stringify(portfolio, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a'); link.href = url; link.download = 'thefinxperts-review.json';
-  document.body.append(link); link.click(); link.remove();
+  downloadPrivateFile(JSON.stringify(portfolio, null, 2), 'application/json', 'thefinxperts-review.json');
   fileSavedSerial = reviewChangeSerial;
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
   say('note', 'Your review file was downloaded. Keep it private; it contains your holdings and goal details.');
 });
 
