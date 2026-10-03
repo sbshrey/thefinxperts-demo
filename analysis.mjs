@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=3d48efb4e022';
-import { compareMixPlan } from './mix-plan.mjs?v=3d48efb4e022';
-import { goalShare } from './goals.mjs?v=3d48efb4e022';
-import { reserveMonths } from './reserve.mjs?v=3d48efb4e022';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=3d48efb4e022';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=6c5aa7e6549b';
+import { compareMixPlan } from './mix-plan.mjs?v=6c5aa7e6549b';
+import { goalShare } from './goals.mjs?v=6c5aa7e6549b';
+import { reserveMonths } from './reserve.mjs?v=6c5aa7e6549b';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=6c5aa7e6549b';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -154,7 +154,8 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const years = Number(goal.years);
   const target = Number(goal.target);
   const validGoal = Number.isFinite(years) && years > 0 && Number.isFinite(target) && target > 0;
-  const scenario = goalAccessCheck.count ? null : calculateGoalScenario(goalTotal, goal);
+  const scenario = goalTotal && !goalDateCheck.count && !goalAccessCheck.count && confirmedGoalAssumptions(goal) ?
+    calculateGoalScenario(goalTotal, goal) : null;
   const flatScenario = scenario && scenario.returnPct !== 0 ?
     calculateGoalScenario(goalTotal, { ...goal, returnPct: 0 }) : null;
   const shock = goalAccessCheck.count ? null :
