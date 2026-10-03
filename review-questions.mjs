@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=8857e57353e6';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=8857e57353e6';
-import { reserveMonths } from './reserve.mjs?v=8857e57353e6';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=607f6560b525';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=607f6560b525';
+import { reserveMonths } from './reserve.mjs?v=607f6560b525';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=8857e57353e6';
-import { asksForAdvice } from './question-scope.mjs?v=8857e57353e6';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=8857e57353e6';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=8857e57353e6';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=8857e57353e6';
-import { parseAmount } from './assistant-clarify.mjs?v=8857e57353e6';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=8857e57353e6';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=607f6560b525';
+import { asksForAdvice } from './question-scope.mjs?v=607f6560b525';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=607f6560b525';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=607f6560b525';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=607f6560b525';
+import { parseAmount } from './assistant-clarify.mjs?v=607f6560b525';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=607f6560b525';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=8857e57353e6';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=607f6560b525';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -492,7 +492,9 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Self-reported coverage is answered for all three groups; ${valid.length} confirmed rows have no missing, future or over-90-day value date.`,
       'No account was connected or independently reconciled. A recent date and an “all included” answer cannot prove complete ownership.', '#holdings', 'Review entered sources');
   }
-  const wholePortfolioFall = /\b(?:portfolio|holdings|investments)\b/.test(input) &&
+  const oneChosenEquityFall = /\bequity\b/.test(input) &&
+    (input.match(/\d+(?:\.\d+)?\s*%/g) || []).length === 1;
+  const wholePortfolioFall = (/\b(?:portfolio|holdings|investments)\b/.test(input) || oneChosenEquityFall) &&
     /\b(?:fall|falls|fell|drop|drops|dropped)\b/.test(input) &&
     /\b(?:what if|if|test|simulate)\b/.test(input) &&
     !/\b(?:largest|biggest|single|one holding|one position)\b/.test(input);
