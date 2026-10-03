@@ -1,4 +1,4 @@
-import { parseAmount } from './assistant-clarify.mjs?v=362a8b31641b';
+import { parseAmount } from './assistant-clarify.mjs?v=c8b6b13284a0';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -131,6 +131,22 @@ export function parseBrowserGoalNameReply(message) {
   if (!/^[a-z][a-z'’ -]{1,59}$/i.test(input) ||
       /^(?:i|you|we|what|how|can|do|please|tell|show|help|upload|open|remove|update)\b/i.test(input)) return null;
   return parseBrowserGoalStart(`I want to plan for ${input}`);
+}
+
+/** Accept an explicitly named goal and its three essential facts in one chat turn. */
+export function parseBrowserGoalSetup(message) {
+  if (typeof message !== 'string' || /[?\r\n]/.test(message)) return null;
+  const match = /^(.+?)[;,]\s*((?:i am|my age is|age)\s+.+)$/i.exec(message.trim());
+  if (!match) return null;
+  const start = parseBrowserGoalStart(match[1]);
+  if (!start) return null;
+  if (start.error) return start;
+  const detail = parseBrowserGoalFact(match[2], { age: null, years: null, target: null });
+  if (detail?.error) return detail;
+  if (!detail?.facts || !['age', 'years', 'target'].every(field =>
+    Object.hasOwn(detail.facts, field)))
+    return { error: 'Give your own age, years until this goal and target in today’s rupees together. For example: “I want to plan for retirement; I am 32, goal in 20 years, target ₹50 lakh in today’s rupees”.' };
+  return { goalName: start.goalName, facts: detail.facts };
 }
 
 /** Narrow, explicit goal answers for the browser-only guided review. */
