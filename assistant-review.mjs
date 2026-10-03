@@ -1,6 +1,6 @@
-import { analyzePortfolio } from './analysis.mjs?v=c1abbdc26b7f';
-import { goalShare } from './goals.mjs?v=c1abbdc26b7f';
-import { calculateStraightLineGap } from './goal-scenario.mjs?v=c1abbdc26b7f';
+import { analyzePortfolio } from './analysis.mjs?v=07dd9da79e7f';
+import { goalShare } from './goals.mjs?v=07dd9da79e7f';
+import { calculateStraightLineGap } from './goal-scenario.mjs?v=07dd9da79e7f';
 
 /** The chat dashboard reads saved facts; all scenario numbers come from the review engine. */
 export function buildAssistantGoalReview(portfolio, today = new Date()) {
@@ -54,4 +54,16 @@ export function buildAssistantReviewChecks(holdings, portfolio, today = new Date
     key: item.key, title: item.title, detail: item.detail, question: item.question,
     basis: item.basis, limitation: item.limitation,
   }));
+}
+
+/** One immediate, factual check for the compact goal card. */
+export function goalNextCheck(review) {
+  if (review.kind !== 'confirmed') return null;
+  if (!review.linkedCount) return 'Link a confirmed holding to this goal.';
+  if (review.dateCheckCount)
+    return `Check the value dates of ${review.dateCheckCount} linked holding${review.dateCheckCount === 1 ? '' : 's'}.`;
+  if (review.accessCheck?.count) return 'Check when the linked other investments can be used.';
+  if (review.findings?.[0]) return `${review.findings[0].title}.`;
+  if (review.missingAssumptions?.length) return 'Confirm your own inputs for a future illustration.';
+  return 'Ask “What should I check first?” for a factual review check.';
 }

@@ -1,37 +1,37 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=c1abbdc26b7f';
-import { previewBrowserCas } from './cas-browser.mjs?v=c1abbdc26b7f';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=c1abbdc26b7f';
-import { buildAssistantGoalReview, buildAssistantReviewChecks } from './assistant-review.mjs?v=c1abbdc26b7f';
-import { goalShare } from './goals.mjs?v=c1abbdc26b7f';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=07dd9da79e7f';
+import { previewBrowserCas } from './cas-browser.mjs?v=07dd9da79e7f';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=07dd9da79e7f';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=07dd9da79e7f';
+import { goalShare } from './goals.mjs?v=07dd9da79e7f';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=c1abbdc26b7f';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=c1abbdc26b7f';
-import { previewAssistantImport } from './assistant-import.mjs?v=c1abbdc26b7f';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=c1abbdc26b7f';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=c1abbdc26b7f';
-import { analyzePortfolio, valuationDateIssue, valuationRowsNeedingCheck } from './analysis.mjs?v=c1abbdc26b7f';
-import { buildReadableReport } from './readable-report.mjs?v=c1abbdc26b7f';
-import { answerReviewQuestion } from './review-questions.mjs?v=c1abbdc26b7f';
-import { parseReviewBackup } from './review-backup.mjs?v=c1abbdc26b7f';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=c1abbdc26b7f';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=c1abbdc26b7f';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=c1abbdc26b7f';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=07dd9da79e7f';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=07dd9da79e7f';
+import { previewAssistantImport } from './assistant-import.mjs?v=07dd9da79e7f';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=07dd9da79e7f';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=07dd9da79e7f';
+import { analyzePortfolio, valuationDateIssue, valuationRowsNeedingCheck } from './analysis.mjs?v=07dd9da79e7f';
+import { buildReadableReport } from './readable-report.mjs?v=07dd9da79e7f';
+import { answerReviewQuestion } from './review-questions.mjs?v=07dd9da79e7f';
+import { parseReviewBackup } from './review-backup.mjs?v=07dd9da79e7f';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=07dd9da79e7f';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=07dd9da79e7f';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=07dd9da79e7f';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=c1abbdc26b7f';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=07dd9da79e7f';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=c1abbdc26b7f';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=c1abbdc26b7f';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=07dd9da79e7f';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=07dd9da79e7f';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=c1abbdc26b7f';
-import { validReserve, reserveMonths } from './reserve.mjs?v=c1abbdc26b7f';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=07dd9da79e7f';
+import { validReserve, reserveMonths } from './reserve.mjs?v=07dd9da79e7f';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs?v=c1abbdc26b7f';
-import { validShares } from './stock-estimate.mjs?v=c1abbdc26b7f';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=c1abbdc26b7f';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=c1abbdc26b7f';
-import { inflationContext } from './market-context.mjs?v=c1abbdc26b7f';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs?v=07dd9da79e7f';
+import { validShares } from './stock-estimate.mjs?v=07dd9da79e7f';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=07dd9da79e7f';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=07dd9da79e7f';
+import { inflationContext } from './market-context.mjs?v=07dd9da79e7f';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -834,6 +834,8 @@ function guideValueRefresh(index, row, dateIssue) {
 
 function renderGoalReview() {
   const root = $('#goal-review');
+  const previousName = root.querySelector('.goal-name')?.textContent;
+  const detailsWereOpen = root.querySelector('.goal-review-details')?.open === true;
   root.replaceChildren();
   const review = buildAssistantGoalReview(state.account?.portfolio);
   const paragraph = message => { const p = document.createElement('p'); p.textContent = message; return p; };
@@ -958,6 +960,20 @@ function renderGoalReview() {
     root.append(paragraph(`Future illustration paused while linked other investments have no checked access date. This review cannot record a spendable amount from them at the goal date. Check the product terms; if one should not fund this goal, say “uncount holding NUMBER from goal ${review.name}” using its displayed number. The holding stays in your portfolio.`));
   } else if (review.scenario) root.append(paragraph(
     `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Your confirmed assumptions: ${money(review.assumptions.monthlyContribution)}/month added at each month’s end, ${review.assumptions.returnPct}% constant annual growth and ${review.assumptions.inflationPct}% constant inflation. Only the assigned confirmed holdings start this calculation. ${review.flatScenario ? `For comparison, with 0% growth and the same monthly amount and inflation, the gap would be ${money(review.flatScenario.futureGap)}. ` : ''}This arithmetic is illustrative, not a forecast.`));
+  const nextCheck = goalNextCheck(review);
+  const next = paragraph(`Next check: ${nextCheck} The figures use only your supplied, linked holdings.`);
+  next.className = 'goal-next';
+  const details = document.createElement('details');
+  details.className = 'goal-review-details';
+  details.open = detailsWereOpen && previousName === review.name;
+  const summary = document.createElement('summary');
+  summary.textContent = 'Show calculations, assumptions and limits';
+  const nameNode = root.querySelector('.goal-name');
+  const statsNode = root.querySelector('.goal-stats');
+  const assignButton = root.querySelector('.goal-assign');
+  details.append(summary, ...[...root.children].filter(node =>
+    node !== nameNode && node !== statsNode && node !== assignButton));
+  root.replaceChildren(...[nameNode, statsNode, next, assignButton, details].filter(Boolean));
 }
 
 async function assignGoalHoldings() {
@@ -1403,7 +1419,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=c1abbdc26b7f');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=07dd9da79e7f');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }

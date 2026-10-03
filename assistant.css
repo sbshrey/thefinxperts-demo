@@ -155,6 +155,10 @@ body{margin:0}
 .goal-stats div{background:#f4f8f4;border-radius:8px;padding:9px}
 .goal-stats span{display:block;color:#65776c;font-size:11px}
 .goal-stats strong{font-size:16px}
+.section-card .goal-next{margin:10px 0;padding:10px 12px;border-left:3px solid #62a879;border-radius:6px;background:#f2f8f3;color:#245743;font-weight:700}
+.goal-review-details{font-size:12px;color:#607168}
+.goal-review-details summary{cursor:pointer;color:#285d43;font-weight:700;padding:7px 0}
+.goal-review-details>p:first-of-type{margin-top:10px}
 .goal-assign{border:1px solid #7aac8d;background:#edf7ef;color:#174d3f;border-radius:8px;padding:8px 10px;font:700 11px Arial,Helvetica,sans-serif;cursor:pointer}
 .goal-assign:disabled{opacity:.5;cursor:wait}
 .asset-row{display:grid;grid-template-columns:58px 1fr 38px;align-items:center;gap:9px;margin:9px 0;font-size:12px}
