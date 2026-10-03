@@ -338,6 +338,38 @@ function nextGoalSetupQuestion(portfolio) {
   return 'Ask “What should I check first?” to see the highest-priority factual review item for these holdings and this goal.';
 }
 
+function sayGoalSetupQuestion(portfolio) {
+  const question = nextGoalSetupQuestion(portfolio);
+  if (!question) return false;
+  const item = say('assistant', question);
+  const goal = portfolio?.goals?.find(row => row.id === portfolio.activeGoalId);
+  if (goal?.confirmed && portfolio.goals.length === 1 && portfolio.holdings.some(row =>
+    row.id && !goal.linkedIds?.includes(row.id))) {
+    const replies = document.createElement('div');
+    replies.className = 'goal-replies goal-assign-replies';
+    replies.setAttribute('role', 'group');
+    replies.setAttribute('aria-label', 'Choose whether to count all holdings toward this goal');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Count all toward this goal';
+    button.addEventListener('click', () => {
+      if (state.account?.portfolio?.activeGoalId !== goal.id ||
+          state.account.portfolio.goals.length !== 1) {
+        say('note', 'The selected goal changed. Check the current goal before assigning holdings.'); return;
+      }
+      if ($('#message').value.trim() || state.file) {
+        say('note', 'Send or clear your draft message or selected file before assigning holdings.');
+        $('#message').focus(); return;
+      }
+      assignGoalHoldings();
+    });
+    replies.append(button);
+    item.append(replies);
+    $('#messages').scrollTop = $('#messages').scrollHeight;
+  }
+  return true;
+}
+
 function say(role, text, question = null, remember = true) {
   if (role === 'user') {
     hideStarterActions();
@@ -852,10 +884,10 @@ async function assignGoalHoldings() {
   try {
     await writeAccount(prepared.portfolio,
       'The saved review changed in another tab. Check the latest goal and holdings before assigning them.');
+    document.querySelectorAll('.goal-assign-replies').forEach(row => row.remove());
     say('note', `${prepared.addedCount} holding${prepared.addedCount === 1 ? '' : 's'} now counted toward the selected goal. The portfolio total has not changed.`);
     if (browserOnly) {
-      const next = nextGoalSetupQuestion(state.account?.portfolio);
-      if (next) say('assistant', next);
+      sayGoalSetupQuestion(state.account?.portfolio);
     }
   } catch (error) { say('note', error.message || 'The goal assignment could not be saved.'); }
   finally { state.busy = false; renderCredits(); renderGoalReview(); renderGoalDraft(); }
@@ -1598,9 +1630,9 @@ $('#confirm-drafts').addEventListener('click', async () => {
       say('note', `${prepared.addedCount} checked holding${prepared.addedCount === 1 ? '' : 's'} ${browserOnly ? 'added to this tab' : 'saved to your account'}. Ask a question when you are ready.`);
       if (!(state.coveragePrompted ? askCoverageGroup() :
         resumeCoverageQuestions(state.account?.portfolio))) {
-        const next = nextFundCategoryQuestion(state.account?.portfolio) ||
-          nextGoalSetupQuestion(state.account?.portfolio);
-        if (next) say('assistant', next);
+        const category = nextFundCategoryQuestion(state.account?.portfolio);
+        if (category) say('assistant', category);
+        else sayGoalSetupQuestion(state.account?.portfolio);
       }
     } catch (error) { say('note', error.message || 'The account save failed. Your drafts are still here.'); }
     finally { state.busy = false; renderDrafts(); renderCredits(); renderGoalReview(); renderGoalDraft(); }
@@ -1673,8 +1705,7 @@ $('#confirm-goal').addEventListener('click', async () => {
     say('note', goal.confirmed ? `Goal facts ${browserOnly ? 'added to this tab' : 'saved to your account'}. The goal review has been recalculated.` :
       'Goal facts saved as an unfinished draft. Share the remaining details when you are ready.');
     if (browserOnly && goal.confirmed && (completingGoalSetup || confirmingFutureAssumption)) {
-      const next = nextGoalSetupQuestion(state.account?.portfolio);
-      if (next) say('assistant', next);
+      sayGoalSetupQuestion(state.account?.portfolio);
     }
   } catch (error) { say('note', error.message || 'The goal save failed. Your draft is still here.'); }
   finally { state.busy = false; renderGoalDraft(); renderCredits(); renderGoalReview(); }
@@ -1725,9 +1756,9 @@ $('#confirm-correction')?.addEventListener('click', async () => {
       state.coverageQueue = unansweredCoverageFields(correction.portfolio.coverage);
     if (correction.kind === 'classify' || correction.kind === 'coverage' && state.coverageQueue) {
       if (!askCoverageGroup()) {
-        const question = nextFundCategoryQuestion(state.account?.portfolio) ||
-          nextGoalSetupQuestion(state.account?.portfolio);
-        if (question) say('assistant', question);
+        const category = nextFundCategoryQuestion(state.account?.portfolio);
+        if (category) say('assistant', category);
+        else sayGoalSetupQuestion(state.account?.portfolio);
       }
     }
   } catch (error) { say('note', error.message || 'The correction could not be saved. Check the preview and try again.'); }
