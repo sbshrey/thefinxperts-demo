@@ -3,13 +3,13 @@ import { rupeesWithPaise } from './cost-basis.mjs';
 import { reserveMonths } from './reserve.mjs';
 import { confirmedGoalAssumptions } from './goal-scenario.mjs';
 import { asksForAdvice } from './question-scope.mjs';
-import { goalShare } from './goals.mjs';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
 
 /** Answer a narrow set of portfolio questions from the current in-tab review. */
-export function answerReviewQuestion(question, { holdings, goal, source, coverage, reserve, result, today = new Date() }) {
+export function answerReviewQuestion(question, { holdings, goal, goals, source, coverage, reserve, result, today = new Date() }) {
   if (typeof question !== 'string' || !question.trim() || !result || !Array.isArray(holdings)) return null;
   const input = question.trim().toLocaleLowerCase('en-IN');
   const valid = holdings.filter(row => Number.isFinite(Number(row.value)) && Number(row.value) > 0);
@@ -81,6 +81,29 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       'No positive investment holding values are entered.',
     `Net worth needs all assets minus all liabilities. This review does not record your complete assets, loans and other debts. ${coverageNote}`,
     '#holdings', 'Check investment holdings');
+
+  if (/\b(?:unassigned|not assigned)\b/.test(input) ||
+      (/\b(?:not counted|excluded|outside)\b/.test(input) &&
+        (goalScopeRequested || /\b(?:portfolio|holdings?|investments?|value)\b/.test(input)))) {
+    const selected = goal || { id: null, name: 'the selected goal', linkedIds: [] };
+    const allGoals = Array.isArray(goals) && goals.some(item => item.id === selected.id) ? goals : [selected];
+    const outside = summarizeGoalCoverage(allGoals, selected.id, valid);
+    const outsideValue = outside.elsewhereValue + outside.unassignedValue;
+    const assigned = result.goalTotal || 0;
+    const examples = valid.map(row => ({ name: row.name,
+      value: Number(row.value) * (100 - goalShare(selected, row.id)) / 100 }))
+      .filter(row => row.value > 0).sort((a, b) => b.value - a.value).slice(0, 3);
+    const sample = examples.length ? ` Largest excluded portions: ${examples.map(row =>
+      `${row.name} ${money(row.value)}`).join('; ')}.` : '';
+    return answer(valid.length ?
+      `For ${selected.name}, ${money(assigned)} of ${money(result.total)} entered value is counted. ${money(outsideValue)} sits outside this goal: ${money(outside.unassignedValue)} is unassigned and ${money(outside.elsewhereValue)} is assigned to other goals.${sample}` :
+      'No positive holding value is entered yet, so there is nothing to assign to a goal.',
+      valid.length ?
+        `Added each entered holding value once. For each row, counted its share linked to ${selected.name}, its shares linked to other goals, and the remaining unassigned share. ${outside.unassignedCount} ${outside.unassignedCount === 1 ? 'row has' : 'rows have'} an unassigned portion; ${outside.elsewhereCount} ${outside.elsewhereCount === 1 ? 'row has' : 'rows have'} a portion linked elsewhere. ${result.asOfSummary}.` :
+        'No positive holding values are entered in this tab.',
+      `These are supplied assignments and dated values, not verified account coverage. A split holding can appear in more than one category, but its value is counted only once. ${coverageNote}`,
+      '#goals', 'Review goal assignments');
+  }
   if ((/\b(?:mutual funds?|funds?)\b/.test(input) && /\b(?:stocks?|shares?)\b/.test(input) &&
       /\b(?:how much|how many|percent(?:age)?|share|split|breakdown|versus|vs)\b/.test(input)) ||
       /\b(?:product|investment)\s+(?:type|category)\s+(?:split|breakdown|mix)\b/.test(input)) {

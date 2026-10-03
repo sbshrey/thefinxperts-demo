@@ -744,7 +744,7 @@ async function aiTurn(message, pdf = null) {
     const goal = portfolio?.goals?.find(item => item.id === portfolio.activeGoalId) ||
       { name: 'My goal', age: null, years: null, target: null, confirmed: false, linkedIds: [] };
     const result = analyzePortfolio(holdings, goal, new Date(), portfolio?.reserve, portfolio?.coverage);
-    const response = answerReviewQuestion(message, { holdings, goal,
+    const response = answerReviewQuestion(message, { holdings, goal, goals: portfolio?.goals || [],
       source: 'user', coverage: portfolio?.coverage || null, reserve: portfolio?.reserve || null, result });
     if (response) say('assistant', `${response.text}\n\nHow I worked this out: ${response.basis}\n\nKeep in mind: ${response.limitation}`);
     else say('assistant', 'Ask about the holdings you entered, or upload a supported CAMS Active Statement or broker report.');
