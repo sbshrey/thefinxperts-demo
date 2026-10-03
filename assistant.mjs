@@ -204,6 +204,12 @@ function nextGoalSetupQuestion(portfolio) {
   if (portfolio.goals.length === 1 && portfolio.holdings.some(row =>
     row.id && !goal.linkedIds?.includes(row.id)))
     return `Some confirmed holdings are not counted toward ${goal.name}. If they all belong to this goal, say “count all holdings toward this goal”. I will ask you to confirm before changing the goal comparison.`;
+  if (goal.assumptionsChecked?.monthlyContribution !== true)
+    return `For ${goal.name}, how much do you plan to add at each month’s end? Say “monthly contribution ₹5,000” with your own amount, including ₹0 if that is your deliberate choice. I will ask you to confirm it before using a future illustration.`;
+  if (goal.assumptionsChecked?.returnPct !== true)
+    return `What annual growth rate would you like to test for ${goal.name}? Say “growth assumption 0%” with your own rate from -20% to 13%. This is a what-if input, not an expected return.`;
+  if (goal.assumptionsChecked?.inflationPct !== true)
+    return `What annual inflation rate would you like to test for ${goal.name}? Say “inflation assumption 0%” with your own rate from -5% to 15%. This is a what-if input, not a forecast.`;
   if (!goal.targetMix)
     return `If you have already chosen an asset mix for ${goal.name}, say “goal mix 60% equity, 30% debt, 10% gold” with your percentages. I can compare them with linked holdings, but cannot choose them for you.`;
   return 'Ask “What should I check first?” to see the highest-priority factual review item for these holdings and this goal.';
@@ -1196,6 +1202,8 @@ $('#confirm-goal').addEventListener('click', async () => {
   if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
   const completingGoalSetup = Object.keys(state.goalFacts).some(field =>
     ['name', 'age', 'years', 'target'].includes(field));
+  const confirmingFutureAssumption = Object.keys(state.goalFacts).some(field =>
+    ['monthlyContribution', 'returnPct', 'inflationPct'].includes(field));
   state.busy = true; renderGoalDraft(); renderCredits();
   try {
     await writeAccount(prepared.portfolio,
@@ -1204,7 +1212,7 @@ $('#confirm-goal').addEventListener('click', async () => {
     const goal = prepared.portfolio.goals.find(item => item.id === prepared.portfolio.activeGoalId);
     say('note', goal.confirmed ? `Goal facts ${browserOnly ? 'added to this tab' : 'saved to your account'}. The goal review has been recalculated.` :
       'Goal facts saved as an unfinished draft. Share the remaining details when you are ready.');
-    if (browserOnly && completingGoalSetup && goal.confirmed) {
+    if (browserOnly && goal.confirmed && (completingGoalSetup || confirmingFutureAssumption)) {
       const next = nextGoalSetupQuestion(state.account?.portfolio);
       if (next) say('assistant', next);
     }
