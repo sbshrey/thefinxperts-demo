@@ -66,6 +66,10 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     'Confirm your monthly contribution, growth and inflation assumptions in the goal editor before using a future illustration. Zero is valid when deliberately chosen.');
   else if (result.goalDateCheck.count) lines.push('', 'GOAL-DATE SCENARIO PAUSED',
     'Check missing, future or over-90-day valuation dates on linked holdings before using a future illustration.');
+  else if (result.goalAccessCheck.count) lines.push('', 'GOAL-DATE SCENARIO PAUSED',
+    'Check when linked other investments can be used. Their entered values count toward the gross gap today, but access at the goal date has not been verified.');
+  else if (!result.scenario) lines.push('', 'GOAL-DATE SCENARIO PAUSED',
+    'The entered goal and linked holdings do not support a future illustration. Check their values and goal details.');
   if (assumptionsReady && !result.goalDateCheck.count && result.scenario) {
     lines.push('', 'ILLUSTRATIVE GOAL-DATE SCENARIO',
       `With your entered ${result.scenario.returnPct}% growth, ${result.scenario.inflationPct}% inflation and ${rupees(result.scenario.monthlyContribution)} month-end contribution assumptions:`,
