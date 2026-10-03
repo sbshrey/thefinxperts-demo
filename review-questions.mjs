@@ -21,9 +21,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This snapshot may omit investments you own. Check it against current statements.';
   const answer = (text, basis, limitation, href = '#holdings', action = 'Check my holdings') =>
     ({ text, basis, limitation, href, action });
-  const goalName = typeof goal?.name === 'string' ? goal.name.trim().toLocaleLowerCase('en-IN') : '';
-  const namedGoal = goalName && new RegExp(`(?:^|\\W)${goalName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|\\W)`).test(input);
+  const mentionsGoal = name => typeof name === 'string' && name.trim() &&
+    new RegExp(`(?:^|\\W)${name.trim().toLocaleLowerCase('en-IN').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|\\W)`).test(input);
+  const namedGoal = mentionsGoal(goal?.name);
   const goalScopeRequested = /\bgoal\b/.test(input) || namedGoal;
+  const otherNamedGoal = Array.isArray(goals) ? goals.find(item =>
+    item.id !== goal?.id && mentionsGoal(item.name)) : null;
   const unavailableGoalScope = () => goal?.confirmed !== true ? answer(
     'Confirm the selected goal’s age, target amount and time horizon before using its assigned mix or concentration.',
     `Selected goal ${goal?.name || 'unnamed'} is unfinished.`,
@@ -31,6 +34,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     !result.goalTotal ? answer('No entered holdings are assigned to this goal yet. Link holdings before comparing its mix or largest position.',
       `Selected goal ${goal.name}; assigned value ₹0.`,
       'The whole portfolio and the selected goal may contain different amounts.', '#holdings', 'Link a holding') : null;
+
+  if (otherNamedGoal && /\b(?:goal|toward|towards|for|assigned|linked|funding|counted)\b/.test(input) &&
+      !asksForAdvice(input))
+    return answer(`You named ${otherNamedGoal.name}, but ${goal?.name || 'another goal'} is selected. Say “select goal ${otherNamedGoal.name}”, then ask again so I use that goal’s assignments.`,
+      `The current calculation belongs to the selected goal ${goal?.name || 'unnamed'}; no value for ${otherNamedGoal.name} was used.`,
+      'Goal totals and allocations must come from the goal you actually mean.', '#goals', 'Select the named goal');
 
   if (goalScopeRequested && /\b(?:invested|profit|gains?|ter|expense ratio|regular plans?|direct plans?|overlap)\b/.test(input))
     return answer(`I cannot calculate that metric separately for ${goal?.name || 'the selected goal'} from this review. Ask about the goal’s assigned value or asset mix, or ask for the whole-portfolio metric without naming a goal.`,
@@ -103,6 +112,28 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         'No positive holding values are entered in this tab.',
       `These are supplied assignments and dated values, not verified account coverage. A split holding can appear in more than one category, but its value is counted only once. ${coverageNote}`,
       '#goals', 'Review goal assignments');
+  }
+  if (goalScopeRequested && /^(?:which|what|show|list)\b/.test(input) &&
+      /\b(?:holdings?|investments?|funds?|stocks?|shares?)\b/.test(input) &&
+      /\b(?:count|counted|assigned|linked|fund|funding|toward|towards|for)\b/.test(input) &&
+      !/\b(?:biggest|largest|top|concentrat\w*|rank\w*)\b/.test(input)) {
+    const type = /\b(?:stocks?|shares?)\b/.test(input) && !/\b(?:funds?|investments?|holdings?)\b/.test(input) ? 'Stock' :
+      /\b(?:mutual funds?|funds?)\b/.test(input) && !/\b(?:stocks?|shares?|investments?|holdings?)\b/.test(input) ? 'Mutual fund' : null;
+    const linked = holdings.flatMap((row, index) => {
+      const share = goalShare(goal, row.id);
+      return Number(row.value) > 0 && share && (!type || row.type === type) ?
+        [{ row, index: index + 1, share, value: Number(row.value) * share / 100 }] : [];
+    });
+    const total = linked.reduce((sum, item) => sum + item.value, 0);
+    const names = linked.slice(0, 5).map(item =>
+      `#${item.index} ${item.row.name}: ${money(item.value)}${item.share < 100 ? ` (${item.share}% of this row)` : ''}`).join('; ');
+    const label = type === 'Stock' ? 'direct-stock' : type === 'Mutual fund' ? 'mutual-fund' : 'holding';
+    return answer(linked.length ?
+      `${linked.length} entered ${label} ${linked.length === 1 ? 'row counts' : 'rows count'} toward ${goal.name}, with ${money(total)} assigned value. ${names}${linked.length > 5 ? `; and ${linked.length - 5} more in the review` : ''}.` :
+      `No entered ${label} value is assigned to ${goal?.name || 'the selected goal'} yet. Check its links in the review.`,
+      `Applied the selected goal’s saved percentage to each positive entered ${label} row; ${result.asOfSummary}. Whole-portfolio values count each row once.`,
+      `These are supplied links and dated values, not verified account coverage or proof that the money can be used at the goal date. A fund-house summary can combine schemes. ${coverageNote}`,
+      '#goals', 'Review assigned holdings');
   }
   if ((/\b(?:mutual funds?|funds?)\b/.test(input) && /\b(?:stocks?|shares?)\b/.test(input) &&
       /\b(?:how much|how many|percent(?:age)?|share|split|breakdown|versus|vs)\b/.test(input)) ||
