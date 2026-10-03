@@ -1,4 +1,4 @@
-import { analyzePortfolio } from './analysis.mjs';
+import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs';
 import { MIX_ASSETS } from './mix-plan.mjs';
 import { goalShare, summarizeGoalCoverage } from './goals.mjs';
 import { reserveMonths } from './reserve.mjs';
@@ -142,9 +142,9 @@ function buildPortfolioOnlyReport(state, preparedAt) {
   // Only portfolio fields are used; the empty goal prevents unconfirmed goal arithmetic.
   const result = analyzePortfolio(state.holdings, { linkedIds: [], years: 0, target: 0 },
     preparedAt, state.reserve, state.coverage);
-  const dated = state.holdings.filter(holding => typeof holding.asOf === 'string' && holding.asOf).length;
-  const unknownAssets = state.holdings.filter(holding => holding.asset === 'Other').length;
-  const houseTotals = state.holdings.filter(holding => holding.granularity === 'fund_house').length;
+  const dateChecks = valuationRowsNeedingCheck(state.holdings, preparedAt);
+  const portfolioFindings = [...result.findings, ...result.additionalFindings].filter(finding =>
+    ['scope', 'identity', 'valuation', 'summary', 'classification', 'issuer', 'plan', 'funds', 'review'].includes(finding.key));
   const lines = [
     'THEFINXPERTS | PRIVATE PORTFOLIO SNAPSHOT',
     `Prepared (India): ${indiaDate(preparedAt)}`,
@@ -155,19 +155,26 @@ function buildPortfolioOnlyReport(state, preparedAt) {
     ...(state.coverage ? [`Self reported coverage (unverified): mutual funds ${coverageText(state.coverage.mutualFunds)}; direct stocks ${coverageText(state.coverage.directStocks)}; other investments ${coverageText(state.coverage.otherInvestments)}. Other assets count only if entered.`] : ['Self reported coverage: not answered; this snapshot may be partial.']),
     `Valuation dates: ${result.asOfSummary}`,
     `Asset mix: ${MIX_ASSETS.map(asset => `${asset} ${result.total ? (result.assets[asset] / result.total * 100).toFixed(1) : '0.0'}%`).join(' | ')}`,
+    'Largest entered positions (matching supplied ISIN and classification grouped; fund-house totals remain summaries):',
+    ...result.topPositions.map((position, index) =>
+      `${index + 1}. ${clean(position.name)} | ${rupees(position.value)} | ${result.total ? (position.value / result.total * 100).toFixed(1) : '0.0'}% of entered value${position.granularity === 'fund_house' ? ' | fund-house summary, schemes unknown' : ''}`),
     `Fund plan labels from entered names: Regular ${rupees(result.fundPlans.Regular)} | Direct ${rupees(result.fundPlans.Direct)} | unclear ${rupees(result.fundPlans.Unclear)}; current expense ratios not verified`,
     ...(result.unrealizedChange.coveredCount ? [`Entered unrealized ${result.unrealizedChange.change >= 0 ? 'gain' : 'loss'} on ${result.unrealizedChange.coveredCount} cost-covered ${result.unrealizedChange.coveredCount === 1 ? 'holding' : 'holdings'}: ${rupeesWithPaise(Math.abs(result.unrealizedChange.change))}. ${result.unrealizedChange.missingCount} ${result.unrealizedChange.missingCount === 1 ? 'row' : 'rows'} excluded. This is not lifetime profit or annual return.`] : []),
     '', 'GOAL CONTEXT',
     'No confirmed selected goal. Age, time horizon and target have not been used to calculate a gap, future value or suitable mix.',
     ...(goalName(state) ? [`Draft selected goal: ${clean(goalName(state))}; its details remain unconfirmed.`] : []),
-    '', 'QUESTIONS TO CHECK',
-    '1. Are all your mutual funds, direct stocks and other investments included in this snapshot?',
-    `2. Can you check current values and dates against your statements? ${state.holdings.length - dated} ${state.holdings.length - dated === 1 ? 'holding has' : 'holdings have'} no entered valuation date. A dated value is still investor supplied or imported, not a live quote.`,
-    ...(unknownAssets ? [`3. Can you classify the ${unknownAssets} ${unknownAssets === 1 ? 'holding' : 'holdings'} labelled Other from a detailed source before interpreting the mix?`] : []),
-    ...(houseTotals ? [`${unknownAssets ? 4 : 3}. Can you get scheme-level details for ${houseTotals} fund-house ${houseTotals === 1 ? 'total' : 'totals'}? These are summaries, not individual schemes.`] : []),
-    'Set and confirm a goal when you want goal-date arithmetic. For personal investment decisions, discuss these facts and your full circumstances with a SEBI-registered investment adviser.',
-    '', 'ENTERED HOLDINGS',
+    '', 'REVIEW QUESTIONS',
+    `Coverage to check: ${state.coverage ? 'compare your self reported answers with current fund, broker and other investment statements' : 'confirm whether all mutual funds, direct stocks and other investments are included'}.`,
+    `Value dates to check: ${dateChecks.length} ${dateChecks.length === 1 ? 'holding' : 'holdings'} with a missing, future or over-90-day date; ${rupees(dateChecks.reduce((sum, item) => sum + Number(item.row.value), 0))} of entered value. Dated values are still not live quotes.`,
   ];
+  portfolioFindings.forEach((finding, index) => lines.push(
+    `${index + 1}. ${finding.title}`,
+    `   ${clean(finding.detail)}`,
+    `   Why this appeared: ${clean(finding.basis)}`,
+    `   What remains unknown: ${clean(finding.limitation)}`,
+    `   Check next: ${finding.key === 'issuer' ? 'Check how this company exposure could affect your portfolio, including any unknown fund holdings.' : clean(finding.question)}`));
+  lines.push('Confirm a goal when you want goal-date arithmetic. For personal investment decisions, discuss these facts and your full circumstances with a SEBI-registered investment adviser.',
+    '', 'ENTERED HOLDINGS');
   appendHoldings(lines, state.holdings);
   lines.push('', 'IMPORTANT LIMITS',
     'Values and asset labels are as entered or imported; a user-entered NAV or stock-price estimate is not a live price feed.',
