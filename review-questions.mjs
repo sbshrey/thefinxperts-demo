@@ -171,10 +171,21 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `Entered age ${age} + entered horizon ${years} years = approximate age ${age + years}.`,
       'This is age arithmetic, not a suitability assessment or an asset-allocation suggestion. Your birthday and exact goal date were not entered.', '#goals', 'Review selected goal');
   }
-  if (!valid.length)
+  if (!valid.length) {
+    if (/\b(?:goal|target|gap|retirement|future)\b/.test(input)) {
+      if (goal?.confirmed !== true) return answer(goal?.name && goal.name !== 'My goal' ?
+        `The selected goal ${goal.name} still needs your age, years until the goal and target in today’s rupees. Share those facts in chat and confirm them before checking the gap.` :
+        'Start by naming one goal, such as “I want to plan for retirement”. I will ask for your age, time horizon and target amount before checking its gap.',
+        `Selected goal ${goal?.name || 'not named'} is unfinished; no positive holding value is entered.`,
+        'No goal gap can be treated as complete before the goal facts and holdings are checked.', '#goals', 'Set up a goal');
+      return answer(`Your selected goal ${goal.name} has a target of ${money(goal.target)} in today’s rupees, but no holdings are entered here yet. Add and confirm your holdings before using a portfolio gap.`,
+        `Selected goal ${goal.name}; confirmed target ${money(goal.target)}; 0 positive holding values entered.`,
+        'The empty review does not mean you own no investments. It cannot establish your actual shortfall.', '#holdings', 'Add holdings');
+    }
     return answer('Add a fund, stock or other investment, or import a supported statement, and I can answer from that review.',
       'There are no positive holding values in this tab.',
       'No portfolio calculation is available yet.', '#input-choice', 'Choose an input');
+  }
   if (/\b(?:goal|target|chosen) mix\b|\b(?:mix|allocation)\b.{0,30}\b(?:compare|difference|plan)\b/.test(input)) {
     if (!goal?.targetMix) return answer('You have not entered a chosen mix for this goal. If you already have one, say “goal mix 60% equity, 30% debt, 10% gold” and confirm it. I cannot choose percentages for you.',
       'No chosen mix is saved on the selected goal.',
