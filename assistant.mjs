@@ -27,6 +27,7 @@ import { validReserve, reserveMonths } from './reserve.mjs';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
   prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs';
 import { validShares } from './stock-estimate.mjs';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs';
 import { fundNavLookupUrl } from './nav-estimate.mjs';
 import { inflationContext } from './market-context.mjs';
 
@@ -458,6 +459,28 @@ function renderDrafts() {
     const match = matchesByIndex.get(index);
     const rate = casPreviewPerformance.get(row);
     item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}${row.shares ? ` · ${row.shares} report shares; check current balance` : ''}${rate == null ? '' : ` · Indicative CAS statement-period XIRR ${rate.toFixed(2)}%/yr (preview only)`}${match ? ` · May overlap ${match.existingName} (${match.reason} match)` : ''}`;
+    if (row._costCandidate !== undefined) {
+      const label = document.createElement('label');
+      label.className = 'broker-cost-check';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = row.costBasis !== undefined;
+      checkbox.disabled = state.busy || !validCostBasis(row._costCandidate, row.asOf);
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          row.costBasis = row._costCandidate;
+          row.costBasisAsOf = row.asOf;
+        } else {
+          delete row.costBasis;
+          delete row.costBasisAsOf;
+        }
+        renderDrafts();
+      });
+      label.append(checkbox, document.createTextNode(row.asOf ?
+        ` I checked that ${rupeesWithPaise(row._costCandidate)} is the invested amount for the units or shares still held on ${row.asOf}.` :
+        ` Report says invested ${rupeesWithPaise(row._costCandidate)}. Check the value date before using this amount.`));
+      item.append(label);
+    }
     list.append(item);
   }
   $('#draft-list').append(list);
@@ -928,6 +951,11 @@ function normalizedDraft(row, defaultOrigin = 'manual') {
     ...(row.shares ? { shares: row.shares } : {}),
     ...(row.granularity === 'fund_house' ? { granularity: 'fund_house' } : {}),
     ...(row.statementCategory ? { statementCategory: row.statementCategory } : {}),
+    ...(['broker_csv', 'broker_xlsx'].includes(row.entryOrigin) &&
+      Number.isFinite(row._costCandidate) && row._costCandidate > 0 &&
+      row._costCandidate <= 10_000_000_000 &&
+      Math.abs(row._costCandidate * 100 - Math.round(row._costCandidate * 100)) < 0.000001 ?
+      { _costCandidate: row._costCandidate } : {}),
     ...(Number.isFinite(row.costBasis) && row.costBasis > 0 && /^\d{4}-\d{2}-\d{2}$/.test(row.costBasisAsOf || '') ?
       { costBasis: row.costBasis, costBasisAsOf: row.costBasisAsOf } : {}) };
 }

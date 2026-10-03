@@ -84,7 +84,7 @@ function normalizeHeader(cell) {
 
 /** Normalize only confirmed name, current market value and optional ISIN columns. */
 export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
-  { strictWidth = false, allowUnknownDate = false } = {}) {
+  { strictWidth = false, allowUnknownDate = false, stageUndatedCost = false } = {}) {
   const errors = [];
   const notices = ['Choose Stock or Mutual fund and verify the asset category for every row before replacing your holdings.'];
   if (!Array.isArray(rows) || !Number.isInteger(headerIndex) || headerIndex < 0 || headerIndex >= rows.length ||
@@ -152,7 +152,7 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
     if (isin) seenIsins.add(isin);
     seenNames.set(nameKey, isin);
     holdings.push({ name, type: null, asset: null, value, asOf, amc: null, isin: isin || null, amfi: null,
-      exposure: null, ...(cost !== null && asOf !== null ?
+      exposure: null, ...(cost !== null && (asOf !== null || stageUndatedCost) ?
         { _costCandidate: cost, _costCandidateAsOf: asOf } : {}) });
     if (holdings.length > MAX_ROWS) { errors.push('Import at most 200 holdings at a time.'); break; }
   }

@@ -1,4 +1,5 @@
 import { validShares } from './stock-estimate.mjs';
+import { validCostBasis } from './cost-basis.mjs';
 
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const SOURCES = new Set(['manual', 'active_statement', 'broker_csv', 'broker_xlsx', 'simple_csv', 'cas', 'demat_cas', 'epfo_passbook']);
@@ -91,6 +92,9 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
         (row.amfi && (typeof row.amfi !== 'string' || !/^\d{5,8}$/.test(row.amfi))) ||
         (row.units && (typeof row.units !== 'string' || !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/.test(row.units) || !/[1-9]/.test(row.units))) ||
         (row.shares !== undefined && (row.type !== 'Stock' || !validShares(row.shares))) ||
+        ((row.costBasis !== undefined || row.costBasisAsOf !== undefined) &&
+          (!['broker_csv', 'broker_xlsx'].includes(row.entryOrigin) ||
+            !validCostBasis(row.costBasis, row.costBasisAsOf) || row.costBasisAsOf !== row.asOf)) ||
         (row.granularity !== undefined && (row.granularity !== 'fund_house' || row.type !== 'Mutual fund' ||
           !row.amc || row.isin || row.amfi || row.units || row.statementCategory)) ||
         (row.statementCategory && (typeof row.statementCategory !== 'string' ||
@@ -108,6 +112,8 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
       ...(row.isin ? { isin: row.isin } : {}), ...(row.amc ? { amc: row.amc.trim() } : {}),
       ...(row.amfi ? { amfi: row.amfi } : {}), ...(row.units ? { units: row.units } : {}),
       ...(row.shares ? { shares: row.shares } : {}),
+      ...(row.costBasis !== undefined ? { costBasis: row.costBasis,
+        costBasisAsOf: row.costBasisAsOf } : {}),
       ...(row.granularity === 'fund_house' ? { granularity: 'fund_house' } : {}),
       ...(row.statementCategory ? { statementCategory: row.statementCategory } : {}) });
   }

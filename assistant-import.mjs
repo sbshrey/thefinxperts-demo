@@ -71,7 +71,8 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable, maxDrafts =
   const result = parseBrokerHoldingsRows(rows, suggested.headerIndex, {
     name: Number(suggested.name), value: Number(suggested.value),
     isin: suggested.isin === '' ? null : Number(suggested.isin),
-  }, null, { strictWidth, allowUnknownDate: true });
+    cost: suggested.cost === '' ? null : Number(suggested.cost),
+  }, null, { strictWidth, allowUnknownDate: true, stageUndatedCost: true });
   if (result.errors.length) return { drafts: [], errors: result.errors };
   if (result.holdings.length > maxDrafts) {
     return { drafts: [], handoffSource: 'broker', errors: [`This chat can confirm up to ${maxDrafts} rows at once. The detailed review can preview this broker report (up to 200 positions).`] };
@@ -80,7 +81,7 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable, maxDrafts =
     return { drafts: [], errors: ['A security name exceeds the saved review limit of 80 characters. Use the guided import to check it.'] };
   }
   const metadata = brokerMetadataColumns(rows[suggested.headerIndex],
-    new Set([suggested.name, suggested.value, suggested.isin].filter(value => value !== '').map(Number)));
+    new Set([suggested.name, suggested.value, suggested.isin, suggested.cost].filter(value => value !== '').map(Number)));
   if (metadata.error) return { drafts: [], errors: [metadata.error] };
   const dataRows = rows.slice(suggested.headerIndex + 1).map((row, offset) => ({ row, number: suggested.headerIndex + offset + 2 }))
     .filter(({ row }) => Array.isArray(row) && row.some(cell => cell != null && String(cell).trim() !== '') &&
@@ -103,16 +104,19 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable, maxDrafts =
       return { drafts: [], errors: [`Report row ${number}: the stock share count is invalid. Check the current settled shares after trades and corporate actions.`] };
     drafts.push({ name: holding.name, type, asset: type === 'Stock' ? 'Equity' : asset,
       value: holding.value, asOf, ...(holding.isin ? { isin: holding.isin } : {}),
-      ...(shares ? { shares } : {}), entryOrigin: source });
+      ...(shares ? { shares } : {}),
+      ...(holding._costCandidate !== undefined ? { _costCandidate: holding._costCandidate } : {}),
+      entryOrigin: source });
   }
   const typed = drafts.filter(row => row.type !== 'Other').length;
   const dated = drafts.filter(row => row.asOf).length;
   const counted = drafts.filter(row => row.shares).length;
+  const costCandidates = drafts.filter(row => row._costCandidate !== undefined).length;
   const metadataNote = metadata.type !== null || metadata.asset !== null || metadata.asOf !== null ?
     `Used explicit report fields for ${typed} type${typed === 1 ? '' : 's'} and ${dated} valuation date${dated === 1 ? '' : 's'}; check every row. Missing fields remain unknown.` :
     'Please confirm each row is a fund or directly held stock; its valuation date remains unknown until you provide one.';
   const audit = importAudit(drafts, result.reportedTotal);
-  return { drafts, errors: [], audit, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the broker report. ${audit} The file stayed in this browser. ${metadataNote}${counted ? ` ${counted} stock share count${counted === 1 ? ' was' : 's were'} staged; check the current settled shares after trades, splits or bonuses before confirming.` : ''} ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
+  return { drafts, errors: [], audit, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the broker report. ${audit} The file stayed in this browser. ${metadataNote}${counted ? ` ${counted} stock share count${counted === 1 ? ' was' : 's were'} staged; check the current settled shares after trades, splits or bonuses before confirming.` : ''}${costCandidates ? ` ${costCandidates} invested amount${costCandidates === 1 ? ' is' : 's are'} unconfirmed; check each against the position still held and its value date before using gain or loss.` : ''} ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
 }
 
 /** Prepare unconfirmed chat rows from supported CSV or XLSX exports without an upload. */
