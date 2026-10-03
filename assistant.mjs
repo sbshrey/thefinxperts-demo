@@ -549,7 +549,7 @@ function renderGoalReview() {
   } else if (review.scenarioStatus === 'access_uncertain') {
     root.append(paragraph(`Future illustration paused while linked other investments have no checked access date. This review cannot record a spendable amount from them at the goal date. Check the product terms; if one should not fund this goal, say “uncount HOLDING from goal ${review.name}”. The holding stays in your portfolio.`));
   } else if (review.scenario) root.append(paragraph(
-    `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Your confirmed assumptions: ${money(review.assumptions.monthlyContribution)}/month added at each month’s end, ${review.assumptions.returnPct}% constant annual growth and ${review.assumptions.inflationPct}% constant inflation. Only the assigned confirmed holdings start this calculation. This is arithmetic, not a forecast.`));
+    `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Your confirmed assumptions: ${money(review.assumptions.monthlyContribution)}/month added at each month’s end, ${review.assumptions.returnPct}% constant annual growth and ${review.assumptions.inflationPct}% constant inflation. Only the assigned confirmed holdings start this calculation. ${review.flatScenario ? `For comparison, with 0% growth and the same monthly amount and inflation, the gap would be ${money(review.flatScenario.futureGap)}. ` : ''}This arithmetic is illustrative, not a forecast.`));
 }
 
 async function assignGoalHoldings() {

@@ -71,6 +71,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
       `With your entered ${result.scenario.returnPct}% growth, ${result.scenario.inflationPct}% inflation and ${rupees(result.scenario.monthlyContribution)} month-end contribution assumptions:`,
       `Goal cost: ${rupees(result.scenario.futureCost)} | linked holdings and planned contributions: ${rupees(result.scenario.projectedValue)} | gap: ${rupees(result.scenario.futureGap)}`,
       `Additional whole-rupee monthly amount above your plan: ${rupees(Math.ceil(result.scenario.monthlyAdditionalNeeded))}. Total mathematical monthly amount: ${rupees(Math.ceil(result.scenario.monthlyTotalNeeded))}.`,
+      ...(result.flatScenario ? [`For comparison, with 0% growth and the same monthly amount and inflation, the goal-date gap would be ${rupees(result.flatScenario.futureGap)}.`] : []),
       'This is arithmetic, not a return forecast or investment recommendation; taxes, fees and market losses may differ.');
   }
   if (assumptionsReady && !result.goalDateCheck.count && result.shockContinuation) {

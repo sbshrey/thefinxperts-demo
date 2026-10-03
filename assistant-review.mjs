@@ -25,6 +25,7 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
     coverage: portfolio.coverage || null, emergencyFunding: goal.emergencyFunding || null,
     dateCheckCount: result.goalDateCheck.count, accessCheck: result.goalAccessCheck,
     scenario: scenarioStatus === 'ready' ? result.scenario : null,
+    flatScenario: scenarioStatus === 'ready' ? result.flatScenario : null,
     scenarioStatus, missingAssumptions,
     mixPlan: goal.targetMix || null, mixComparison: result.mixComparison, mixPause: result.mixPause,
     stressPause: result.stressPause, shock: result.stressPause === null ? result.shock : null,
