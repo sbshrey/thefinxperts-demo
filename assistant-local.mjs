@@ -63,6 +63,24 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
     entryOrigin: 'manual' } };
 }
 
+/** Accept a short holding name only after the visitor explicitly starts the guided entry. */
+export function parseGuidedHoldingReply(message, today = new Date()) {
+  if (typeof message !== 'string') return null;
+  const input = message.trim();
+  if (!input || /[?\r\n]/.test(input) ||
+      /^(?:what|how|why|should|can|could|please|help|show|review|buy|sell|switch|recommend)\b/i.test(input))
+    return null;
+  const direct = parseBrowserHoldingStatement(input, today);
+  if (direct) return direct;
+  if (/^(?:i (?:own|hold)|my holding is)\b/i.test(input)) return null;
+  const candidate = input.replace(/^i have\s+/i, '').replace(/^(?:a|an)\s+/i, '').trim();
+  if (!candidate || /^(?:mutual fund|fund|stock|share|equity|debt|gold)$/i.test(candidate))
+    return { error: 'Name one specific fund, stock or other investment you own, without an account number.' };
+  if (/^(?:no|none|nothing|goal|question|all|some|unsure)\b/i.test(candidate) ||
+      /\b(?:goal|password|account|folio|pan number)\b/i.test(candidate)) return null;
+  return parseBrowserHoldingStatement(`I own ${candidate}`, today);
+}
+
 /** Stage an explicit pasted list as one reviewable batch; reject the whole list on any unclear row. */
 export function parseBrowserHoldingList(message, today = new Date()) {
   if (typeof message !== 'string' || !/[\r\n]/.test(message)) return null;

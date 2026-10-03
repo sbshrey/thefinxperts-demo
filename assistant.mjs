@@ -18,6 +18,7 @@ import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
+  parseGuidedHoldingReply,
   nextBrowserGoalQuestion } from './assistant-local.mjs';
 import { parseHoldingCorrection, prepareHoldingCorrection,
   parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs';
@@ -85,7 +86,8 @@ const state = { confirmed: [], drafts: [], history: [], file: null, busy: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
   goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
   correction: null, refresh: null, casAvailable: false, casLocal: false,
-  capacityReached: false, coveragePrompted: false, coverageQueue: null, pendingGoalName: false };
+  capacityReached: false, coveragePrompted: false, coverageQueue: null, pendingGoalName: false,
+  awaitingHoldingName: false };
 const isEmptyGoalPlaceholder = goal => goal?.name === 'My goal' && goal.confirmed === false &&
   goal.age == null && goal.years == null && goal.target == null;
 const starterActions = $('#starter-actions');
@@ -983,6 +985,7 @@ function normalizedDraft(row, defaultOrigin = 'manual') {
 
 function acceptAccount(payload) {
   state.account = { portfolio: payload.portfolio, revision: payload.revision };
+  state.awaitingHoldingName = false;
   if (browserOnly) reviewChangeSerial++;
   const sourceRows = Array.isArray(payload.portfolio?.holdings) ? payload.portfolio.holdings : [];
   state.confirmed = sourceRows.map(row => normalizedDraft(row)).filter(row => row &&
@@ -1317,6 +1320,7 @@ $('#cas-preview').addEventListener('click', async () => {
 $('#upload').addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
+  state.awaitingHoldingName = false;
   hideStarterActions();
   if (state.reserveFacts) { say('note', 'Save or discard the separate reserve totals before opening another report.'); clearFile(); return; }
   if (state.refresh) { say('note', 'Apply or discard the pending statement refresh before opening another report.'); clearFile(); return; }
@@ -1426,6 +1430,9 @@ $('#composer').addEventListener('submit', async event => {
   if (state.busy) return;
   const message = $('#message').value.trim();
   if (!message && !state.file) return;
+  const guidedHolding = state.awaitingHoldingName && message && !state.file ?
+    parseGuidedHoldingReply(message) : null;
+  if (state.awaitingHoldingName && !guidedHolding) state.awaitingHoldingName = false;
   if (state.coverageQueue && message && !state.file &&
       !parseCoverageAnswer(message, state.coverageQueue[0])) state.coverageQueue = null;
   if (message && !state.file && /^count all (?:unassigned )?holdings toward (?:this|selected) goal[.!]?$/i.test(message)) {
@@ -1588,7 +1595,7 @@ $('#composer').addEventListener('submit', async event => {
     say('assistant', 'I staged your answer for the selected goal. Check it in the goal draft, then save or discard it. This does not change any holding or select a trade.');
     return;
   }
-  if (browserOnly && message && !state.file) {
+  if (browserOnly && message && !state.file && !guidedHolding) {
     const portfolio = state.account?.portfolio;
     const selected = portfolio?.goals?.find(goal => goal.id === portfolio.activeGoalId);
     const parsed = parseBrowserGoalFact(message, selected, state.goalFacts || {});
@@ -1605,10 +1612,11 @@ $('#composer').addEventListener('submit', async event => {
     }
   }
   if (message && !state.file) {
-    const holding = parseBrowserHoldingList(message) || parseBrowserHoldingStatement(message);
+    const holding = parseBrowserHoldingList(message) || guidedHolding || parseBrowserHoldingStatement(message);
     if (holding) {
       say('user', message); $('#message').value = '';
       if (holding.error) { say('note', holding.error); return; }
+      state.awaitingHoldingName = false;
       if (state.reserveFacts) { say('note', 'Save or discard the separate reserve draft before adding holdings.'); return; }
       if (state.drafts.length) {
         say('note', 'Confirm or discard the possible holdings already shown before describing another one.');
@@ -1665,11 +1673,13 @@ $('#report-help-open')?.addEventListener('click', () => $('#report-help-dialog')
 $('#report-help-close')?.addEventListener('click', () => $('#report-help-dialog').close());
 $('#starter-upload')?.addEventListener('click', () => $('#upload').click());
 $('#starter-describe')?.addEventListener('click', () => {
-  if (state.busy || state.drafts.length || state.file || $('#message').value.trim()) {
+  if (state.busy || state.drafts.length || state.file || state.pendingGoalName ||
+      state.goalFacts || state.reserveFacts || state.correction || state.refresh || $('#message').value.trim()) {
     say('note', 'Finish the selected file, possible holdings or draft message before describing another investment.');
     return;
   }
-  say('assistant', 'Start with one investment. Say “I own a mutual fund called NAME” or “I own a stock called NAME” using its actual name. I will ask for its total value, a value date, and any missing category before you confirm it. You can also name NPS, EPF, PPF, a deposit or gold. Leave out account numbers and PAN.');
+  state.awaitingHoldingName = true;
+  say('assistant', 'What is the name of one investment you own? You can reply with just its name, or say “I have a mutual fund called NAME” or “I have a stock called NAME”. I will ask for its type, total value and value date before you confirm it. Leave out account numbers and PAN.');
   $('#message').focus();
 });
 $('#upload-trigger')?.addEventListener('click', () => $('#upload').click());
@@ -1932,7 +1942,7 @@ $('#new-chat').addEventListener('click', () => {
       !window.confirm('Start a new chat and discard the unconfirmed holdings, goal or reserve details, report change and selected file? Confirmed holdings and goals stay in your review.')) return;
   state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.history = []; state.coverageQueue = null; state.pendingGoalName = false; clearFile();
+  state.correction = null; state.refresh = null; state.history = []; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
   $('#messages').replaceChildren();
   say('assistant', state.confirmed.length ?
     `I still have ${state.confirmed.length} confirmed holding${state.confirmed.length === 1 ? '' : 's'} in this tab. What would you like to understand next?` :
@@ -1958,7 +1968,7 @@ $('#clear-review').addEventListener('click', () => {
   }
   state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; state.coverageQueue = null; state.pendingGoalName = false; clearFile();
+  state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Choose Upload for a CAMS statement, supported CAS or broker report. I’ll show possible holdings to confirm before answering questions. You can also describe one holding.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
