@@ -219,7 +219,7 @@ body{margin:0}
 body[data-mode="browser-only"] .messages{padding-top:8px;padding-bottom:8px}
 body[data-mode="browser-only"] .panel-heading p{display:none}
 body[data-mode="browser-only"] .mobile-data-link{display:inline-block;margin-top:3px;font-size:11px}
-.suggested-questions button[data-guided-question="Which of my funds say Regular or Direct Plan?"],.suggested-questions button[data-guided-question="Am I on track?"],.suggested-questions button[data-guided-question="What is my goal gap?"]{display:none}
+.suggested-questions button[data-guided-question="What do I own?"],.suggested-questions button[data-guided-question="Which of my funds say Regular or Direct Plan?"],.suggested-questions button[data-guided-question="Which of my funds hold the same stocks?"],.suggested-questions button[data-guided-question="Am I on track?"],.suggested-questions button[data-guided-question="What is my goal gap?"]{display:none}
 .top-actions{gap:7px}
 .top-actions>.quiet{padding:8px 9px;white-space:nowrap;font-size:12px}
 .tools-toggle{display:block;border:1px solid #aacbb5;border-radius:9px;background:#f5faf5;color:#174d3f;padding:8px 10px;font:700 12px Arial,Helvetica,sans-serif;cursor:pointer}
