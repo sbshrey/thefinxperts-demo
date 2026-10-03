@@ -1,10 +1,10 @@
-import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=07dd9da79e7f';
-import { MIX_ASSETS } from './mix-plan.mjs?v=07dd9da79e7f';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=07dd9da79e7f';
-import { reserveMonths } from './reserve.mjs?v=07dd9da79e7f';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=07dd9da79e7f';
-import { rupeesWithPaise } from './cost-basis.mjs?v=07dd9da79e7f';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=07dd9da79e7f';
+import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=23d182cdccd8';
+import { MIX_ASSETS } from './mix-plan.mjs?v=23d182cdccd8';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=23d182cdccd8';
+import { reserveMonths } from './reserve.mjs?v=23d182cdccd8';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=23d182cdccd8';
+import { rupeesWithPaise } from './cost-basis.mjs?v=23d182cdccd8';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=23d182cdccd8';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -52,7 +52,9 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Outside this goal: ${rupees(goalCoverage.elsewhereValue)} assigned to other goals across ${goalCoverage.elsewhereCount} ${goalCoverage.elsewhereCount === 1 ? 'holding' : 'holdings'}; ${rupees(goalCoverage.unassignedValue)} unassigned across ${goalCoverage.unassignedCount} ${goalCoverage.unassignedCount === 1 ? 'holding' : 'holdings'}. A shared holding may appear in more than one count; these amounts are excluded from this goal's figures.`,
     `Linked asset mix: ${result.goalTotal ? MIX_ASSETS.map(asset => `${asset} ${(result.goalAssets[asset] / result.goalTotal * 100).toFixed(1)}%`).join(' | ') : 'No holdings linked'}`,
     `Linked value needing a valuation-date check: ${rupees(result.goalDateCheck.value)} across ${result.goalDateCheck.count} holdings (missing, future or over 90 days old; entered values remain unverified)`,
-    `Current gap before growth, inflation or tax: ${rupees(result.goalGap ?? 0)}`,
+    result.goalHoldingCount ?
+      `Current gap before growth, inflation or tax: ${rupees(result.goalGap)}` :
+      'Current gap: unavailable until a confirmed holding is linked to this goal.',
     ...(straightLineGap ? [`Simple monthly gap: ${rupees(straightLineGap.gapToday)} in today's rupees divided by ${straightLineGap.months} months = about ${rupees(straightLineGap.roundedMonthly)} per month, rounded up. This is division only, not an amount to invest or a forecast; inflation, returns, taxes, future contributions and missing holdings are excluded.`] :
       result.goalTotal && (result.goalDateCheck.count || result.goalAccessCheck.count) ?
         ['Simple monthly gap paused until linked value dates and withdrawal access are checked.'] : []),
@@ -67,7 +69,9 @@ export function buildReadableReport(state, preparedAt = new Date()) {
       unsure: 'I am unsure' }[goal.emergencyFunding];
     if (answer) lines.push(`Your answer about unexpected essential expenses: ${answer}. This has not been verified.`);
   }
-  if (!assumptionsReady) lines.push('', 'GOAL-DATE SCENARIO PAUSED',
+  if (!result.goalTotal) lines.push('', 'GOAL-DATE SCENARIO PAUSED',
+    'Link a confirmed holding to this goal before using a future illustration. Other entered holdings are not counted here.');
+  else if (!assumptionsReady) lines.push('', 'GOAL-DATE SCENARIO PAUSED',
     'Confirm your monthly contribution, growth and inflation assumptions in the goal editor before using a future illustration. Zero is valid when deliberately chosen.');
   else if (result.goalDateCheck.count) lines.push('', 'GOAL-DATE SCENARIO PAUSED',
     'Check missing, future or over-90-day valuation dates on linked holdings before using a future illustration.');
@@ -75,7 +79,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     'Check when linked other investments can be used. Their entered values count toward the gross gap today, but access at the goal date has not been verified.');
   else if (!result.scenario) lines.push('', 'GOAL-DATE SCENARIO PAUSED',
     'The entered goal and linked holdings do not support a future illustration. Check their values and goal details.');
-  if (assumptionsReady && !result.goalDateCheck.count && result.scenario) {
+  if (result.goalTotal && assumptionsReady && !result.goalDateCheck.count && result.scenario) {
     lines.push('', 'ILLUSTRATIVE GOAL-DATE SCENARIO',
       `With your entered ${result.scenario.returnPct}% growth, ${result.scenario.inflationPct}% inflation and ${rupees(result.scenario.monthlyContribution)} month-end contribution assumptions:`,
       `Goal cost: ${rupees(result.scenario.futureCost)} | linked holdings and planned contributions: ${rupees(result.scenario.projectedValue)} | gap: ${rupees(result.scenario.futureGap)}`,
@@ -83,7 +87,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
       ...(result.flatScenario ? [`For comparison, with 0% growth and the same monthly amount and inflation, the goal-date gap would be ${rupees(result.flatScenario.futureGap)}.`] : []),
       'This is arithmetic, not a return forecast or investment recommendation; taxes, fees and market losses may differ.');
   }
-  if (assumptionsReady && !result.goalDateCheck.count && result.shockContinuation) {
+  if (result.goalTotal && assumptionsReady && !result.goalDateCheck.count && result.shockContinuation) {
     lines.push('', 'HYPOTHETICAL EQUITY FALL AND GOAL DATE',
       `A ${result.shock.dropPct}% immediate fall in linked equity would remove ${rupees(result.shock.loss)} from the entered goal holdings.`,
       `With the same growth, inflation and monthly contribution assumptions afterward, the goal-date gap would be ${rupees(result.shockContinuation.futureGap)} versus ${rupees(result.scenario.futureGap)} before the fall.`,

@@ -1,23 +1,23 @@
-import { analyzePortfolio, sampleHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=07dd9da79e7f';
-import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=07dd9da79e7f';
-import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=07dd9da79e7f';
+import { analyzePortfolio, sampleHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=23d182cdccd8';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=23d182cdccd8';
+import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=23d182cdccd8';
 import { validateImportReview, validateImportMerge, findImportMergeConflicts, possibleManualDuplicate, isRepeatedActiveStatement,
-  planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs?v=07dd9da79e7f';
-import { prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=07dd9da79e7f';
-import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=07dd9da79e7f';
-import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=07dd9da79e7f';
-import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=07dd9da79e7f';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=07dd9da79e7f';
-import { buildReadableReport } from './readable-report.mjs?v=07dd9da79e7f';
-import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=07dd9da79e7f';
-import { validReserve, reserveMonths } from './reserve.mjs?v=07dd9da79e7f';
-import { contextNeedsReview } from './market-context.mjs?v=07dd9da79e7f';
-import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=07dd9da79e7f';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=07dd9da79e7f';
-import { chooseNextReviewStep } from './next-step.mjs?v=07dd9da79e7f';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=07dd9da79e7f';
-import { answerReviewQuestion } from './review-questions.mjs?v=07dd9da79e7f';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=07dd9da79e7f';
+  planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs?v=23d182cdccd8';
+import { prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=23d182cdccd8';
+import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=23d182cdccd8';
+import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=23d182cdccd8';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=23d182cdccd8';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=23d182cdccd8';
+import { buildReadableReport } from './readable-report.mjs?v=23d182cdccd8';
+import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=23d182cdccd8';
+import { validReserve, reserveMonths } from './reserve.mjs?v=23d182cdccd8';
+import { contextNeedsReview } from './market-context.mjs?v=23d182cdccd8';
+import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=23d182cdccd8';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=23d182cdccd8';
+import { chooseNextReviewStep } from './next-step.mjs?v=23d182cdccd8';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=23d182cdccd8';
+import { answerReviewQuestion } from './review-questions.mjs?v=23d182cdccd8';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=23d182cdccd8';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -374,8 +374,9 @@ function render() {
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
   $('#goal-years-value').textContent = needsGoalConfirmation ? 'Goal details needed' : `${state.goal.years} years`;
   $('#age-at-goal').textContent = pauseGoalFigures ? 'Goal figures paused' : `Age ${Number(state.goal.age) + Number(state.goal.years)} at the goal date`;
-  $('#goal-gap').textContent = result.goalGap === null ? '—' : rupees(result.goalGap);
+  $('#goal-gap').textContent = result.goalGap === null || !result.goalHoldingCount ? '—' : rupees(result.goalGap);
   $('#goal-gap-note').textContent = needsGoalConfirmation ? 'Confirm age, cost and time horizon below.' :
+    !result.goalHoldingCount ? 'Link a holding before comparing its value with this target.' :
     result.goalAccessCheck.count ? `Gross entered value; ${rupees(result.goalAccessCheck.value)} of linked savings has no checked access date.` :
       'Simple arithmetic before growth, inflation or tax';
   const straightLineGap = state.source === 'user' && !pauseGoalFigures && result.goalTotal &&
@@ -426,7 +427,7 @@ function render() {
   $('#summary-asof').textContent = result.asOfSummary;
   $('#goal-title').textContent = needsGoalConfirmation ? 'Set your goal' : state.goal.name;
   const assumptionsReady = state.source === 'demo' || confirmedGoalAssumptions(state.goal);
-  const scenario = assumptionsReady && !result.goalDateCheck.count ? result.scenario : null;
+  const scenario = assumptionsReady && result.goalTotal && !result.goalDateCheck.count ? result.scenario : null;
   $('#scenario-cost').textContent = scenario ? rupees(scenario.futureCost) : '—';
   $('#scenario-value').textContent = scenario ? rupees(scenario.projectedValue) : '—';
   $('#scenario-gap').textContent = scenario ? rupees(scenario.futureGap) : '—';
@@ -440,7 +441,7 @@ function render() {
     result.stressPause === 'access_uncertain' ? 'Check when the linked other investments can be used before interpreting this goal stress calculation.' : shock
     ? `This subtracts ${shock.dropPct}% once from only the holdings marked Equity and linked to this goal. It uses today's entered values and goal cost; it excludes future growth, contributions, inflation, taxes and changes in other assets. It is a what-if loss, not a prediction or a target allocation.`
     : 'Enter a valid equity-loss percentage to see this illustration.';
-  const shockContinuation = pauseGoalFigures || !assumptionsReady || result.goalDateCheck.count ? null : result.shockContinuation;
+  const shockContinuation = pauseGoalFigures || !assumptionsReady || !result.goalTotal || result.goalDateCheck.count ? null : result.shockContinuation;
   $('#shock-goal-context').hidden = !shockContinuation;
   $('#shock-goal-context').textContent = shockContinuation
     ? `If that fall happened now, then the same ${shockContinuation.returnPct}% growth, ${shockContinuation.inflationPct}% inflation and ${rupees(shockContinuation.monthlyContribution)} monthly contribution assumptions held: the goal-date gap would be ${rupees(shockContinuation.futureGap)} versus ${rupees(scenario.futureGap)} before the fall. The additional monthly amount above your plan would be ${rupees(Math.ceil(shockContinuation.monthlyAdditionalNeeded))} versus ${rupees(Math.ceil(scenario.monthlyAdditionalNeeded))}. This is a fixed-assumption illustration, not a forecast; actual prices, cash flows and costs can differ.`
@@ -455,6 +456,7 @@ function render() {
       `${limits.capacityGap !== null ? `The amount you could tolerate is ${rupees(limits.capacityGap)} above the amount you said you could cover. Check whether a loss between those amounts would delay this goal or essential spending. ` : ''}` +
       'This is your own comparison, not a formal risk profile; real losses may be larger.';
   $('#scenario-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' :
+    !result.goalTotal ? 'Future illustration paused. Link a confirmed holding to this goal first.' :
     !assumptionsReady ? 'Future illustration paused. Open the goal assumptions below and confirm your monthly amount, growth and inflation choices. Zero is valid when you choose it deliberately.' :
     result.goalAccessCheck.count ? `Future illustration paused: ${rupees(result.goalAccessCheck.value)} of manually entered other investments is linked to this goal, but access by the goal date has not been checked. The gross gap includes them; if none can be used for this goal, the gap in today's rupees would be ${rupees(result.goalGapIfOtherUnavailable)}. This is a what-if bound, not proof that they are locked. Check their terms before relying on the gross gap.` : scenario
     ? `Uses ${scenario.returnPct}% annual growth, ${scenario.inflationPct}% inflation and your planned ${rupees(scenario.monthlyContribution)} in month-end contributions for ${scenario.years} years. The total mathematical monthly amount would be ${rupees(Math.ceil(scenario.monthlyTotalNeeded))}; the number above is only the extra beyond your plan. ${result.flatScenario ? `For comparison, with 0% growth and the same monthly amount and inflation, the goal-date gap would be ${rupees(result.flatScenario.futureGap)}. ` : ''}This arithmetic is illustrative, not a return forecast or investment recommendation. Entered valuations may be dated; taxes, fees and market losses may differ.`
@@ -1324,7 +1326,7 @@ $('#broker-read').addEventListener('click', async () => {
       brokerRows = parseBrokerCsvRows(await file.text());
       brokerSource = 'Broker CSV';
     } else if (file.name.toLowerCase().endsWith('.xlsx')) {
-      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=07dd9da79e7f');
+      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=23d182cdccd8');
       brokerRows = await readBrokerWorkbook(file);
       brokerSource = 'Broker XLSX';
     } else throw new Error('Choose a broker holdings XLSX or CSV report.');
@@ -1689,7 +1691,7 @@ $('#preview-active').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Reading in this tab…';
   try {
-    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=07dd9da79e7f');
+    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=23d182cdccd8');
     const result = await previewActiveStatementFile(file, password);
     if (result.errors.length) {
       $('#active-error').textContent = result.errors.slice(0, 5).join(' ');
@@ -1743,7 +1745,7 @@ $('#preview-cas').addEventListener('click', async () => {
     let result;
     let responseOk = true;
     if (casMode === 'browser') {
-      const { previewBrowserCas } = await import('./cas-browser.mjs?v=07dd9da79e7f');
+      const { previewBrowserCas } = await import('./cas-browser.mjs?v=23d182cdccd8');
       result = await previewBrowserCas(file, password);
     } else {
       const bytes = new Uint8Array(await file.arrayBuffer());

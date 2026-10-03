@@ -1,6 +1,6 @@
-import { analyzePortfolio } from './analysis.mjs?v=07dd9da79e7f';
-import { goalShare } from './goals.mjs?v=07dd9da79e7f';
-import { calculateStraightLineGap } from './goal-scenario.mjs?v=07dd9da79e7f';
+import { analyzePortfolio } from './analysis.mjs?v=23d182cdccd8';
+import { goalShare } from './goals.mjs?v=23d182cdccd8';
+import { calculateStraightLineGap } from './goal-scenario.mjs?v=23d182cdccd8';
 
 /** The chat dashboard reads saved facts; all scenario numbers come from the review engine. */
 export function buildAssistantGoalReview(portfolio, today = new Date()) {
@@ -18,13 +18,14 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
   const result = analyzePortfolio(portfolio.holdings, goal, today, portfolio.reserve, portfolio.coverage);
   const missingAssumptions = ['monthlyContribution', 'returnPct', 'inflationPct']
     .filter(field => goal.assumptionsChecked?.[field] !== true);
-  const scenarioStatus = missingAssumptions.length ? 'assumptions' :
+  const scenarioStatus = !result.goalTotal ? 'no_holdings' : missingAssumptions.length ? 'assumptions' :
     result.goalDateCheck.count ? 'valuation_dates' : result.goalAccessCheck.count ? 'access_uncertain' :
       result.scenario ? 'ready' : 'invalid';
   const straightLineGap = result.goalTotal && !result.goalDateCheck.count && !result.goalAccessCheck.count ?
     calculateStraightLineGap(result.goalTotal, goal) : null;
   return { kind: 'confirmed', name: goal.name, age: goal.age, years: goal.years, target: goal.target,
-    linkedValue: result.goalTotal, linkedCount: result.goalHoldingCount, gapToday: result.goalGap,
+    linkedValue: result.goalTotal, linkedCount: result.goalHoldingCount,
+    gapToday: result.goalHoldingCount ? result.goalGap : null,
     gapIfOtherUnavailable: result.goalGapIfOtherUnavailable,
     straightLineGap,
     coverage: portfolio.coverage || null, emergencyFunding: goal.emergencyFunding || null,

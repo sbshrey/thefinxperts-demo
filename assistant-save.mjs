@@ -1,5 +1,5 @@
-import { validShares } from './stock-estimate.mjs?v=07dd9da79e7f';
-import { validCostBasis } from './cost-basis.mjs?v=07dd9da79e7f';
+import { validShares } from './stock-estimate.mjs?v=23d182cdccd8';
+import { validCostBasis } from './cost-basis.mjs?v=23d182cdccd8';
 
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const SOURCES = new Set(['manual', 'active_statement', 'broker_csv', 'broker_xlsx', 'simple_csv', 'cas', 'demat_cas', 'epfo_passbook']);
