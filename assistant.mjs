@@ -1328,7 +1328,8 @@ $('#confirm-drafts').addEventListener('click', async () => {
   }
   const added = [];
   for (const row of state.drafts) {
-    const overlap = findAssistantOverlap([...state.confirmed, ...added], row);
+    const overlap = findAssistantOverlap(state.confirmed, row) ||
+      findAssistantOverlap(added, row, { allowComplementarySummary: true });
     if (overlap) {
       say('note', `${row.name} may already be counted as ${overlap.existingName} (${overlap.reason} match). Check the source before adding both. Reply “skip ${row.name}” to leave this draft out.`);
       return;
@@ -1347,7 +1348,7 @@ $('#omit-matching-drafts').addEventListener('click', () => {
   if (!matches.length) return;
   const value = matches.reduce((sum, match) => sum + (Number.isFinite(match.draft.value) ? match.draft.value : 0), 0);
   const remaining = state.drafts.length - matches.length;
-  if (!window.confirm(`Leave out ${matches.length} matching ${matches.length === 1 ? 'row' : 'rows'} worth ${money(value)} and keep ${remaining} for review? A matching name or ISIN may be a separate account position. Check both reports and use this only when those rows are already counted. No saved holding changes yet.`)) return;
+  if (!window.confirm(`Leave out ${matches.length} matching ${matches.length === 1 ? 'row' : 'rows'} worth ${money(value)} and keep ${remaining} for review? A matching name, ISIN or AMFI code may be a separate account position; a fund-house summary may already include individual schemes. Check both reports and use this only when those rows are already counted. No saved holding changes yet.`)) return;
   const omitted = new Set(matches.map(match => match.index));
   state.drafts = state.drafts.filter((_, index) => !omitted.has(index));
   renderDrafts();

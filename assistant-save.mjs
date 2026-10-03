@@ -35,7 +35,7 @@ function key(row) {
 }
 
 /** A matching name or ISIN may be the same position in another report. Never sum it silently. */
-export function findAssistantOverlap(existing, draft) {
+export function findAssistantOverlap(existing, draft, { allowComplementarySummary = false } = {}) {
   if (!Array.isArray(existing) || !draft || typeof draft.name !== 'string' ||
       !['Mutual fund', 'Stock', 'Other investment'].includes(draft.type)) return null;
   const isin = typeof draft.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(draft.isin) ? draft.isin : null;
@@ -43,6 +43,17 @@ export function findAssistantOverlap(existing, draft) {
     if (!row || typeof row.name !== 'string') continue;
     if (row.type === draft.type && key(row) === key(draft)) return { existingName: row.name, reason: 'name' };
     if (isin && row.isin === isin) return { existingName: row.name, reason: 'ISIN' };
+    if (row.type === 'Mutual fund' && draft.type === 'Mutual fund') {
+      if (draft.amfi && row.amfi && draft.amfi === row.amfi)
+        return { existingName: row.name, reason: 'AMFI code' };
+      // A CAMS fund-house total may be split into disjoint Equity and Other portions.
+      if (allowComplementarySummary && row.granularity === 'fund_house' && draft.granularity === 'fund_house' &&
+          row.asset !== draft.asset) continue;
+      if (row.granularity === 'fund_house' || (draft.granularity === 'fund_house' &&
+          (!row.amc || !draft.amc || row.amc.trim().toLocaleLowerCase('en-IN') ===
+            draft.amc.trim().toLocaleLowerCase('en-IN'))))
+        return { existingName: row.name, reason: 'fund-house summary' };
+    }
   }
   return null;
 }
@@ -62,10 +73,6 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
   if (!portfolio) return { portfolio: null, errors: ['This saved review format needs an account check.'] };
   if (!Array.isArray(drafts) || !drafts.length || drafts.length > 30) {
     return { portfolio: null, errors: ['Confirm one to thirty holdings at a time.'] };
-  }
-  if (portfolio.holdings.some(row => row.type === 'Mutual fund' && row.granularity === 'fund_house') &&
-      drafts.some(row => row.type === 'Mutual fund')) {
-    return { portfolio: null, errors: ['This account has fund-house totals that may already include these schemes. Review that overlap before saving individual funds.'] };
   }
   const added = [];
   for (const row of drafts) {
@@ -91,7 +98,8 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
         (row.type === 'Stock' && (row.amc || row.amfi || row.units || row.statementCategory))) {
       return { portfolio: null, errors: ['A draft needs a supported investment type, positive value, asset category and valid date.'] };
     }
-    const overlap = findAssistantOverlap([...portfolio.holdings, ...added], row);
+    const overlap = findAssistantOverlap(portfolio.holdings, row) ||
+      findAssistantOverlap(added, row, { allowComplementarySummary: true });
     if (overlap) {
       return { portfolio: null, errors: [`${row.name.trim()} may already be counted as ${overlap.existingName} (${overlap.reason} match). Check the source before adding both. Reply “skip ${row.name.trim()}” to leave this draft out.`] };
     }
