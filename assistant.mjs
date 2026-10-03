@@ -425,6 +425,11 @@ function unclassifiedDematDrafts() {
     row.type === 'Other' && row.asset === 'Other');
 }
 
+function unclassifiedBrokerDrafts() {
+  return state.drafts.filter(row => ['broker_csv', 'broker_xlsx'].includes(row.entryOrigin) &&
+    row.type === 'Other' && row.asset === 'Other');
+}
+
 function renderDrafts() {
   const box = $('#drafts');
   box.hidden = !state.drafts.length;
@@ -440,6 +445,11 @@ function renderDrafts() {
   dematButton.hidden = !unclassifiedDemat.length;
   dematButton.disabled = state.busy;
   dematButton.textContent = `Mark ${unclassifiedDemat.length} checked demat ${unclassifiedDemat.length === 1 ? 'row' : 'rows'} as direct stocks`;
+  const brokerButton = $('#broker-drafts-stock');
+  const unclassifiedBroker = unclassifiedBrokerDrafts();
+  brokerButton.hidden = !unclassifiedBroker.length;
+  brokerButton.disabled = state.busy;
+  brokerButton.textContent = `Mark ${unclassifiedBroker.length} checked broker ${unclassifiedBroker.length === 1 ? 'row' : 'rows'} as direct stocks`;
   if (!state.drafts.length) return;
   const matchesByIndex = new Map(matches.map(match => [match.index, match]));
   const list = document.createElement('ul');
@@ -456,6 +466,8 @@ function renderDrafts() {
     nextDraftQuestion(state.drafts) || 'Check these against your source before using them in the dashboard.';
   if (unclassifiedDemat.length)
     $('#draft-help').textContent += ' If every unclassified demat row is an ordinary company share, use the checked-rows button after checking the original statement.';
+  if (unclassifiedBroker.length)
+    $('#draft-help').textContent += ' If every unclassified broker row is an ordinary company share, use the checked-rows button after checking the report.';
   $('#confirm-drafts').disabled = state.busy || state.drafts.some(row =>
     !Number.isFinite(row.value) || row.value <= 0 || row.type === 'Other' ||
     (row.type === 'Stock' && row.asset !== 'Equity'));
@@ -1681,6 +1693,17 @@ $('#demat-drafts-stock').addEventListener('click', () => {
     { ...row, type: 'Stock', asset: 'Equity' } : row);
   renderDrafts();
   say('note', `${rows.length} checked demat ${rows.length === 1 ? 'row is' : 'rows are'} now labelled direct stocks in this preview. No holdings were added; check the list before choosing Use these holdings.`);
+});
+
+$('#broker-drafts-stock').addEventListener('click', () => {
+  if (state.busy) return;
+  const rows = unclassifiedBrokerDrafts();
+  if (!rows.length || !window.confirm(`Have you checked all ${rows.length} unclassified broker ${rows.length === 1 ? 'row' : 'rows'} against the report and confirmed they are ordinary company shares? Fund units, ETFs, REITs, bonds and other securities need individual review. No holdings will be imported yet.`)) return;
+  const selected = new Set(rows);
+  state.drafts = state.drafts.map(row => selected.has(row) ?
+    { ...row, type: 'Stock', asset: 'Equity' } : row);
+  renderDrafts();
+  say('note', `${rows.length} checked broker ${rows.length === 1 ? 'row is' : 'rows are'} now labelled direct stocks in this preview. No holdings were added; check the list before choosing Use these holdings.`);
 });
 
 $('#discard-drafts').addEventListener('click', () => {
