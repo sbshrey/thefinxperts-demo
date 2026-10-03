@@ -1,10 +1,10 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=8d765c540d18';
-import { rupeesWithPaise } from './cost-basis.mjs?v=8d765c540d18';
-import { reserveMonths } from './reserve.mjs?v=8d765c540d18';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=8d765c540d18';
-import { asksForAdvice } from './question-scope.mjs?v=8d765c540d18';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=8d765c540d18';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=3b143df3dc18';
+import { rupeesWithPaise } from './cost-basis.mjs?v=3b143df3dc18';
+import { reserveMonths } from './reserve.mjs?v=3b143df3dc18';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=3b143df3dc18';
+import { asksForAdvice } from './question-scope.mjs?v=3b143df3dc18';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=3b143df3dc18';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -520,7 +520,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   if (goalScopeRequested && /^(?:which|what|show|list)\b/.test(input) &&
       /\b(?:holdings?|investments?|funds?|stocks?|shares?)\b/.test(input) &&
       /\b(?:count|counted|assigned|linked|fund|funding|toward|towards|for)\b/.test(input) &&
-      !/\b(?:biggest|largest|top|concentrat\w*|rank\w*)\b/.test(input)) {
+      !/\b(?:biggest|largest|top|concentrat\w*|rank\w*|amc|fund[ -]?houses?)\b/.test(input)) {
     const type = /\b(?:stocks?|shares?)\b/.test(input) && !/\b(?:funds?|investments?|holdings?)\b/.test(input) ? 'Stock' :
       /\b(?:mutual funds?|funds?)\b/.test(input) && !/\b(?:stocks?|shares?|investments?|holdings?)\b/.test(input) ? 'Mutual fund' : null;
     const linked = holdings.flatMap((row, index) => {
@@ -689,8 +689,10 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(result.goalAssets.Equity)} linked Equity value × ${shock.dropPct}% = ${money(shock.loss)}; ${money(result.goalTotal)} assigned value minus that loss = ${money(shock.valueAfterLoss)}.`,
       'One-time arithmetic from supplied dated values, holding other assets fixed. It excludes future growth, contributions, inflation and tax; actual losses could be larger. It is not a risk score or trade instruction.', '#goals', 'Review stress check');
   }
-  if (/\b(?:amc|fund[ -]?houses?|asset management compan(?:y|ies))\b/.test(input) &&
-      /\b(?:which|what|how|largest|biggest|most|concentrat\w*|share|much|exposure|spread|depend\w*|dominat\w*)\b/.test(input)) {
+  const namedHouseMentioned = valid.some(row => typeof row.amc === 'string' && row.amc.trim() &&
+    input.includes(row.amc.trim().toLocaleLowerCase('en-IN')));
+  if ((/\b(?:amc|fund[ -]?houses?|asset management compan(?:y|ies))\b/.test(input) || namedHouseMentioned) &&
+      /\b(?:which|what|how|show|list|all|each|breakdown|split|distribution|largest|biggest|most|concentrat\w*|share|much|exposure|spread|depend\w*|dominat\w*)\b/.test(input)) {
     const selectedGoal = Boolean(goalScopeRequested);
     if (selectedGoal) {
       const unavailable = unavailableGoalScope();
@@ -710,10 +712,32 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(houses.coveredValue)} of ${money(houses.fundValue)} ${scope} has a supplied fund-house label.`,
       `Fund-house names and current values are not independently verified. ${coverageNote}`, '#holdings', 'Check fund-house labels');
     const partial = houses.coveredValue < houses.fundValue;
+    const basis = `Grouped ${houses.labelledHouseCount} supplied fund-house ${houses.labelledHouseCount === 1 ? 'label' : 'labels'} after trimming and case folding${selectedGoal ? ', applying each goal assignment share' : ''}. ${selectedGoal ? 'Whole-review date context: ' : ''}${result.asOfSummary}.`;
+    const limitation = `This is fund-house exposure, not underlying company concentration or verified scheme overlap. It does not set a safe threshold or suggest a trade. ${coverageNote}`;
+    const named = houses.groups.filter(house => input.includes(house.name.toLocaleLowerCase('en-IN')));
+    if (named.length === 1) {
+      const house = named[0];
+      const assignedTotal = selectedGoal ? result.goalTotal : result.total;
+      return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}${house.name} has ${money(house.value)}, or ${percent(house.value, houses.fundValue)} of ${scope} and ${percent(house.value, assignedTotal)} of ${selectedGoal ? 'this goal’s total assigned value' : 'all entered investment value'}.` +
+        (partial ? ` Fund-house labels cover ${money(houses.coveredValue)} of ${money(houses.fundValue)}; other fund value is unlabelled.` : ''),
+      `${money(house.value)} ÷ ${money(houses.fundValue)} ${scope}; ${money(house.value)} ÷ ${money(assignedTotal)} ${selectedGoal ? 'assigned goal' : 'entered portfolio'} value. ${basis}`,
+      limitation, destination, 'Inspect fund holdings');
+    }
+    if (/\b(?:each|all|breakdown|split|distribution|spread)\b/.test(input) || /\bhow much\b/.test(input)) {
+      const shown = houses.groups.slice(0, 5);
+      const rest = houses.groups.slice(5);
+      const remainder = rest.reduce((sum, house) => sum + house.value, 0);
+      const pieces = shown.map(house => `${house.name} ${money(house.value)} (${percent(house.value, houses.fundValue)})`);
+      if (rest.length) pieces.push(`${rest.length} more named ${rest.length === 1 ? 'house' : 'houses'} ${money(remainder)} (${percent(remainder, houses.fundValue)})`);
+      if (partial) pieces.push(`unlabelled fund value ${money(houses.fundValue - houses.coveredValue)} (${percent(houses.fundValue - houses.coveredValue, houses.fundValue)})`);
+      return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}the supplied breakdown of ${scope} (${money(houses.fundValue)}) is ${pieces.join('; ')}.`,
+        `${money(houses.coveredValue)} has a supplied fund-house label and ${money(houses.fundValue - houses.coveredValue)} does not. Each share uses ${money(houses.fundValue)} ${scope} as its denominator. ${basis}`,
+        limitation, destination, 'Inspect fund holdings');
+    }
     return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}${houses.largest.name} is the largest ${partial ? 'named ' : ''}fund house at ${money(houses.largest.value)}, or ${percent(houses.largest.value, houses.fundValue)} of ${scope}.` +
       (partial ? ` Fund-house labels cover ${money(houses.coveredValue)} of ${money(houses.fundValue)}; an unnamed fund house could be larger.` : ''),
-      `${money(houses.largest.value)} ÷ ${money(houses.fundValue)} ${scope}; grouped ${houses.labelledHouseCount} supplied fund-house ${houses.labelledHouseCount === 1 ? 'label' : 'labels'} after trimming and case folding${selectedGoal ? ', applying each goal assignment share' : ''}. ${result.asOfSummary}.`,
-      `This is fund-house exposure, not underlying company concentration or verified scheme overlap. It does not set a safe threshold or suggest a trade. ${coverageNote}`, destination, 'Inspect fund holdings');
+      `${money(houses.largest.value)} ÷ ${money(houses.fundValue)} ${scope}; ${basis}`,
+      limitation, destination, 'Inspect fund holdings');
   }
   if (/\b(overlap|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
   {

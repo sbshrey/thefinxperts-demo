@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=8d765c540d18';
-import { compareMixPlan } from './mix-plan.mjs?v=8d765c540d18';
-import { goalShare } from './goals.mjs?v=8d765c540d18';
-import { reserveMonths } from './reserve.mjs?v=8d765c540d18';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=8d765c540d18';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=3b143df3dc18';
+import { compareMixPlan } from './mix-plan.mjs?v=3b143df3dc18';
+import { goalShare } from './goals.mjs?v=3b143df3dc18';
+import { reserveMonths } from './reserve.mjs?v=3b143df3dc18';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=3b143df3dc18';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -30,8 +30,9 @@ export function summarizeFundHouses(holdings) {
     const previous = houses.get(key);
     houses.set(key, { name: previous?.name || name, value: (previous?.value || 0) + value });
   }
-  const largest = [...houses.values()].sort((a, b) => b.value - a.value)[0] || null;
-  return { fundValue, coveredValue, largest, labelledHouseCount: houses.size };
+  const groups = [...houses.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, 'en-IN'));
+  return { fundValue, coveredValue, largest: groups[0] || null,
+    labelledHouseCount: groups.length, groups };
 }
 
 export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 }, today = new Date(), reserve = null, coverage = null) {
