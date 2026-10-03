@@ -201,6 +201,68 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  const wholePortfolioFall = /\b(?:portfolio|holdings|investments)\b/.test(input) &&
+    /\b(?:fall|falls|fell|drop|drops|dropped)\b/.test(input) &&
+    /\b(?:what if|if|test|simulate)\b/.test(input) &&
+    !/\b(?:largest|biggest|single|one holding|one position)\b/.test(input);
+  if (wholePortfolioFall) {
+    const scoped = Boolean(goalScopeRequested);
+    const equityOnly = /\b(?:equity|stocks?|stock market)\b/.test(input);
+    if (scoped) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    if (!valid.length) return answer('Add and confirm a dated holding before testing a portfolio-wide fall.',
+      'No positive confirmed holding value is entered.',
+      'An empty review does not establish that you own no investments.', '#holdings', 'Add a holding');
+    const rows = scoped ? valid.flatMap(row => {
+      const share = goalShare(goal, row.id);
+      return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+    }) : valid;
+    const total = scoped ? result.goalTotal : result.total;
+    const assets = scoped ? result.goalAssets : result.assets;
+    const percentages = input.match(/\d+(?:\.\d+)?\s*%/g) || [];
+    const dropPct = percentages.length === 1 ? Number.parseFloat(percentages[0]) : null;
+    if (dropPct === null || !Number.isFinite(dropPct) || dropPct < 1 || dropPct > 60)
+      return answer('Choose one hypothetical fall from 1% to 60%, such as “What if my portfolio fell 20%?” or “What if equity in my portfolio fell 20%?”',
+        `${money(total)} ${scoped ? 'assigned' : 'entered'} value, including ${money(assets.Equity)} labelled Equity; no single valid hypothetical fall was supplied.`,
+        'The percentage must be your what-if choice; it is not a predicted market move.', '#holdings', 'Choose a fall');
+    const dated = valuationRowsNeedingCheck(rows, today);
+    if (dated.length) return answer(`Check ${dated.length} missing, future or over-90-day value ${dated.length === 1 ? 'date' : 'dates'} before using this ${scoped ? 'goal' : 'portfolio'} snapshot for a fall calculation.`,
+      `${dated.length} of ${rows.length} positive ${scoped ? 'assigned ' : ''}holding rows need a valuation-date check; ${result.asOfSummary}.`,
+      'A hypothetical fall calculated from an old or unavailable starting amount could be misleading.', '#holdings', 'Check entered values');
+    if (scoped && result.goalAccessCheck.count)
+      return answer(`Check when the ${money(result.goalAccessCheck.value)} assigned from other investments can be used for ${goal.name} before applying a fall to its goal value.`,
+        `${result.goalAccessCheck.count} linked other-investment ${result.goalAccessCheck.count === 1 ? 'row has' : 'rows have'} unverified access for this goal.`,
+        'A gross balance may not be available when the goal arrives; this calculation is paused rather than treating it as spendable.', '#holdings', 'Check access terms');
+    if (equityOnly) {
+      const labelsByIsin = new Map();
+      for (const row of rows) {
+        if (!/^[A-Z]{2}[A-Z0-9]{10}$/.test(row.isin || '')) continue;
+        const labels = labelsByIsin.get(row.isin) || new Set();
+        labels.add(`${row.type}|${row.asset}`);
+        labelsByIsin.set(row.isin, labels);
+      }
+      if ([...labelsByIsin.values()].some(labels => labels.size > 1))
+        return answer('Check the conflicting type or asset labels on rows with the same supplied ISIN before applying an equity fall.',
+          'At least one supplied ISIN has different classifications in this review.',
+          'The Equity portion cannot be trusted until those source labels are checked.', '#holdings', 'Check identifiers');
+    }
+    const equity = assets.Equity;
+    if (equityOnly && !equity) return answer('No entered value is labelled Equity, so this review cannot show an equity-loss amount for your holdings. Check any rows labelled Other against their source.',
+      `${money(total)} ${scoped ? 'assigned' : 'entered'} value; ${money(equity)} labelled Equity; ${result.asOfSummary}.`,
+      `An Other label may conceal equity exposure; fund constituents and investments outside this review are unknown. ${coverageNote}`, '#holdings', 'Check asset labels');
+    const movedValue = equityOnly ? equity : total;
+    const loss = movedValue * dropPct / 100;
+    const after = total - loss;
+    const gap = scoped ? ` The gap to ${goal.name}'s entered target in today's rupees would be ${money(Math.max(0, Number(goal.target) - after))}.` : '';
+    return answer(scoped ?
+      `If ${equityOnly ? 'the assigned value labelled Equity' : 'every assigned holding value'} for ${goal.name} fell ${dropPct}% once${equityOnly ? ' while its other asset labels stayed fixed' : ''}, its assigned value would fall by ${money(loss)} to ${money(after)} (${percent(loss, total)} lower).${gap}` : equityOnly ?
+      `If all entered value labelled Equity fell ${dropPct}% once while Debt, Gold and Other values stayed fixed, this entered portfolio would fall by ${money(loss)} to ${money(after)} (${percent(loss, result.total)} lower).` :
+      `If every entered holding value fell ${dropPct}% once, this entered portfolio would fall by ${money(loss)} to ${money(after)} (${percent(loss, result.total)} lower).`,
+      `${money(movedValue)} ${equityOnly ? 'labelled Equity' : scoped ? 'across assigned holdings' : 'across all entered holdings'} × ${dropPct}% = ${money(loss)} hypothetical loss; ${money(total)} ${scoped ? 'assigned' : 'entered'} value − ${money(loss)} = ${money(after)}. ${result.asOfSummary}.`,
+      `This is one-time arithmetic from supplied dated values${scoped ? " against your goal target in today's rupees" : ''}, not a forecast, stress limit, suitability verdict or trade instruction. ${equityOnly ? 'Other labels may conceal equity, and ' : ''}Fund constituents, other price moves, taxes and unentered holdings are unknown. ${coverageNote}`, scoped ? '#goals' : '#holdings', scoped ? 'Review selected goal' : 'Review entered mix');
+  }
   const holdingDetail = /^(?:review|show|describe|inspect|check|tell me about)\s+holding\s*#?(\d{1,4})[?.!]*$/.exec(input);
   if (holdingDetail) {
     const number = Number(holdingDetail[1]);
@@ -248,7 +310,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `The largest entered position is ${largest.name} at ${percent(largest.value, total)} of ${scoped ? 'assigned' : 'entered'} value. ` +
       `${dateChecks.length ? `${dateChecks.length} ${dateChecks.length === 1 ? 'value date needs' : 'value dates need'} a check. ` : ''}` +
       `${assets.Other ? `${money(assets.Other)} has an unresolved asset label. ` : ''}` +
-      'These are exposure checks; they cannot tell whether you are taking too much risk.',
+      `These are exposure checks; they cannot tell whether you are taking too much risk.${scoped ? '' : ' To explore a one-time what-if with your own percentage, ask “What if my portfolio fell 20%?” or “What if equity in my portfolio fell 20%?”'}`,
       `Equity ${money(assets.Equity)}, Debt ${money(assets.Debt)}, Gold ${money(assets.Gold)}, Other ${money(assets.Other)} ÷ ${money(total)} ${scoped ? 'assigned' : 'entered'} value. ` +
       `${money(largest.value)} ÷ ${money(total)} for the largest grouped position. ${result.asOfSummary}.`,
       `Fund constituents, other risks and holdings outside this review are not verified. A fund-house summary can contain several schemes. This is not a risk score, safety or suitability verdict, or allocation or trade instruction. ${coverageNote}`,
