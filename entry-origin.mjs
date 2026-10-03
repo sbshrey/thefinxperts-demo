@@ -7,6 +7,7 @@ export const ENTRY_ORIGINS = Object.freeze({
   cas: 'original mutual-fund CAS',
   demat_cas: 'demat CAS',
   epfo_passbook: 'EPFO member passbook',
+  nps_statement: 'NPS transaction statement',
 });
 
 export function entryOriginFromImport(label) {
