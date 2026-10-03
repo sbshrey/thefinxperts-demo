@@ -1,14 +1,27 @@
-import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=cd46050b1dd0';
-import { MIX_ASSETS } from './mix-plan.mjs?v=cd46050b1dd0';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=cd46050b1dd0';
-import { reserveMonths } from './reserve.mjs?v=cd46050b1dd0';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=cd46050b1dd0';
-import { rupeesWithPaise } from './cost-basis.mjs?v=cd46050b1dd0';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=cd46050b1dd0';
+import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=c7a5d0a3a138';
+import { MIX_ASSETS } from './mix-plan.mjs?v=c7a5d0a3a138';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=c7a5d0a3a138';
+import { reserveMonths } from './reserve.mjs?v=c7a5d0a3a138';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=c7a5d0a3a138';
+import { rupeesWithPaise } from './cost-basis.mjs?v=c7a5d0a3a138';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=c7a5d0a3a138';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
 const indiaDate = date => new Date(date.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+
+function fundCostLines(result) {
+  const cost = result.fundCost;
+  const lines = [`Entered fund cost coverage: ${rupees(cost.coveredValue)} of ${rupees(result.fundValue)} fund value across ${cost.coveredCount} dated scheme ${cost.coveredCount === 1 ? 'entry' : 'entries'}`];
+  if (!cost.coveredValue) return lines;
+  const rateDates = cost.oldestTerDate === cost.newestTerDate ?
+    `Supplied TER date: ${cost.oldestTerDate}.` :
+    `Supplied TER dates: ${cost.oldestTerDate} to ${cost.newestTerDate}.`;
+  lines.push(`Weighted TER on covered fund value: ${cost.weightedPct.toFixed(2)}%; one-year illustration ${rupees(cost.annualIllustration)} if entered values and rates stayed unchanged. ${rateDates} TER is already reflected in NAV, not an additional bill or an amount actually paid; rates and values are not independently verified.`);
+  if (cost.oldTerCount) lines.push(`${rupees(cost.oldTerValue)} of covered fund value uses ${cost.oldTerCount} supplied ${cost.oldTerCount === 1 ? 'rate' : 'rates'} dated over 90 days ago. Recheck ${cost.oldTerCount === 1 ? 'it' : 'them'} against the exact scheme and plan before using a current comparison; 90 days is a review prompt, not a TER rule.`);
+  lines.push('Check the exact scheme and plan on its AMC daily TER disclosure. AMFI explains TER and where current rates are disclosed: https://www.amfiindia.com/investor/knowledge-center-info?zoneName=expenseRatio');
+  return lines;
+}
 
 /** A private, plain-text snapshot for reading or printing; never a restorable backup. */
 export function buildReadableReport(state, preparedAt = new Date()) {
@@ -36,10 +49,9 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Valuation dates: ${result.asOfSummary}`,
     `Asset mix: ${MIX_ASSETS.map(asset => `${asset} ${result.total ? (result.assets[asset] / result.total * 100).toFixed(1) : '0.0'}%`).join(' | ')}`,
     `Fund plan labels from entered names: Regular ${rupees(result.fundPlans.Regular)} | Direct ${rupees(result.fundPlans.Direct)} | unclear ${rupees(result.fundPlans.Unclear)}; current expense ratios not verified`,
-    `Entered fund cost coverage: ${rupees(result.fundCost.coveredValue)} of ${rupees(result.fundValue)} fund value across ${result.fundCost.coveredCount} dated scheme ${result.fundCost.coveredCount === 1 ? 'entry' : 'entries'}`,
+    ...fundCostLines(result),
     ...(result.unrealizedChange.coveredCount ? [`Entered unrealized ${result.unrealizedChange.change >= 0 ? 'gain' : 'loss'} on ${result.unrealizedChange.coveredCount} cost-covered ${result.unrealizedChange.coveredCount === 1 ? 'holding' : 'holdings'}: ${rupeesWithPaise(Math.abs(result.unrealizedChange.change))}; current covered value ${rupeesWithPaise(result.unrealizedChange.coveredValue)} less invested amount ${rupeesWithPaise(result.unrealizedChange.invested)}. ${result.unrealizedChange.missingCount} ${result.unrealizedChange.missingCount === 1 ? 'row' : 'rows'} excluded. This is not lifetime profit or annual return.`] : []),
     ...(result.unrealizedChange.costAfterValueCount ? [`Cost checked after its holding value date: ${result.unrealizedChange.costAfterValueCount} ${result.unrealizedChange.costAfterValueCount === 1 ? 'row' : 'rows'} excluded from gain or loss until a value is refreshed for the same current position.`] : []),
-    ...(result.fundCost.coveredValue ? [`Weighted TER on covered fund value: ${result.fundCost.weightedPct.toFixed(2)}%; one-year illustration ${rupees(result.fundCost.annualIllustration)} if entered values and rates stayed unchanged. TER is already reflected in NAV, not an additional bill; rates and values are not independently verified.`] : []),
     ...(result.assets.Other > 0 ? [`Other category: ${rupees(result.assets.Other)}. ${fundHouseOther ?
       'CAMS non-equity totals are not classified as debt or gold here; check a detailed statement.' :
       'Check what these holdings contain before judging the asset mix.'}`] : []),
@@ -163,6 +175,7 @@ function buildPortfolioOnlyReport(state, preparedAt) {
     ...result.topPositions.map((position, index) =>
       `${index + 1}. ${clean(position.name)} | ${rupees(position.value)} | ${result.total ? (position.value / result.total * 100).toFixed(1) : '0.0'}% of entered value${position.granularity === 'fund_house' ? ' | fund-house summary, schemes unknown' : ''}`),
     `Fund plan labels from entered names: Regular ${rupees(result.fundPlans.Regular)} | Direct ${rupees(result.fundPlans.Direct)} | unclear ${rupees(result.fundPlans.Unclear)}; current expense ratios not verified`,
+    ...fundCostLines(result),
     ...(result.unrealizedChange.coveredCount ? [`Entered unrealized ${result.unrealizedChange.change >= 0 ? 'gain' : 'loss'} on ${result.unrealizedChange.coveredCount} cost-covered ${result.unrealizedChange.coveredCount === 1 ? 'holding' : 'holdings'}: ${rupeesWithPaise(Math.abs(result.unrealizedChange.change))}. ${result.unrealizedChange.missingCount} ${result.unrealizedChange.missingCount === 1 ? 'row' : 'rows'} excluded. This is not lifetime profit or annual return.`] : []),
     '', 'GOAL CONTEXT',
     'No confirmed selected goal. Age, time horizon and target have not been used to calculate a gap, future value or suitable mix.',
