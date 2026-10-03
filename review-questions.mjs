@@ -1,13 +1,54 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=3b143df3dc18';
-import { rupeesWithPaise } from './cost-basis.mjs?v=3b143df3dc18';
-import { reserveMonths } from './reserve.mjs?v=3b143df3dc18';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=3b143df3dc18';
-import { asksForAdvice } from './question-scope.mjs?v=3b143df3dc18';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=3b143df3dc18';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=58db9dbf6e8c';
+import { rupeesWithPaise } from './cost-basis.mjs?v=58db9dbf6e8c';
+import { reserveMonths } from './reserve.mjs?v=58db9dbf6e8c';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=58db9dbf6e8c';
+import { asksForAdvice } from './question-scope.mjs?v=58db9dbf6e8c';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=58db9dbf6e8c';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=58db9dbf6e8c';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
+/** Summarize saved row provenance, never the number or identity of uploaded files. */
+export function summarizeReviewSources(holdings, goal = null, today = new Date()) {
+  const original = new Map();
+  const latest = new Map();
+  let total = 0;
+  let count = 0;
+  let changed = 0;
+  let dateCheckCount = 0;
+  let dateCheckValue = 0;
+  const dates = [];
+  const add = (groups, label, value) => {
+    const group = groups.get(label) || { label, count: 0, value: 0 };
+    group.count++;
+    group.value += value;
+    groups.set(label, group);
+  };
+  for (const row of holdings) {
+    const value = Number(row.value);
+    if (!Number.isFinite(value) || value <= 0) continue;
+    const share = goal ? goalShare(goal, row.id) : 100;
+    if (!share) continue;
+    const assigned = value * share / 100;
+    total += assigned;
+    count++;
+    const first = entryOriginText(row.entryOrigin);
+    const current = row.valuationOrigin ? valuationOriginText(row.valuationOrigin) : first;
+    add(original, first, assigned);
+    add(latest, current, assigned);
+    if (current !== first) changed++;
+    const issue = valuationDateIssue(row.asOf, today);
+    if (issue) { dateCheckCount++; dateCheckValue += assigned; }
+    if (issue !== 'missing') dates.push(row.asOf);
+  }
+  const ordered = groups => [...groups.values()].sort((a, b) => b.value - a.value ||
+    a.label.localeCompare(b.label, 'en-IN'));
+  dates.sort();
+  return { total, count, original: ordered(original), latest: ordered(latest), changed,
+    dateCheckCount, dateCheckValue, earliestDate: dates[0] || null,
+    latestDate: dates.at(-1) || null };
+}
 const investorDefinitions = new Map([
   ['diversification', {
     text: 'Diversification means spreading investments across different assets or holdings so one loss does not determine the whole result. Owning several funds does not prove their underlying companies are different.',
@@ -202,6 +243,37 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  const sourceQuestion = /\b(?:which|what|show|list)\b.{0,70}\b(?:sources?|statements?|reports?)\b.{0,50}\b(?:used|included|behind|for|in)\b/.test(input) ||
+    /\bwhere\b.{0,60}\b(?:values?|holdings?|numbers?)\b.{0,30}\b(?:from|come from)\b/.test(input) ||
+    /\b(?:sources?|origins?|provenance) of (?:my|the|these) (?:portfolio|holdings?|values?|review)\b/.test(input) ||
+    /\bhow many\b.{0,40}\b(?:statements?|reports?|files?)\b.{0,30}\b(?:used|included|upload(?:ed)?|did i upload)\b/.test(input);
+  if (sourceQuestion) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const sources = summarizeReviewSources(valid, goalScopeRequested ? goal : null, today);
+    const scope = goalScopeRequested ? `holding rows assigned to ${goal.name}` : 'entered holding rows';
+    const destination = goalScopeRequested ? '#goals' : '#holdings';
+    if (!sources.count) return answer(`There are no ${scope} with a positive value to trace yet. Add and confirm a holding or statement first.`,
+      `0 positive ${goalScopeRequested ? 'assigned' : 'entered'} holding rows.`,
+      `An empty review does not establish that you own no investments. ${coverageNote}`, destination, 'Add a source');
+    const list = groups => groups.slice(0, 5).map(item =>
+      `${item.label} ${money(item.value)} across ${item.count} ${item.count === 1 ? 'row' : 'rows'}`).join('; ') +
+      (groups.length > 5 ? `; ${groups.length - 5} other source labels total ${money(groups.slice(5).reduce((sum, item) => sum + item.value, 0))}` : '');
+    const dates = sources.earliestDate ? sources.earliestDate === sources.latestDate ?
+      `The supplied value date is ${sources.earliestDate}.` :
+      `Supplied value dates range from ${sources.earliestDate} to ${sources.latestDate}.` :
+      'No usable value date is supplied.';
+    const dateCheck = sources.dateCheckCount ?
+      ` ${sources.dateCheckCount} ${sources.dateCheckCount === 1 ? 'row needs' : 'rows need'} a missing, future or over-90-day value-date check (${money(sources.dateCheckValue)}).` : '';
+    return answer(`${goalScopeRequested ? `For ${goal.name}, ` : lead}${money(sources.total)} across ${sources.count} ${scope} has these original entry labels: ${list(sources.original)}.` +
+      (sources.changed ? ` ${sources.changed} ${sources.changed === 1 ? 'row has' : 'rows have'} a later value source; latest value labels: ${list(sources.latest)}.` : '') +
+      ` ${dates}${dateCheck}`,
+      `Grouped positive saved holding rows by their recorded entry origin${sources.changed ? ' and latest valuation origin' : ''}${goalScopeRequested ? ', using only assigned shares' : ''}. These are row counts, not uploaded-document counts.`,
+      `A source label and date do not verify the document or prove complete account coverage. The saved review does not retain original PDF files or filenames, so it cannot count or identify every uploaded document. ${coverageNote}`,
+      destination, 'Inspect source rows');
+  }
   const wholePortfolioFall = /\b(?:portfolio|holdings|investments)\b/.test(input) &&
     /\b(?:fall|falls|fell|drop|drops|dropped)\b/.test(input) &&
     /\b(?:what if|if|test|simulate)\b/.test(input) &&
