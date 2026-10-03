@@ -10,8 +10,8 @@
  * statement prints only the name and address, so the other two come back empty.
  */
 
-import { CASParseError } from '../exceptions.js?v=6780a80b4f4e';
-import { InvestorInfo } from '../types.js?v=6780a80b4f4e';
+import { CASParseError } from '../exceptions.js?v=362a8b31641b';
+import { InvestorInfo } from '../types.js?v=362a8b31641b';
 
 /**
  * Everything to the right of this is the disclaimer paragraph or the cover banner. It is

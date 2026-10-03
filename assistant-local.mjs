@@ -1,4 +1,4 @@
-import { parseAmount } from './assistant-clarify.mjs?v=6780a80b4f4e';
+import { parseAmount } from './assistant-clarify.mjs?v=362a8b31641b';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -34,8 +34,13 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
 
   let type = 'Other';
   let asset = 'Other';
+  const categorizedFund = /^(?:(?:a|an)\s+)?(equity|debt|gold)\s+(?:mutual fund|fund)(?:\s+(?:called|named))?\s+(.+)$/i.exec(description);
   let match = /^(?:(?:a|an)\s+)?(mutual fund|fund|stock|share)(?:\s+(?:called|named))?\s+(.+)$/i.exec(description);
-  if (match) {
+  if (categorizedFund) {
+    type = 'Mutual fund';
+    asset = categorizedFund[1][0].toUpperCase() + categorizedFund[1].slice(1).toLowerCase();
+    description = categorizedFund[2].trim();
+  } else if (match) {
     type = /^(?:stock|share)$/i.test(match[1]) ? 'Stock' : 'Mutual fund';
     description = match[2].trim();
   } else {
