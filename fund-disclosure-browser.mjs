@@ -1,5 +1,5 @@
-import { checkXlsxArchive } from './broker-xlsx.mjs?v=9fa876d5cb96';
-import { parseFundDisclosureRows } from './fund-disclosure.mjs?v=9fa876d5cb96';
+import { checkXlsxArchive } from './broker-xlsx.mjs?v=d4e06b84f22c';
+import { parseFundDisclosureRows } from './fund-disclosure.mjs?v=d4e06b84f22c';
 
 /** Read a selected scheme disclosure locally. The worker never sends workbook bytes to the host. */
 export async function previewFundDisclosures(file, confirmed = []) {
@@ -7,7 +7,7 @@ export async function previewFundDisclosures(file, confirmed = []) {
     throw new Error('Choose an XLSX scheme portfolio smaller than 5 MB.');
   checkXlsxArchive(await file.arrayBuffer(), 'disclosure');
   const workbook = await new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./fund-disclosure-worker.js?v=9fa876d5cb96', import.meta.url));
+    const worker = new Worker(new URL('./fund-disclosure-worker.js?v=d4e06b84f22c', import.meta.url));
     let finished = false;
     const timer = setTimeout(() => finish(new Error('The scheme disclosure preview timed out.')), 25_000);
     function finish(error, value) {

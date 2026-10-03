@@ -6,7 +6,7 @@ export async function previewBrowserCas(file, password = '') {
     return { holdings: [], errors: ['Check the CAS PDF password.'] };
   const bytes = await file.arrayBuffer();
   return new Promise(resolve => {
-    const worker = new Worker(new URL('./cas-browser-worker.mjs?v=9fa876d5cb96', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./cas-browser-worker.mjs?v=d4e06b84f22c', import.meta.url), { type: 'module' });
     let settled = false;
     const finish = result => {
       if (settled) return;
@@ -22,7 +22,7 @@ export async function previewBrowserCas(file, password = '') {
       if (event.data?.kind === 'cas-result') finish(event.data);
     };
     worker.onerror = () => finish({ holdings: [], errors: [
-      'This CAS could not be read in the browser. No holdings were added.',
+      'This PDF could not be safely read as a supported original CAS. No holdings were added. If it is NPS or an unsupported EPF statement, check its latest balance and date and describe that as an Other investment in chat.',
     ] });
     worker.postMessage({ bytes, password }, [bytes]);
   });

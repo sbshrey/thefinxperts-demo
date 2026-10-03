@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=9fa876d5cb96';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=9fa876d5cb96';
-import { reserveMonths } from './reserve.mjs?v=9fa876d5cb96';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=d4e06b84f22c';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=d4e06b84f22c';
+import { reserveMonths } from './reserve.mjs?v=d4e06b84f22c';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=9fa876d5cb96';
-import { asksForAdvice } from './question-scope.mjs?v=9fa876d5cb96';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=9fa876d5cb96';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=9fa876d5cb96';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=9fa876d5cb96';
-import { parseAmount } from './assistant-clarify.mjs?v=9fa876d5cb96';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=9fa876d5cb96';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=d4e06b84f22c';
+import { asksForAdvice } from './question-scope.mjs?v=d4e06b84f22c';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=d4e06b84f22c';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=d4e06b84f22c';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=d4e06b84f22c';
+import { parseAmount } from './assistant-clarify.mjs?v=d4e06b84f22c';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=d4e06b84f22c';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=9fa876d5cb96';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=d4e06b84f22c';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -947,11 +947,25 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This is not total lifetime profit or an annual return. It excludes sold positions, cash distributions, taxes, exit loads, rows without checked cost or dated value, and cost checked after the value date.', '#holdings', 'Check covered holdings');
   }
   if (/\b(nav|share price|stock price|market price|live quote|live price|ltp|(?:current|today(?:’s|'s)?|latest).{0,25}(?:price|nav|quote|ltp))\b/.test(input)) {
-    const fund = valid.find(row => row.type === 'Mutual fund' && row.granularity !== 'fund_house' && row.units);
-    return answer('I do not have a live market feed here. Use a dated value from your broker or fund statement, then update the holding in this browser.' +
-      (fund ? ` If you checked the exact scheme NAV and still own its ${fund.units} statement units, say “set NAV of holding ${holdings.indexOf(fund) + 1} to ₹125.4321 as of YYYY-MM-DD” to preview a dated estimate.` : ''),
+    const fundQuestion = /\b(?:nav|mutual fund|scheme|fund)\b/.test(input);
+    const stockQuestion = /\b(?:stock|share price|ltp)\b/.test(input);
+    const type = fundQuestion && !stockQuestion ? 'Mutual fund' :
+      stockQuestion && !fundQuestion ? 'Stock' : null;
+    const numbered = /\bholding\s*#?(\d{1,3})\b/.exec(input);
+    const numberedRow = numbered ? holdings[Number(numbered[1]) - 1] : null;
+    const named = valid.filter(row => row.name && input.includes(row.name.toLocaleLowerCase('en-IN')));
+    const candidates = numbered ? (numberedRow ? [numberedRow] : []) :
+      named.length ? named : type ? valid.filter(row => row.type === type) : [];
+    const selected = candidates.length === 1 && (!type || candidates[0].type === type) ? candidates[0] : null;
+    const number = selected ? holdings.indexOf(selected) + 1 : null;
+    const fund = selected?.type === 'Mutual fund' && selected.granularity !== 'fund_house' && selected.units && selected.asOf;
+    const stock = selected?.type === 'Stock' && selected.shares && selected.asOf;
+    const next = fund ? ` If you checked the exact scheme NAV and still own its ${selected.units} statement units, say “set NAV of holding ${number} to ₹125.4321 as of YYYY-MM-DD” to preview a dated estimate.` :
+      stock ? ` If you checked the exact listed share and still own its ${selected.shares} entered shares, say “set price of holding ${number} to ₹125.43 as of YYYY-MM-DD” to preview a dated estimate.` :
+        candidates.length > 1 ? ' Name one holding or use its displayed number so I can give the relevant update step.' : '';
+    return answer('I do not have a live market feed here. Use a dated value from your broker or fund statement, then update the holding in this browser.' + next,
       result.asOfSummary,
-      'A recent statement value may still differ from the current market value. An entered NAV times old units is only an estimate until you confirm the units have not changed.', '#holdings', 'Check entered dates');
+      'A recent statement value may still differ from the current market value. A checked NAV or share price times old units or shares is only an estimate until you confirm the quantity has not changed.', '#holdings', 'Check entered dates');
   }
   const incomeGap = /^what if i (?:lost|lose|had no) (?:my )?(?:income|salary|pay) for (\d{1,2}) months?[?.!]*$/.exec(input) ||
     /^could (?:my )?(?:reserve|emergency fund|emergency buffer) cover (\d{1,2}) months?(?: without income)?[?.!]*$/.exec(input);
