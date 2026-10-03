@@ -559,7 +559,7 @@ function renderReview() {
         $('#composer').requestSubmit();
       });
     } else {
-      const goalCheck = ['chosen-mix', 'horizon', 'emergency', 'reserve'].includes(check.key);
+      const goalCheck = ['chosen-mix', 'horizon', 'emergency', 'reserve', 'loss-capacity'].includes(check.key);
       action.textContent = goalCheck ? 'Review selected goal' : targetRow >= 0 ? 'See related holding' : 'Review holdings';
       action.addEventListener('click', () => {
         const target = targetRow >= 0 ? $('#holding-list').children[targetRow] :

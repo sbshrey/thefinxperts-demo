@@ -486,6 +486,7 @@ function render() {
     classification: ['#holdings', 'Check asset categories'],
     valuation: ['#holdings', 'Check entered values'], 'chosen-mix': ['#mix-plan-details', 'Compare my chosen mix'],
     emergency: ['#goal-form', 'Review goal context'], reserve: ['#reserve-check', 'Check accessible money'],
+    'loss-capacity': ['#goal-form', 'Review your loss amounts'],
     horizon: ['#goal-form', 'Explore goal timing'], position: ['#holdings', 'Review linked holdings'],
     issuer: ['#holdings', 'Review holdings'], plan: ['#holdings', 'Review fund names'],
     funds: ['#holdings', 'Review fund list'], review: ['#holdings', 'Review holdings'],

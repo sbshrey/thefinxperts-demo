@@ -159,12 +159,13 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   ].filter(([, answer]) => answer === 'some' || answer === 'unsure' || answer == null);
   if (coverage && total > 0 && incompleteTypes.length) {
     const answers = incompleteTypes.map(([type, answer]) =>
-      `${type} ${answer === 'some' ? 'still have missing holdings' : 'have unconfirmed coverage'}`).join('; ');
+      `${type}: ${answer === 'some' ? 'you reported missing holdings' : answer === 'unsure' ?
+        'you are unsure whether all are included' : 'you have not answered yet'}`).join('; ');
     findings.push({ key: 'scope', tone: 'amber', label: 'Complete your snapshot',
       title: 'Check what this review leaves out',
-      detail: `Your coverage answer says ${answers}. Compare current fund, broker and other investment statements with the entered rows before treating these figures as your full portfolio.`,
+      detail: `Your coverage check shows ${answers}. Compare current fund, broker and other investment statements with the entered rows before treating these figures as your full portfolio.`,
       question: 'Which current statement would help you complete or confirm the missing holdings?',
-      basis: `Used your self reported coverage answer: mutual funds ${coverage.mutualFunds}; direct stocks ${coverage.directStocks}; other investments ${coverage.otherInvestments || 'not answered'}. Calculations use only ${rupees(total)} of entered value.`,
+      basis: `Used your self reported coverage answer: mutual funds ${coverage.mutualFunds || 'not answered'}; direct stocks ${coverage.directStocks || 'not answered'}; other investments ${coverage.otherInvestments || 'not answered'}. Calculations use only ${rupees(total)} of entered value.`,
       limitation: 'Your coverage answer and entered values have not been independently verified. Other investments count only if you entered them.' });
   }
   const fundHouseSummaries = new Set(valid.filter(holding => holding.granularity === 'fund_house')
@@ -237,6 +238,19 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       question: 'Where would money for an unexpected essential expense come from without disrupting this goal?',
       basis: `Used your answer about unexpected essential expenses for this goal; ${rupees(goalTotal)} of entered holdings is linked to it.${monthsOfEssentials === null ? '' : ` Separately entered accessible money covers ${monthsOfEssentials.toFixed(1)} months of essentials at the amounts you supplied.`}`,
       limitation: 'This answer does not verify accessible savings, income, obligations or the size and timing of an emergency. It is not a risk profile or a recommendation to move money.' });
+  }
+  const exceededLossChecks = stressPause === null && !goalIdentityConflict ?
+    [['cover', lossLimits?.affordable], ['tolerate', lossLimits?.tolerable]]
+      .filter(([, check]) => check?.excess > 0) : [];
+  if (exceededLossChecks.length) {
+    const comparisons = exceededLossChecks.map(([label, check]) =>
+      `${rupees(check.excess)} above the ${rupees(check.limit)} you said you could ${label}`).join('; ');
+    findings.push({ key: 'loss-capacity', tone: 'amber', label: 'Goal loss check',
+      title: 'Your chosen fall exceeds an amount you entered',
+      detail: `For ${goal.name || 'this goal'}, a one-time ${shock.dropPct}% fall in assigned Equity illustrates a ${rupees(shock.loss)} loss: ${comparisons}. Check whether those entered amounts still reflect your circumstances.`,
+      question: 'Could you absorb this illustrated loss without disrupting essentials or the goal, and are the amounts you entered still accurate?',
+      basis: `${rupees(goalEquityValue)} assigned Equity × your ${shock.dropPct}% hypothetical fall = ${rupees(shock.loss)} illustrated loss. Compared only with your entered cover and tolerance amounts; other asset values are held fixed.`,
+      limitation: 'This is one hypothetical fall, not a forecast, worst case, risk profile, suitability verdict or instruction to trade. Holdings, dates, categories and loss amounts are supplied by you; fund constituents, liabilities and other assets are not verified.' });
   }
 
   const mixComparisonPause = !goal.targetMix ? 'no_mix' : !validGoal ? 'goal_details' :
