@@ -68,9 +68,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     if (holding.type === 'Mutual fund') {
       fundValue += value;
       fundPlans[holding.granularity === 'fund_house' ? 'Unclear' : planFromName(holding.name)] += value;
-      if (holding.granularity !== 'fund_house' && Number.isFinite(holding.expenseRatioPct) &&
-          holding.expenseRatioPct >= 0 && holding.expenseRatioPct <= 10 && parseValuationDate(holding.expenseRatioAsOf) &&
-          holding.expenseRatioAsOf <= indiaToday) {
+      if (hasDatedFundTer(holding, today)) {
         costCoveredValue += value;
         annualCostIllustration += value * holding.expenseRatioPct / 100;
         costCoveredCount++;
@@ -336,6 +334,15 @@ export function planFromName(name) {
   const direct = /\bdirect\s*plan\b|(?:^|[-–(])\s*direct\s*(?=$|[-–)])/i.test(name);
   const regular = /\bregular\s*plan\b|(?:^|[-–(])\s*regular\s*(?=$|[-–)])/i.test(name);
   return direct === regular ? 'Unclear' : direct ? 'Direct' : 'Regular';
+}
+
+/** A checked, dated scheme rate is comparable; fund-house totals have no single TER. */
+export function hasDatedFundTer(holding, today = new Date()) {
+  const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  return holding?.type === 'Mutual fund' && holding.granularity !== 'fund_house' &&
+    Number.isFinite(holding.expenseRatioPct) && holding.expenseRatioPct >= 0 &&
+    holding.expenseRatioPct <= 10 && Boolean(parseValuationDate(holding.expenseRatioAsOf)) &&
+    holding.expenseRatioAsOf <= indiaToday;
 }
 
 /** Combine only entries with the same valid-format ISIN and classification. */

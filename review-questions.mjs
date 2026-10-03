@@ -1,4 +1,4 @@
-import { planFromName, positionsByIsin, valuationDateIssue } from './analysis.mjs';
+import { hasDatedFundTer, planFromName, positionsByIsin, valuationDateIssue } from './analysis.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
 import { reserveMonths } from './reserve.mjs';
 import { confirmedGoalAssumptions } from './goal-scenario.mjs';
@@ -263,6 +263,19 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `${money(goal.target)} target minus ${money(result.goalTotal)} assigned value; ${result.goalHoldingCount} linked holdings. ${result.asOfSummary}.`,
       'This gross comparison excludes future growth, inflation, taxes, and holdings outside the selected goal. Access to linked other investments at the goal date has not been checked. It uses entered values, not live prices.', '#goals', 'Review selected goal');
   }
+  if (/\b(?:highest|largest)\b/.test(input) && /\b(?:expense ratios?|ter)\b/.test(input) &&
+      /\b(?:fund|funds|scheme|schemes)\b/.test(input)) {
+    const funds = valid.filter(row => row.type === 'Mutual fund');
+    const checked = funds.filter(row => hasDatedFundTer(row, today));
+    if (!checked.length) return answer('No dated scheme expense ratio is entered, so I cannot name the highest one.',
+      `0 of ${funds.length} entered mutual-fund rows have a usable scheme TER and date.`,
+      'Fund names and plan labels do not establish their current expense ratios.', '#holdings', 'Check fund TERs');
+    const highest = checked.reduce((best, row) => row.expenseRatioPct > best.expenseRatioPct ? row : best);
+    const tied = checked.filter(row => row.expenseRatioPct === highest.expenseRatioPct).length;
+    return answer(`${lead}${highest.name} has the highest entered scheme expense ratio among the dated rates here: ${highest.expenseRatioPct.toFixed(2)}% as of ${highest.expenseRatioAsOf}${tied > 1 ? `; ${tied - 1} other entered ${tied === 2 ? 'row has' : 'rows have'} the same rate` : ''}.`,
+      `Compared ${checked.length} of ${funds.length} entered mutual-fund rows with a valid dated scheme TER; ${funds.length - checked.length} ${funds.length - checked.length === 1 ? 'row is' : 'rows are'} excluded.`,
+      'Rates and scheme identities are not independently verified; excluded or later rates could change the ranking. TER is reflected in NAV, and this is not a switch recommendation.', '#holdings', 'Check fund TERs');
+  }
   if (/\b(fees?|expense ratio|\bter\b|fund costs?)\b/.test(input)) {
     const cost = result.fundCost;
     return cost.coveredValue ? answer(`${lead}dated TERs cover ${money(cost.coveredValue)} of ${money(result.fundValue)} entered fund value. Their weighted rate is ${percent(cost.annualIllustration, cost.coveredValue)} on the covered amount only.`,
@@ -298,25 +311,28 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `${dateNote}${categoryNote}Fund constituents and holdings outside this review are not verified. These shares do not establish whether the mix suits your age, risk capacity or goal. ${coverageNote}`,
       selectedGoal ? '#goals' : '#holdings', selectedGoal ? 'Review this goal' : 'Inspect holdings');
   }
-  if (/\b(?:biggest|largest|highest\s+(?:entered\s+)?value)\b/.test(input) &&
-      /\b(?:fund|funds|mutual fund|mutual funds)\b/.test(input)) {
+  const asksFund = /\b(?:fund|funds|mutual fund|mutual funds)\b/.test(input);
+  const asksStock = /\b(?:stock|stocks)\b/.test(input);
+  if (/\b(?:biggest|largest|highest\s+(?:entered\s+)?value)\b/.test(input) && asksFund !== asksStock) {
     const selectedGoal = Boolean(goalScopeRequested);
     if (selectedGoal) {
       const unavailable = unavailableGoalScope();
       if (unavailable) return unavailable;
     }
-    const funds = valid.filter(row => row.type === 'Mutual fund').flatMap(row => {
+    const kind = asksFund ? 'Mutual fund' : 'Stock';
+    const label = asksFund ? 'mutual-fund' : 'direct-stock';
+    const rows = valid.filter(row => row.type === kind).flatMap(row => {
       const share = selectedGoal ? goalShare(goal, row.id) : 100;
       return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
     });
-    if (!funds.length) return answer('No mutual-fund value is entered for this review scope.',
-      selectedGoal ? `No mutual-fund value is assigned to ${goal.name}.` : 'No mutual-fund row has a positive entered value.',
-      'This does not establish what you own outside the entered review.', '#holdings', 'Check fund holdings');
-    const largest = positionsByIsin(funds)[0];
-    const total = funds.reduce((sum, row) => sum + Number(row.value), 0);
-    return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}${largest.name} is the largest entered ${largest.granularity === 'fund_house' ? 'fund-house summary' : 'fund position'} at ${money(largest.value)}, or ${percent(largest.value, total)} of ${selectedGoal ? 'assigned' : 'entered'} mutual-fund value.`,
-      `${money(largest.value)} ÷ ${money(total)} ${selectedGoal ? 'assigned' : 'entered'} mutual-fund value; exact matching supplied ISINs and fund-house summaries are grouped. ${result.asOfSummary}.`,
-      'This uses supplied dated values. A fund-house summary may contain several schemes, and fund constituents or missing investments are not verified.', selectedGoal ? '#goals' : '#holdings', 'Inspect this fund');
+    if (!rows.length) return answer(`No ${label} value is entered for this review scope.`,
+      selectedGoal ? `No ${label} value is assigned to ${goal.name}.` : `No ${label} row has a positive entered value.`,
+      'This does not establish what you own outside the entered review.', '#holdings', `Check ${asksFund ? 'fund' : 'stock'} holdings`);
+    const largest = positionsByIsin(rows)[0];
+    const total = rows.reduce((sum, row) => sum + Number(row.value), 0);
+    return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}${largest.name} is the largest entered ${largest.granularity === 'fund_house' ? 'fund-house summary' : asksFund ? 'fund position' : 'stock position'} at ${money(largest.value)}, or ${percent(largest.value, total)} of ${selectedGoal ? 'assigned' : 'entered'} ${label} value.`,
+      `${money(largest.value)} ÷ ${money(total)} ${selectedGoal ? 'assigned' : 'entered'} ${label} value; exact matching supplied ISINs${asksFund ? ' and fund-house summaries' : ''} are grouped. ${result.asOfSummary}.`,
+      `This uses supplied dated values. ${asksFund ? 'A fund-house summary may contain several schemes, and fund constituents' : 'Corporate actions and quantities'} or missing investments are not verified.`, selectedGoal ? '#goals' : '#holdings', `Inspect this ${asksFund ? 'fund' : 'stock'}`);
   }
   if (/\b(biggest|largest|concentrat(?:ion|ed|e|ing)?|top holding|single holding)\b/.test(input)) {
     const selectedGoal = Boolean(goalScopeRequested);
