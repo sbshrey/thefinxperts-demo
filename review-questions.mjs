@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=66d92920cfc0';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=66d92920cfc0';
-import { reserveMonths } from './reserve.mjs?v=66d92920cfc0';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=f99c3f688088';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=f99c3f688088';
+import { reserveMonths } from './reserve.mjs?v=f99c3f688088';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=66d92920cfc0';
-import { asksForAdvice } from './question-scope.mjs?v=66d92920cfc0';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=66d92920cfc0';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=66d92920cfc0';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=66d92920cfc0';
-import { parseAmount } from './assistant-clarify.mjs?v=66d92920cfc0';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=66d92920cfc0';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=f99c3f688088';
+import { asksForAdvice } from './question-scope.mjs?v=f99c3f688088';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=f99c3f688088';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f99c3f688088';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=f99c3f688088';
+import { parseAmount } from './assistant-clarify.mjs?v=f99c3f688088';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=f99c3f688088';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=66d92920cfc0';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=f99c3f688088';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -453,11 +453,11 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     if (source === 'demo') return answer(
       'This is a fictional example, so it cannot identify a statement missing from your accounts. Start my review, then choose Get a report or describe a holding you own.',
       'The example has no connected accounts or real source documents.',
-      'Do not use sample holdings as evidence of your own portfolio coverage.', '#holdings', 'Start my review');
+      'Do not use sample holdings as evidence of your own portfolio coverage.', '#start-review', 'Start my review');
     if (!valid.length) return answer(
       'Start with one current source for an investment you own: try a mutual-fund CAS or CAMS Active Statement for funds, or a broker holdings XLSX/CSV for direct shares. You can also describe one holding in chat. Tell me which groups you own so I can ask what may still be missing.',
       'There are 0 confirmed holding rows and no account has been connected. Get a report links to official source instructions.',
-      'A CAMS Active Statement covers CAMS-serviced funds and may not include demat holdings. Supported imports still require a row-by-row confirmation.', '#holdings', 'Get a report');
+      'A CAMS Active Statement covers CAMS-serviced funds and may not include demat holdings. Supported imports still require a row-by-row confirmation.', '#report-help-dialog', 'Get a report');
     const groups = [
       { key: 'mutualFunds', label: 'mutual funds', source: 'Try a current original mutual-fund CAS for the missing folios, or a CAMS Active Statement if those funds are CAMS-serviced. Check its scheme rows against what is already entered before adding anything.' },
       { key: 'directStocks', label: 'direct stocks', source: 'Download a current holdings XLSX/CSV from the broker account that is not fully represented, then compare its shares and ISINs with the entered rows before confirming an import.' },
