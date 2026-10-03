@@ -1,15 +1,15 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=7c573a59f999';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=7c573a59f999';
-import { reserveMonths } from './reserve.mjs?v=7c573a59f999';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=40ab12f7451c';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=40ab12f7451c';
+import { reserveMonths } from './reserve.mjs?v=40ab12f7451c';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=7c573a59f999';
-import { asksForAdvice } from './question-scope.mjs?v=7c573a59f999';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=7c573a59f999';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7c573a59f999';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=7c573a59f999';
-import { parseAmount } from './assistant-clarify.mjs?v=7c573a59f999';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=7c573a59f999';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=40ab12f7451c';
+import { asksForAdvice } from './question-scope.mjs?v=40ab12f7451c';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=40ab12f7451c';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=40ab12f7451c';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=40ab12f7451c';
+import { parseAmount } from './assistant-clarify.mjs?v=40ab12f7451c';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=40ab12f7451c';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';

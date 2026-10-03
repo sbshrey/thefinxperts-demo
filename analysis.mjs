@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=7c573a59f999';
-import { compareMixPlan } from './mix-plan.mjs?v=7c573a59f999';
-import { goalShare } from './goals.mjs?v=7c573a59f999';
-import { reserveMonths } from './reserve.mjs?v=7c573a59f999';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=7c573a59f999';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=40ab12f7451c';
+import { compareMixPlan } from './mix-plan.mjs?v=40ab12f7451c';
+import { goalShare } from './goals.mjs?v=40ab12f7451c';
+import { reserveMonths } from './reserve.mjs?v=40ab12f7451c';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=40ab12f7451c';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -413,6 +413,23 @@ function parseValuationDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? date : null;
+}
+
+/** Calendar age of valid, nonfuture positive holding values in India. */
+export function valuationAgeSummary(holdings, today = new Date()) {
+  if (!Array.isArray(holdings)) return null;
+  const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  const todayDay = Date.parse(`${indiaToday}T00:00:00Z`) / 86_400_000;
+  const dates = holdings.filter(row => Number.isFinite(Number(row?.value)) && Number(row.value) > 0)
+    .map(row => row.asOf).filter(date => {
+      const parsed = parseValuationDate(date);
+      return parsed && date <= indiaToday;
+    }).sort();
+  if (!dates.length) return null;
+  const oldestDate = dates[0], newestDate = dates.at(-1);
+  return { oldestDate, newestDate, datedCount: dates.length,
+    oldestDays: todayDay - Date.parse(`${oldestDate}T00:00:00Z`) / 86_400_000,
+    newestDays: todayDay - Date.parse(`${newestDate}T00:00:00Z`) / 86_400_000 };
 }
 
 /** A 90-day value check, measured against the calendar date in India. */
