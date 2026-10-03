@@ -61,6 +61,9 @@ body{margin:0}
 .message.assistant{align-self:flex-start;background:#eff5f0;border-bottom-left-radius:4px}
 .message.user{align-self:flex-end;background:#173f35;color:#fff;border-bottom-right-radius:4px}
 .message.note{align-self:center;background:#fff8e6;border:1px solid #f0dfaa;font-size:13px;max-width:94%}
+.import-details{margin-top:8px}
+.import-details summary{cursor:pointer;font-weight:700;color:#245d45}
+.import-details p{margin:7px 0 0;line-height:1.4}
 .detailed-handoff{display:inline-block;margin-top:10px;padding:8px 11px;border-radius:9px;background:#174d3f;color:#fff;font-weight:700;text-decoration:none}
 .detailed-handoff:hover,.detailed-handoff:focus-visible{background:#246b50;color:#fff}
 .question{display:block;margin-top:10px;font-weight:700}
@@ -88,6 +91,9 @@ body{margin:0}
 .pdf-consent{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6b5729;margin-bottom:10px}
 .pdf-consent input{margin-top:2px}
 .drafts{margin:0 28px 8px;padding:13px;background:#fff9eb;border:1px solid #eadab5;border-radius:13px;max-height:200px;overflow:auto}
+#drafts:not([hidden]){display:flex;flex-direction:column;overflow:hidden}
+#draft-list{min-height:0;overflow-y:auto}
+#drafts .draft-actions{flex:none;padding-top:6px;border-top:1px solid #eadab5}
 .drafts small{display:block;color:#746f62;margin-top:3px}
 .drafts ul{margin:9px 0;padding-left:20px;font-size:13px}
 .drafts p{font-size:13px;line-height:1.45;margin:10px 0}
@@ -173,7 +179,7 @@ body{margin:0}
 .stat-grid>div{padding:10px}
 .stat-grid strong{font-size:19px}
 .section-card{grid-column:1/-1}
-.drafts{margin:0 12px 5px;max-height:140px}
+.drafts{margin:0 12px 5px;max-height:190px}
 }
 @media(max-width:600px){.brand>span{display:none}
 body[data-mode="browser-only"] .messages{padding-top:8px;padding-bottom:8px}

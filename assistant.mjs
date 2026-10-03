@@ -235,6 +235,21 @@ function say(role, text, question = null) {
   return item;
 }
 
+function sayImportNote(message, visibleWarning = '') {
+  const sentenceEnd = message.indexOf('. ');
+  if (sentenceEnd < 0) return say('note', message);
+  const item = say('note', `${message.slice(0, sentenceEnd + 1)} Check the rows against your source before using them.${visibleWarning ? ` ${visibleWarning}` : ''}`);
+  const details = document.createElement('details');
+  details.className = 'import-details';
+  const summary = document.createElement('summary');
+  summary.textContent = 'Import checks and limits';
+  const explanation = document.createElement('p');
+  explanation.textContent = message.slice(sentenceEnd + 2);
+  details.append(summary, explanation);
+  item.append(details);
+  return item;
+}
+
 function sayDetailedHandoff(message, source) {
   if (!['active', 'broker', 'csv', 'cas'].includes(source)) throw new Error('Unsupported detailed review source.');
   const item = say('note', `${message} Select the file again there; it stays on your device and is not carried between tabs.${state.confirmed.length ? ' If you need the holdings already confirmed here, save a private review file and open it in the detailed review first.' : ''}`);
@@ -764,7 +779,8 @@ function stageActiveStatement(parsed) {
     'Scheme rows reconciled to the fund-house totals.' : parsed.schemeDetailStatus === 'unreconciled_fallback' ?
       'Scheme rows did not fully reconcile; only fund-house summaries were staged. Scheme-level holdings are missing.' :
       'This statement supplied fund-house summaries without scheme rows.';
-  say('note', `Found ${state.drafts.length} possible fund ${state.drafts.length === 1 ? 'holding' : 'holdings'} in the CAMS Active Statement. ${importValueAndDates(state.drafts)} Fund-house source total ${rupees(parsed.summaryTotal)}. ${detail} ${summaries ? `${summaries} ${summaries === 1 ? 'is a fund-house summary' : 'are fund-house summaries'} without scheme detail. ` : ''}The PDF stayed in this browser. Check the rows before using them.`);
+  sayImportNote(`Found ${state.drafts.length} possible fund ${state.drafts.length === 1 ? 'holding' : 'holdings'} in the CAMS Active Statement. ${importValueAndDates(state.drafts)} Fund-house source total ${rupees(parsed.summaryTotal)}. ${detail} ${summaries ? `${summaries} ${summaries === 1 ? 'is a fund-house summary' : 'are fund-house summaries'} without scheme detail. ` : ''}The PDF stayed in this browser. Check the rows before using them.`,
+    summaries ? `${summaries} fund-house ${summaries === 1 ? 'summary lacks' : 'summaries lack'} scheme detail.` : '');
   clearFile();
   return true;
 }
@@ -823,7 +839,7 @@ function stageCasResult(result) {
     }
   }
   state.drafts = drafts;
-  renderDrafts(); say('note', prepared.message); clearFile();
+  renderDrafts(); sayImportNote(prepared.message, 'Compare the parsed value with your statement total.'); clearFile();
   return true;
 }
 
@@ -901,7 +917,7 @@ $('#upload').addEventListener('change', async event => {
             state.refresh = { ...prepared, revision: state.account.revision };
             renderRefresh();
             say('assistant', 'I found newer values for saved positions with exact ISIN matches. Review the changes before applying them. The dashboard has not changed yet.');
-          } else { state.drafts = drafts; renderDrafts(); say('note', result.message); }
+          } else { state.drafts = drafts; renderDrafts(); sayImportNote(result.message); }
         }
       }
     } finally { state.busy = false; clearFile(); renderCredits(); renderDrafts(); }
