@@ -129,3 +129,65 @@ export function matchFundDisclosure(disclosure, holdings) {
   return matches.length ? { matches, count: matches.length,
     value: matches.reduce((sum, row) => sum + Number(row.value || 0), 0) } : null;
 }
+
+const validValueDate = (value, todayIso) => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value && value <= todayIso;
+};
+const roundPaise = value => Math.round(value * 100) / 100;
+
+/** Dated, identified portion of entered portfolio value; unmatched value remains unknown. */
+export function estimateVisibleIssuerExposure(holdings, disclosures,
+  todayIso = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10)) {
+  if (!Array.isArray(holdings) || !Array.isArray(disclosures)) return null;
+  const rows = holdings.filter(row => Number.isFinite(row?.value) && row.value > 0);
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+  const matched = disclosures.flatMap(disclosure => {
+    const match = disclosure?.scope === 'listed_equity' && validValueDate(disclosure.asOf, todayIso) ?
+      matchFundDisclosure(disclosure, rows) : null;
+    return match ? [{ disclosure, holdings: match.matches.filter(row =>
+      validValueDate(row.asOf, todayIso)) }] : [];
+  }).filter(source => source.holdings.length);
+  const byIsin = new Map();
+  const visibleIsins = new Set();
+  const sources = [];
+  let fundCovered = 0;
+  for (const { disclosure, holdings: fundRows } of matched) {
+    const value = fundRows.reduce((sum, row) => sum + row.value, 0);
+    const coveredValue = value * disclosure.coveredPct / 100;
+    fundCovered += coveredValue;
+    sources.push({ scheme: disclosure.scheme, disclosureDate: disclosure.asOf,
+      holdingDates: [...new Set(fundRows.map(row => row.asOf))].sort(),
+      value: roundPaise(value), coveredPct: disclosure.coveredPct,
+      coveredValue: roundPaise(coveredValue) });
+    for (const security of disclosure.securities) {
+      visibleIsins.add(security.isin);
+      const exposure = byIsin.get(security.isin) || { isin: security.isin,
+        name: security.name, fundValue: 0, directValue: 0 };
+      exposure.fundValue += value * security.weightPct / 100;
+      byIsin.set(security.isin, exposure);
+    }
+  }
+  let directCovered = 0;
+  const directDates = new Set();
+  for (const row of rows) {
+    if (row.type !== 'Stock' || !validValueDate(row.asOf, todayIso) ||
+        !visibleIsins.has(row.isin)) continue;
+    const exposure = byIsin.get(row.isin);
+    exposure.directValue += row.value;
+    directCovered += row.value;
+    directDates.add(row.asOf);
+  }
+  const coveredValue = Math.min(total, fundCovered + directCovered);
+  const issuers = [...byIsin.values()].map(row => ({ ...row,
+    fundValue: roundPaise(row.fundValue), directValue: roundPaise(row.directValue),
+    visibleValue: roundPaise(row.fundValue + row.directValue),
+    portfolioPct: total ? Math.round((row.fundValue + row.directValue) / total * 10000) / 100 : 0 }))
+    .sort((a, b) => b.visibleValue - a.visibleValue || a.isin.localeCompare(b.isin));
+  return { total: roundPaise(total), coveredValue: roundPaise(coveredValue),
+    unknownValue: roundPaise(total - coveredValue),
+    coveragePct: total ? Math.round(coveredValue / total * 10000) / 100 : 0,
+    directCovered: roundPaise(directCovered), directDates: [...directDates].sort(),
+    sources, issuers };
+}
