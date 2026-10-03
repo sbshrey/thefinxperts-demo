@@ -1,37 +1,37 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=23d182cdccd8';
-import { previewBrowserCas } from './cas-browser.mjs?v=23d182cdccd8';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=23d182cdccd8';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=23d182cdccd8';
-import { goalShare } from './goals.mjs?v=23d182cdccd8';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=b856aa360e53';
+import { previewBrowserCas } from './cas-browser.mjs?v=b856aa360e53';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=b856aa360e53';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=b856aa360e53';
+import { goalShare } from './goals.mjs?v=b856aa360e53';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=23d182cdccd8';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=23d182cdccd8';
-import { previewAssistantImport } from './assistant-import.mjs?v=23d182cdccd8';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=23d182cdccd8';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=23d182cdccd8';
-import { analyzePortfolio, valuationDateIssue, valuationRowsNeedingCheck } from './analysis.mjs?v=23d182cdccd8';
-import { buildReadableReport } from './readable-report.mjs?v=23d182cdccd8';
-import { answerReviewQuestion } from './review-questions.mjs?v=23d182cdccd8';
-import { parseReviewBackup } from './review-backup.mjs?v=23d182cdccd8';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=23d182cdccd8';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=23d182cdccd8';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=23d182cdccd8';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=b856aa360e53';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=b856aa360e53';
+import { previewAssistantImport } from './assistant-import.mjs?v=b856aa360e53';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=b856aa360e53';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=b856aa360e53';
+import { analyzePortfolio, valuationDateIssue, valuationRowsNeedingCheck } from './analysis.mjs?v=b856aa360e53';
+import { buildReadableReport } from './readable-report.mjs?v=b856aa360e53';
+import { answerReviewQuestion } from './review-questions.mjs?v=b856aa360e53';
+import { parseReviewBackup } from './review-backup.mjs?v=b856aa360e53';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=b856aa360e53';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b856aa360e53';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=b856aa360e53';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=23d182cdccd8';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=b856aa360e53';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=23d182cdccd8';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=23d182cdccd8';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=b856aa360e53';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=b856aa360e53';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=23d182cdccd8';
-import { validReserve, reserveMonths } from './reserve.mjs?v=23d182cdccd8';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=b856aa360e53';
+import { validReserve, reserveMonths } from './reserve.mjs?v=b856aa360e53';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs?v=23d182cdccd8';
-import { validShares } from './stock-estimate.mjs?v=23d182cdccd8';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=23d182cdccd8';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=23d182cdccd8';
-import { inflationContext } from './market-context.mjs?v=23d182cdccd8';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs?v=b856aa360e53';
+import { validShares } from './stock-estimate.mjs?v=b856aa360e53';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=b856aa360e53';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=b856aa360e53';
+import { inflationContext } from './market-context.mjs?v=b856aa360e53';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -1423,7 +1423,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=23d182cdccd8');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=b856aa360e53');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }

@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=23d182cdccd8';
-import { compareMixPlan } from './mix-plan.mjs?v=23d182cdccd8';
-import { goalShare } from './goals.mjs?v=23d182cdccd8';
-import { reserveMonths } from './reserve.mjs?v=23d182cdccd8';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=23d182cdccd8';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=b856aa360e53';
+import { compareMixPlan } from './mix-plan.mjs?v=b856aa360e53';
+import { goalShare } from './goals.mjs?v=b856aa360e53';
+import { reserveMonths } from './reserve.mjs?v=b856aa360e53';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=b856aa360e53';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -14,10 +14,32 @@ export const sampleHoldings = [
   { id: 'bank-stock', name: 'Example Bank', type: 'Stock', asset: 'Equity', value: 70000, exposure: { 'Example Bank': 1 }, asOf: '2026-09-30' },
 ];
 
+/** Group only supplied mutual-fund house labels; no issuer or scheme look-through. */
+export function summarizeFundHouses(holdings) {
+  const houses = new Map();
+  let fundValue = 0;
+  let coveredValue = 0;
+  for (const holding of holdings) {
+    const value = Number(holding.value);
+    if (holding.type !== 'Mutual fund' || !Number.isFinite(value) || value <= 0) continue;
+    fundValue += value;
+    const name = typeof holding.amc === 'string' ? holding.amc.trim() : '';
+    if (!name) continue;
+    coveredValue += value;
+    const key = name.toLocaleLowerCase('en-IN');
+    const previous = houses.get(key);
+    houses.set(key, { name: previous?.name || name, value: (previous?.value || 0) + value });
+  }
+  const largest = [...houses.values()].sort((a, b) => b.value - a.value)[0] || null;
+  return { fundValue, coveredValue, largest, labelledHouseCount: houses.size };
+}
+
 export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 }, today = new Date(), reserve = null, coverage = null) {
   const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
   const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
   const valid = holdings.filter(h => Number.isFinite(Number(h.value)) && Number(h.value) > 0);
+  const fundHouses = summarizeFundHouses(valid);
+  const fundValue = fundHouses.fundValue;
   const total = valid.reduce((sum, h) => sum + Number(h.value), 0);
   const unrealizedChange = summarizeUnrealizedChange(valid, today);
   const goalHoldings = Array.isArray(goal.linkedIds) ? valid.flatMap(holding => {
@@ -41,7 +63,6 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   }
   const issuers = new Map();
   const issuerSources = new Map();
-  const amcs = new Map();
   const isinClassifications = new Map();
   const stockLabelByIsin = new Map();
   for (const holding of valid) {
@@ -50,8 +71,6 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
         !stockLabelByIsin.has(holding.isin)) stockLabelByIsin.set(holding.isin, holding.name);
   }
   let classifiedValue = 0;
-  let fundValue = 0;
-  let amcCoveredValue = 0;
   let costCoveredValue = 0;
   let annualCostIllustration = 0;
   let costCoveredCount = 0;
@@ -66,19 +85,11 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     }
     assets[Object.hasOwn(assets, holding.asset) ? holding.asset : 'Other'] += value;
     if (holding.type === 'Mutual fund') {
-      fundValue += value;
       fundPlans[holding.granularity === 'fund_house' ? 'Unclear' : planFromName(holding.name)] += value;
       if (hasDatedFundTer(holding, today)) {
         costCoveredValue += value;
         annualCostIllustration += value * holding.expenseRatioPct / 100;
         costCoveredCount++;
-      }
-      const amc = typeof holding.amc === 'string' ? holding.amc.trim() : '';
-      if (amc) {
-        amcCoveredValue += value;
-        const key = amc.toLocaleLowerCase('en-IN');
-        const previous = amcs.get(key);
-        amcs.set(key, { name: previous?.name || amc, value: (previous?.value || 0) + value });
       }
     }
     if (holding.exposure) {
@@ -99,11 +110,11 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   }
 
   const largestIssuer = [...issuers.entries()].sort((a, b) => b[1] - a[1])[0] || null;
-  const fundCost = { coveredValue: costCoveredValue, uncoveredValue: fundValue - costCoveredValue,
+  const fundCost = { coveredValue: costCoveredValue, uncoveredValue: fundHouses.fundValue - costCoveredValue,
     coveredCount: costCoveredCount, annualIllustration: annualCostIllustration,
     weightedPct: costCoveredValue ? annualCostIllustration / costCoveredValue * 100 : null };
   const largestIssuerSources = largestIssuer ? issuerSources.get(largestIssuer[0]) : null;
-  const largestAmc = [...amcs.values()].sort((a, b) => b.value - a.value)[0] || null;
+  const largestAmc = fundHouses.largest;
   const dated = valid.map(h => h.asOf).filter(date => parseValuationDate(date));
   const orderedDates = [...dated].sort();
   const dateSpan = orderedDates[0] === orderedDates.at(-1) ? `as of ${orderedDates[0]}` :
@@ -349,7 +360,8 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     total, assets, equityPct, goalTotal, goalAssets, goalEquityPct, goalHoldingCount: goalHoldings.length,
     goalDateCheck, goalAccessCheck, mixComparison, mixPause,
     largestGoalPosition, topPositions, topGoalPositions,
-    largestIssuer, largestIssuerSources, largestAmc, fundValue, fundPlans, fundCost, amcCoveredValue, asOfSummary,
+    largestIssuer, largestIssuerSources, largestAmc, fundValue: fundHouses.fundValue,
+    fundPlans, fundCost, amcCoveredValue: fundHouses.coveredValue, asOfSummary,
     unrealizedChange,
     classifiedPct: total ? (classifiedValue / total) * 100 : 0,
     goalGap: validGoal ? Math.max(0, target - goalTotal) : null,
