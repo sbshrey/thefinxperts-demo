@@ -50,7 +50,7 @@ export function buildAssistantReviewChecks(holdings, portfolio, today = new Date
     { name: 'My goal', age: null, years: null, target: null, confirmed: false, linkedIds: [] };
   const result = analyzePortfolio(rows, goal, today, portfolio?.reserve, portfolio?.coverage);
   return [...result.findings, ...result.additionalFindings].slice(0, 3).map(item => ({
-    title: item.title, detail: item.detail, question: item.question,
+    key: item.key, title: item.title, detail: item.detail, question: item.question,
     basis: item.basis, limitation: item.limitation,
   }));
 }

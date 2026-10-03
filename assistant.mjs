@@ -455,7 +455,39 @@ function renderReview() {
     const basis = document.createElement('p'); basis.textContent = check.basis;
     const limitation = document.createElement('p'); limitation.textContent = check.limitation;
     why.append(summary, basis, limitation);
-    item.append(title, detail, question, why);
+    const action = document.createElement('button'); action.type = 'button';
+    action.className = 'review-check-action';
+    const firstDated = rows.findIndex(row => valuationDateIssue(row.asOf));
+    const firstOther = rows.findIndex(row => row.asset === 'Other' && row.type === 'Mutual fund' && row.granularity !== 'fund_house');
+    const targetRow = check.key === 'classification' ? firstOther :
+      check.key === 'goal-access' ? rows.findIndex(row => row.type === 'Other investment' &&
+        goalShare(state.account?.portfolio?.goals?.find(goal => goal.id === state.account.portfolio.activeGoalId), row.id) > 0) : -1;
+    if (check.key === 'valuation' && firstDated >= 0) {
+      action.textContent = 'Check first flagged value';
+      action.addEventListener('click', () => guideValueRefresh(firstDated, rows[firstDated], valuationDateIssue(rows[firstDated].asOf)));
+    } else if (check.key === 'summary') {
+      action.textContent = 'How to get a detailed CAS';
+      action.addEventListener('click', () => $('#report-help-dialog').showModal());
+    } else if (check.key === 'scope') {
+      action.textContent = 'Check what is included';
+      action.addEventListener('click', () => {
+        if (mobileReview.matches) setReviewExpanded(false);
+        $('#message').value = 'How complete is my portfolio?';
+        $('#composer').requestSubmit();
+      });
+    } else {
+      const goalCheck = ['chosen-mix', 'horizon', 'emergency', 'reserve'].includes(check.key);
+      action.textContent = goalCheck ? 'Review selected goal' : targetRow >= 0 ? 'See related holding' : 'Review holdings';
+      action.addEventListener('click', () => {
+        const target = targetRow >= 0 ? $('#holding-list').children[targetRow] :
+          goalCheck ? $('#goal-card') : $('#holding-list');
+        if (!target) return;
+        target.tabIndex = -1;
+        target.scrollIntoView({ block: 'center' });
+        target.focus({ preventScroll: true });
+      });
+    }
+    item.append(title, detail, question, action, why);
     checkList.append(item);
   }
   const holdings = $('#holding-list');

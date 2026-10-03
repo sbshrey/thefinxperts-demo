@@ -129,6 +129,9 @@ body{margin:0}
 .review-check>strong{font-size:13px;color:#244b39}
 .review-check p{margin:5px 0 0}
 .review-check .review-check-question{color:#2b694c;font-weight:700}
+.review-check-action{margin-top:9px;padding:8px 11px;border:1px solid #9fc7ab;border-radius:8px;background:#eff8f0;color:#215b3c;font:700 12px Arial,Helvetica,sans-serif;cursor:pointer}
+.review-check-action:hover{background:#e1f0e3}
+.review-check-action:focus-visible,.holding-item:focus,#goal-card:focus,#holding-list:focus{outline:3px solid #2b7960;outline-offset:3px}
 .review-check details{margin-top:7px;font-size:11px;color:#65776c}
 .review-check summary{cursor:pointer;font-weight:700}
 .review-check details p{font-size:11px}
