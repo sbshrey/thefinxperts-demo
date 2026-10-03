@@ -72,9 +72,24 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'No confirmed holding value is available for a factual review.',
       'I cannot choose investments or trades; an import remains a draft until you confirm it.', '#holdings', 'Add a holding');
     const first = result.findings?.[0];
-    if (first) return answer(`Start with this factual check: ${first.title}. ${first.detail} ${first.question}`,
-      first.basis,
-      `${first.limitation} This check does not select a trade or personal allocation.`, '#review', 'See this review check');
+    const reviewCheck = () => answer(`Start with this factual check: ${first.title}. ${first.detail} ${first.question}`,
+      first.basis, `${first.limitation} This check does not select a trade or personal allocation.`,
+      '#review', 'See this review check');
+    if (first && ['scope', 'identity', 'summary', 'classification', 'valuation'].includes(first.key))
+      return reviewCheck();
+    if (!Array.isArray(goals) || !goals.length) return answer(
+      'Next, name a goal, for example “create goal named Retirement”. Then give your age, target amount and years until that goal, and choose which entered holdings count toward it.',
+      `${valid.length} confirmed holding ${valid.length === 1 ? 'row is' : 'rows are'} entered, but no goal has been created.`,
+      'A goal name and your facts allow a comparison; they do not choose an allocation or trade.', '#goals', 'Create a goal');
+    if (goal?.confirmed !== true) return answer(
+      `Next, confirm your age, target amount and time horizon for ${goal?.name || 'a goal'}. Then I can compare only the holdings you assign to it with that goal.`,
+      `${valid.length} confirmed holding ${valid.length === 1 ? 'row is' : 'rows are'} entered; the selected goal has no confirmed age, target and horizon together.`,
+      'This does not choose an allocation or trade. A goal comparison also needs you to check which holdings belong to that goal.', '#goals', 'Confirm goal details');
+    if (!result.goalTotal) return answer(
+      `Next, choose which of the entered holdings count toward ${goal.name}. Its goal-specific value is still ₹0, so the current portfolio total cannot be treated as money assigned to that goal.`,
+      `${valid.length} confirmed holding ${valid.length === 1 ? 'row is' : 'rows are'} entered; no positive value is assigned to ${goal.name}.`,
+      'Linking a holding records your intent. It does not change the portfolio total or establish whether that investment is suitable for this goal.', '#goals', 'Link goal holdings');
+    if (first) return reviewCheck();
     return answer('The entered snapshot has no flagged first check. Review its scope, valuation dates, and your selected goal before making a decision.',
       `${valid.length} confirmed holding ${valid.length === 1 ? 'row' : 'rows'}; ${result.asOfSummary}.`,
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
