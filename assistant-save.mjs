@@ -1,6 +1,7 @@
-import { validShares } from './stock-estimate.mjs?v=3e3243bcadb9';
-import { validCostBasis } from './cost-basis.mjs?v=3e3243bcadb9';
-import { npsTier } from './account-label.mjs?v=3e3243bcadb9';
+import { validShares } from './stock-estimate.mjs?v=21e547ac47ba';
+import { validUnits } from './nav-estimate.mjs?v=21e547ac47ba';
+import { validCostBasis } from './cost-basis.mjs?v=21e547ac47ba';
+import { npsTier } from './account-label.mjs?v=21e547ac47ba';
 
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const SOURCES = new Set(['manual', 'active_statement', 'broker_csv', 'broker_xlsx', 'simple_csv', 'cas', 'demat_cas', 'epfo_passbook', 'nps_statement']);
@@ -107,7 +108,7 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
         (row.isin && (typeof row.isin !== 'string' || !/^[A-Z]{2}[A-Z0-9]{10}$/.test(row.isin))) ||
         (row.amc && (typeof row.amc !== 'string' || !row.amc.trim() || row.amc.length > 200)) ||
         (row.amfi && (typeof row.amfi !== 'string' || !/^\d{5,8}$/.test(row.amfi))) ||
-        (row.units && (typeof row.units !== 'string' || !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/.test(row.units) || !/[1-9]/.test(row.units))) ||
+        (row.units && !validUnits(row.units)) ||
         (row.shares !== undefined && (row.type !== 'Stock' || !validShares(row.shares))) ||
         ((row.costBasis !== undefined || row.costBasisAsOf !== undefined) &&
           (!['broker_csv', 'broker_xlsx'].includes(row.entryOrigin) ||

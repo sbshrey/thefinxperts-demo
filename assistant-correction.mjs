@@ -1,8 +1,8 @@
-import { parseAmount } from './assistant-clarify.mjs?v=3e3243bcadb9';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=3e3243bcadb9';
-import { removeHoldingAllocation } from './goals.mjs?v=3e3243bcadb9';
-import { estimateNavValue, realDate } from './nav-estimate.mjs?v=3e3243bcadb9';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=3e3243bcadb9';
+import { parseAmount } from './assistant-clarify.mjs?v=21e547ac47ba';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=21e547ac47ba';
+import { removeHoldingAllocation } from './goals.mjs?v=21e547ac47ba';
+import { estimateNavValue, realDate } from './nav-estimate.mjs?v=21e547ac47ba';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=21e547ac47ba';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const indiaToday = today => new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
@@ -175,8 +175,8 @@ export function prepareHoldingCorrection(saved, command, today = new Date()) {
     if (!Number.isFinite(total) || total > 1_000_000_000_000)
       return { portfolio: null, errors: ['The estimated portfolio total would exceed the supported limit.'] };
     return { portfolio, errors: [],
-      description: `Estimate holding ${index + 1}: ${row.name}. ${row.units} statement units × your entered NAV ₹${command.nav} dated ${command.asOf} = ${money(value)}. The earlier statement value ${money(originalValue)} dated ${originalAsOf} stays in your private backup. Check the exact scheme, Direct/Regular plan and Growth/IDCW option at the NAV source, and confirm these units are still your current balance after any transactions. This is a dated estimate, not a verified live account value.`,
-      result: `${row.name} now uses your dated NAV estimate of ${money(value)} as of ${command.asOf}; the earlier statement value remains in the private backup. This assumes ${row.units} units are unchanged.` };
+      description: `Estimate holding ${index + 1}: ${row.name}. ${row.units} ${row.entryOrigin === 'manual' ? 'entered' : 'statement'} units × your entered NAV ₹${command.nav} dated ${command.asOf} = ${money(value)}. The earlier ${row.entryOrigin === 'manual' ? 'entered' : 'statement'} value ${money(originalValue)} dated ${originalAsOf} stays in your private backup. Check the exact scheme, Direct/Regular plan and Growth/IDCW option at the NAV source, and confirm these units are still your current balance after any transactions. This is a dated estimate, not a verified live account value.`,
+      result: `${row.name} now uses your dated NAV estimate of ${money(value)} as of ${command.asOf}; the earlier ${row.entryOrigin === 'manual' ? 'entered' : 'statement'} value remains in the private backup. This assumes ${row.units} units are unchanged.` };
   }
   if (command.kind === 'price') {
     if (row.type !== 'Stock' || !validShares(row.shares) || !realDate(row.asOf))

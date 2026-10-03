@@ -1,6 +1,10 @@
 const UNIT = /^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/;
 const NAV = /^(?:0|[1-9]\d{0,6})(?:\.\d{1,6})?$/;
 
+export function validUnits(units) {
+  return typeof units === 'string' && UNIT.test(units) && /[1-9]/.test(units);
+}
+
 function micros(text) {
   const [whole, fraction = ''] = text.split('.');
   return BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, '0'));
@@ -8,7 +12,7 @@ function micros(text) {
 
 /** Paise rounded half up from exact six-place unit and NAV strings. */
 export function estimateUnitValue(units, nav) {
-  if (typeof units !== 'string' || !UNIT.test(units) || !/[1-9]/.test(units) ||
+  if (!validUnits(units) ||
       typeof nav !== 'string' || !NAV.test(nav) || !/[1-9]/.test(nav)) return null;
   const paise = (micros(units) * micros(nav) + 5_000_000_000n) / 10_000_000_000n;
   if (paise <= 0n || paise > 1_000_000_000_000n) return null;
