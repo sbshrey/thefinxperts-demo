@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=629713e0319d';
-import { compareMixPlan } from './mix-plan.mjs?v=629713e0319d';
-import { goalShare } from './goals.mjs?v=629713e0319d';
-import { reserveMonths } from './reserve.mjs?v=629713e0319d';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=629713e0319d';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=6e67026a2f01';
+import { compareMixPlan } from './mix-plan.mjs?v=6e67026a2f01';
+import { goalShare } from './goals.mjs?v=6e67026a2f01';
+import { reserveMonths } from './reserve.mjs?v=6e67026a2f01';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=6e67026a2f01';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -171,16 +171,17 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     calculateGoalScenario(goalTotal, goal) : null;
   const flatScenario = scenario && scenario.returnPct !== 0 ?
     calculateGoalScenario(goalTotal, { ...goal, returnPct: 0 }) : null;
-  const shock = goalAccessCheck.count ? null :
-    calculateEquityShockScenario(goalTotal, goalEquityValue, target, Number(goal.equityDropPct ?? 20));
-  const shockContinuation = scenario && shock?.loss > 0 ? calculateGoalScenario(shock.valueAfterLoss, goal) : null;
-  const lossLimits = shock ? compareEnteredLossLimits(shock.loss, goal) : null;
-  const stressPause = goal.equityDropPct === undefined ? 'no_assumption' : !validGoal ? 'goal_details' :
+  const shockCandidate = typeof goal.equityDropPct === 'number' ?
+    calculateEquityShockScenario(goalTotal, goalEquityValue, target, goal.equityDropPct) : null;
+  const stressPause = goal.equityDropPct == null ? 'no_assumption' : !validGoal ? 'goal_details' :
     !goalTotal ? 'no_holdings' : goalDateCheck.count ? 'valuation_dates' :
       goalAccessCheck.count ? 'access_uncertain' :
         goalAssets.Other > 0 ? 'unclassified' :
         goalHoldings.some(holding => holding.granularity === 'fund_house') ? 'fund_house' :
-          shock ? null : 'invalid';
+          shockCandidate ? null : 'invalid';
+  const shock = stressPause === null ? shockCandidate : null;
+  const shockContinuation = scenario && shock?.loss > 0 ? calculateGoalScenario(shock.valueAfterLoss, goal) : null;
+  const lossLimits = shock ? compareEnteredLossLimits(shock.loss, goal) : null;
   const equityPct = total ? (assets.Equity / total) * 100 : 0;
   const findings = [];
   if (goalAccessCheck.count) {

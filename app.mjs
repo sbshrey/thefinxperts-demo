@@ -1,28 +1,28 @@
-import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=629713e0319d';
-import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=629713e0319d';
-import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=629713e0319d';
+import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=6e67026a2f01';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=6e67026a2f01';
+import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=6e67026a2f01';
 import { validateImportReview, validateImportMerge, findImportMergeConflicts, possibleManualDuplicate, isRepeatedActiveStatement,
-  planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs?v=629713e0319d';
-import { prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=629713e0319d';
-import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=629713e0319d';
-import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=629713e0319d';
-import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=629713e0319d';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=629713e0319d';
-import { buildReadableReport } from './readable-report.mjs?v=629713e0319d';
-import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=629713e0319d';
-import { validReserve, reserveMonths } from './reserve.mjs?v=629713e0319d';
-import { contextNeedsReview } from './market-context.mjs?v=629713e0319d';
-import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=629713e0319d';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=629713e0319d';
-import { chooseNextReviewStep } from './next-step.mjs?v=629713e0319d';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=629713e0319d';
-import { answerReviewQuestion } from './review-questions.mjs?v=629713e0319d';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=629713e0319d';
+  planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs?v=6e67026a2f01';
+import { prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=6e67026a2f01';
+import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=6e67026a2f01';
+import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=6e67026a2f01';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=6e67026a2f01';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=6e67026a2f01';
+import { buildReadableReport } from './readable-report.mjs?v=6e67026a2f01';
+import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=6e67026a2f01';
+import { validReserve, reserveMonths } from './reserve.mjs?v=6e67026a2f01';
+import { contextNeedsReview } from './market-context.mjs?v=6e67026a2f01';
+import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=6e67026a2f01';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=6e67026a2f01';
+import { chooseNextReviewStep } from './next-step.mjs?v=6e67026a2f01';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=6e67026a2f01';
+import { answerReviewQuestion } from './review-questions.mjs?v=6e67026a2f01';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=6e67026a2f01';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
     returnPct: 0, inflationPct: 0, confirmed: false, linkedIds: sampleHoldings.map(holding => holding.id),
-    assumptionsChecked: { monthlyContribution: true, returnPct: true, inflationPct: true } };
+    assumptionsChecked: { monthlyContribution: true, returnPct: true, inflationPct: true }, equityDropPct: 20 };
 }
 function resetExampleGoal(goal) {
   const { assumptionsChecked, equityDropPct, affordableLoss, tolerableLoss,
@@ -237,7 +237,7 @@ function fillGoalForm(goal) {
     ['#age', goal.age], ['#goal-years', goal.years], ['#goal-name', goal.name],
     ['#goal-target', goal.target], ['#monthly-contribution', goal.monthlyContribution ?? 0],
     ['#return-assumption', goal.returnPct ?? 0], ['#inflation-assumption', goal.inflationPct ?? 0],
-    ['#equity-drop-assumption', goal.equityDropPct ?? 20],
+    ['#equity-drop-assumption', goal.equityDropPct],
   ]) $(selector).value = value ?? '';
   $('#form-error').textContent = '';
   fillMixForm(goal);
@@ -448,14 +448,24 @@ function render() {
   $('#scenario-gap').textContent = scenario ? rupees(scenario.futureGap) : '—';
   $('#scenario-monthly').textContent = scenario ? rupees(Math.ceil(scenario.monthlyAdditionalNeeded)) : '—';
   const shock = pauseGoalFigures ? null : result.shock;
+  const shockPausedMessage = {
+    no_assumption: 'Choose your own one-time equity-fall percentage in goal assumptions to see this illustration.',
+    goal_details: 'Confirm valid goal details before using an equity-fall illustration.',
+    no_holdings: 'Link a confirmed holding to this goal before comparing an equity fall.',
+    valuation_dates: 'Check missing, future or old valuation dates on linked holdings before comparing a fall.',
+    access_uncertain: 'Check when linked other investments can be used before interpreting this goal stress calculation.',
+    unclassified: 'Check the asset category of linked holdings before comparing an equity fall.',
+    fund_house: 'Check individual schemes in linked fund-house summaries before comparing an equity fall.',
+    invalid: 'Enter a valid equity-fall percentage from 0% to 60% to see this illustration.',
+  }[result.stressPause];
   $('#shock-drop').textContent = shock ? `${shock.dropPct}%` : '—';
   $('#shock-loss').textContent = shock ? rupees(shock.loss) : '—';
   $('#shock-value').textContent = shock ? rupees(shock.valueAfterLoss) : '—';
   $('#shock-gap').textContent = shock ? rupees(shock.gapAfterLoss) : '—';
   $('#shock-note').textContent = needsGoalConfirmation ? 'Confirm goal details to see this illustration.' :
-    result.stressPause === 'access_uncertain' ? 'Check when the linked other investments can be used before interpreting this goal stress calculation.' : shock
+    shockPausedMessage || (shock
     ? `This subtracts ${shock.dropPct}% once from only the holdings marked Equity and linked to this goal. It uses today's entered values and goal cost; it excludes future growth, contributions, inflation, taxes and changes in other assets. It is a what-if loss, not a prediction or a target allocation.`
-    : 'Enter a valid equity-loss percentage to see this illustration.';
+    : 'Choose an equity-fall percentage to see this illustration.');
   const shockContinuation = pauseGoalFigures || !assumptionsReady || !result.goalTotal || result.goalDateCheck.count ? null : result.shockContinuation;
   $('#shock-goal-context').hidden = !shockContinuation;
   $('#shock-goal-context').textContent = shockContinuation
@@ -466,6 +476,7 @@ function render() {
     `${label}: ${rupees(check.limit)}. The illustrated loss ${check.excess > 0 ? `exceeds it by ${rupees(check.excess)}` : 'does not exceed it'}.` : '';
   $('#loss-context').textContent = pauseGoalFigures ? 'Goal figures are paused until the personal holdings and goal details are ready.' :
     !result.goalTotal ? 'Link holdings to this goal before comparing a loss.' :
+    shockPausedMessage ? `Loss comparison paused. ${shockPausedMessage}` :
     !limits?.affordable && !limits?.tolerable ? 'Add your own optional loss limits below to put this illustration in context.' :
       `${limitText('Amount you could cover', limits.affordable)} ${limitText('Amount you could tolerate', limits.tolerable)} ` +
       `${limits.capacityGap !== null ? `The amount you could tolerate is ${rupees(limits.capacityGap)} above the amount you said you could cover. Check whether a loss between those amounts would delay this goal or essential spending. ` : ''}` +
@@ -1029,13 +1040,13 @@ $('#goal-form').addEventListener('submit', event => {
   const monthlyContribution = optionalNumber('#monthly-contribution', 0);
   const returnPct = optionalNumber('#return-assumption', 0);
   const inflationPct = optionalNumber('#inflation-assumption', 0);
-  const equityDropPct = optionalNumber('#equity-drop-assumption', 20);
+  const equityDropPct = optionalNumber('#equity-drop-assumption', undefined);
   const emergencyFunding = $('#emergency-funding').value;
   if (['#age', '#goal-years', '#goal-target'].some(selector => !$(selector).value.trim()) ||
       !Number.isInteger(years) || years < 1 || years > 50 || !Number.isFinite(target) || target < 1000 || target > 1e12 ||
       !Number.isFinite(age) || age < 18 || age > 100 || !Number.isFinite(monthlyContribution) || monthlyContribution < 0 || monthlyContribution > 1e8 ||
       !Number.isFinite(returnPct) || returnPct < -20 || returnPct > 13 || !Number.isFinite(inflationPct) || inflationPct < -5 || inflationPct > 15 ||
-      !Number.isFinite(equityDropPct) || equityDropPct < 0 || equityDropPct > 60) {
+      (equityDropPct !== undefined && (!Number.isFinite(equityDropPct) || equityDropPct < 0 || equityDropPct > 60))) {
     $('#form-error').textContent = 'Check the age, goal, monthly amount and assumption ranges shown beside the fields.';
     return;
   }
@@ -1045,7 +1056,7 @@ $('#goal-form').addEventListener('submit', event => {
     creatingGoal ? null : state.goal.assumptionsChecked;
   const details = { name: $('#goal-name').value.trim() || 'My goal', years, target, age, monthlyContribution, returnPct, inflationPct,
     ...(checked ? { assumptionsChecked: { ...checked } } : {}),
-    ...(assumptionsOpen ? { equityDropPct } : {}), confirmed: true };
+    ...(assumptionsOpen && equityDropPct !== undefined ? { equityDropPct } : {}), confirmed: true };
   if (emergencyFunding) details.emergencyFunding = emergencyFunding;
   if (creatingGoal) {
     const added = { id: crypto.randomUUID(), ...details, linkedIds: [] };
@@ -1060,6 +1071,7 @@ $('#goal-form').addEventListener('submit', event => {
     fillMixForm(added);
   } else {
     state.goal = { ...state.goal, ...details };
+    if (assumptionsOpen && equityDropPct === undefined) delete state.goal.equityDropPct;
     if (!emergencyFunding) delete state.goal.emergencyFunding;
     state.goals = state.goals.map(goal => goal.id === state.activeGoalId ? state.goal : goal);
   }
@@ -1346,7 +1358,7 @@ $('#broker-read').addEventListener('click', async () => {
       brokerRows = parseBrokerCsvRows(await file.text());
       brokerSource = 'Broker CSV';
     } else if (file.name.toLowerCase().endsWith('.xlsx')) {
-      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=629713e0319d');
+      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=6e67026a2f01');
       brokerRows = await readBrokerWorkbook(file);
       brokerSource = 'Broker XLSX';
     } else throw new Error('Choose a broker holdings XLSX or CSV report.');
@@ -1724,7 +1736,7 @@ $('#preview-active').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Reading in this tab…';
   try {
-    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=629713e0319d');
+    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=6e67026a2f01');
     const result = await previewActiveStatementFile(file, password);
     if (result.errors.length) {
       $('#active-error').textContent = result.errors.slice(0, 5).join(' ');
@@ -1778,7 +1790,7 @@ $('#preview-cas').addEventListener('click', async () => {
     let result;
     let responseOk = true;
     if (casMode === 'browser') {
-      const { previewBrowserCas } = await import('./cas-browser.mjs?v=629713e0319d');
+      const { previewBrowserCas } = await import('./cas-browser.mjs?v=6e67026a2f01');
       result = await previewBrowserCas(file, password);
     } else {
       const bytes = new Uint8Array(await file.arrayBuffer());
@@ -2210,6 +2222,7 @@ $('#account-delete').addEventListener('click', async () => {
   } catch { $('#account-status').textContent = 'Could not delete the saved portfolio. Try again later.'; }
   finally { $('#account-delete').disabled = false; }
 });
+fillGoalForm(state.goal);
 render();
 showInputMode('manual');
 const requestedImport = new URLSearchParams(window.location.search).get('import');
