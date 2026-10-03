@@ -1,14 +1,14 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=ff0e542bbcde';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=ff0e542bbcde';
-import { reserveMonths } from './reserve.mjs?v=ff0e542bbcde';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=42cb3692c36c';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=42cb3692c36c';
+import { reserveMonths } from './reserve.mjs?v=42cb3692c36c';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=ff0e542bbcde';
-import { asksForAdvice } from './question-scope.mjs?v=ff0e542bbcde';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ff0e542bbcde';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ff0e542bbcde';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=ff0e542bbcde';
-import { parseAmount } from './assistant-clarify.mjs?v=ff0e542bbcde';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=42cb3692c36c';
+import { asksForAdvice } from './question-scope.mjs?v=42cb3692c36c';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=42cb3692c36c';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=42cb3692c36c';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=42cb3692c36c';
+import { parseAmount } from './assistant-clarify.mjs?v=42cb3692c36c';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -125,6 +125,17 @@ function positionChangeIntent(question) {
   return { kind: mentionsFund && !mentionsStock ? 'Mutual fund' :
     mentionsStock && !mentionsFund ? 'Stock' : null,
   losing: /\b(?:loss|losses|lost|losing|down|red)\b/.test(input) };
+}
+
+/** A saved goal contribution is an illustration input, never evidence of an active SIP. */
+export function isSipAmountQuestion(question) {
+  if (typeof question !== 'string') return false;
+  const input = question.trim().toLocaleLowerCase('en-IN');
+  return !/^what if\b/.test(input) &&
+    /^(?:how much|how many|what|show|list|am i|do i)\b/.test(input) &&
+    (/(?:\bsips?\b|systematic investment plans?)\b/.test(input) &&
+      /\b(?:amount|total|active|running|pay|paid|invest\w*|contribut\w*|monthly|month|savings?)\b/.test(input) ||
+      /\b(?:my|i)\b.{0,35}\b(?:monthly contributions?|monthly investments?|investing per month|invest each month|invest every month)\b/.test(input));
 }
 
 function shortReviewFollowUp(message) {
@@ -284,6 +295,14 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  if (isSipAmountQuestion(input)) {
+    const plan = goal?.confirmed === true && goal.assumptionsChecked?.monthlyContribution === true ?
+      `For ${goal.name}, you confirmed ${money(goal.monthlyContribution)} per month as a goal illustration input.` :
+      'No monthly amount has been confirmed for the selected goal illustration.';
+    return answer(`I cannot tell how much you actually pay into SIPs each month or have paid in the past from these holdings. ${plan} That planning input is not an active SIP or payment record. Check your current fund or broker mandates for scheduled amounts and your payment history for amounts actually paid.`,
+      `${valid.length} entered holding ${valid.length === 1 ? 'row' : 'rows'} contain current value snapshots, not an active mandate list or complete dated cash flows. ${goal?.confirmed === true ? `Selected goal ${goal.name}; monthly illustration input ${money(goal.monthlyContribution)}${goal.assumptionsChecked?.monthlyContribution === true ? ' confirmed' : ' unconfirmed'}.` : 'No confirmed selected-goal monthly input.'}`,
+      `A scheduled mandate can differ from completed payments, and the selected goal’s monthly assumption is independent of either. ${coverageNote}`, '#holdings', 'Check SIP records');
+  }
   const sourceQuestion = /\b(?:which|what|show|list)\b.{0,70}\b(?:sources?|statements?|reports?)\b.{0,50}\b(?:used|included|behind|for|in)\b/.test(input) ||
     /\bwhere\b.{0,60}\b(?:values?|holdings?|numbers?)\b.{0,30}\b(?:from|come from)\b/.test(input) ||
     /\b(?:sources?|origins?|provenance) of (?:my|the|these) (?:portfolio|holdings?|values?|review)\b/.test(input) ||
