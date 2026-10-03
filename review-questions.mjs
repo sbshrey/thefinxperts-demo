@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=dd058b21b176';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=dd058b21b176';
-import { reserveMonths } from './reserve.mjs?v=dd058b21b176';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=9fa876d5cb96';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=9fa876d5cb96';
+import { reserveMonths } from './reserve.mjs?v=9fa876d5cb96';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=dd058b21b176';
-import { asksForAdvice } from './question-scope.mjs?v=dd058b21b176';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=dd058b21b176';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=dd058b21b176';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=dd058b21b176';
-import { parseAmount } from './assistant-clarify.mjs?v=dd058b21b176';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=dd058b21b176';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=9fa876d5cb96';
+import { asksForAdvice } from './question-scope.mjs?v=9fa876d5cb96';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=9fa876d5cb96';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=9fa876d5cb96';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=9fa876d5cb96';
+import { parseAmount } from './assistant-clarify.mjs?v=9fa876d5cb96';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=9fa876d5cb96';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=dd058b21b176';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=9fa876d5cb96';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -258,7 +258,9 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'Names and expense ratios are not independently verified. A plan label alone does not establish current TER, tax, exit load, service value or whether to switch.', '#holdings', 'Check fund plan labels');
   }
 
-  if (/^(?:what should i do(?: next)?|how (?:(?:can|do|should) i|to) (?:improve|optimi[sz]e) (?:my )?(?:portfolio|review|investments?)(?: for (?:my )?(?:age and goal|age|goal))?|where should i start)[?.!]*$/.test(input)) {
+  const openReviewQuestion = /^(?:what should i do(?: next)?|how (?:(?:can|do|should) i|to) (?:improve|optimi[sz]e) (?:my )?(?:portfolio|review|investments?)(?: for (?:my )?(?:age and goal|age|goal))?|where should i start)[?.!]*$/.test(input) ||
+    /^(?:what should i check(?: first)? to (?:improve|optimi[sz]e) (?:my )?(?:portfolio|investments?)|what (?:is|looks) wrong with (?:my|the) (?:portfolio|investments?)|can you help me improve (?:my )?(?:portfolio|investments?))[?.!]*$/.test(input);
+  if (openReviewQuestion) {
     if (!valid.length) return answer('Start by adding and confirming a current holding from a supported statement or broker report. Then I can show what the entered portfolio contains and what needs checking.',
       'No confirmed holding value is available for a factual review.',
       'I cannot choose investments or trades; an import remains a draft until you confirm it.', '#holdings', 'Add a holding');
@@ -296,9 +298,9 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
   }
 
-  const goalRiskQuestion = /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned)\b/.test(input) &&
-    (/(?:\b(?:goal|retirement)\b.{0,60}\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned)\b)/.test(input) ||
-      /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned)\b.{0,60}\b(?:goal|retirement|my age|age and goal)\b/.test(input));
+  const goalRiskQuestion = /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit)\b/.test(input) &&
+    (/(?:\b(?:goal|retirement)\b.{0,60}\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit)\b)/.test(input) ||
+      /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit)\b.{0,60}\b(?:goal|retirement|my age|age and goal)\b/.test(input));
   if (goalRiskQuestion && !/\b(?:buy|sell|switch|redeem|rebalance|replace|increase|reduce|move|shift|trade|invest|allocate|recommend|suggest|optimi[sz]e)\b/.test(input)) {
     if (goal?.confirmed !== true)
       return answer('Confirm the selected goal’s age, target and years until it is due before checking the exposure of its assigned holdings.',
@@ -1125,7 +1127,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(houses.largest.value)} ÷ ${money(houses.fundValue)} ${scope}; ${basis}`,
       limitation, destination, 'Inspect fund holdings');
   }
-  const disclosureQuestion = /\b(?:overlaps?|same stocks?|underlying (?:stocks|shares|companies)|companies? (?:inside|through)|issuer exposure|inside (?:my|the) funds)\b/.test(input);
+  const fundSimilarityQuestion = /\b(?:funds?|mutual funds?)\b.{0,30}\b(?:too similar|similar to each other)\b|\b(?:similar|same)\b.{0,20}\b(?:funds?|mutual funds?)\b/.test(input);
+  const disclosureQuestion = fundSimilarityQuestion || /\b(?:overlaps?|same stocks?|underlying (?:stocks|shares|companies)|companies? (?:inside|through)|issuer exposure|inside (?:my|the) funds)\b/.test(input);
   const checkedDisclosures = Array.isArray(disclosures) ? disclosures.filter(item =>
     matchFundDisclosure(item, valid)) : [];
   if (!goalScopeRequested && disclosureQuestion && checkedDisclosures.length) {
@@ -1148,7 +1151,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         (visible.directCovered ? `; matching direct stocks ${money(visible.directCovered)} dated ${visible.directDates.join(', ')}` : ''),
       'This is a mixed-date, partial look-through of user-supplied values and AMC sheets. Unmatched securities, other fund assets, later trades and missing investments are unknown. It does not establish current prices, full concentration or a trade to make.', '#holdings', 'Inspect dated sources');
   }
-  if (/\b(overlaps?|overlapping|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
+  if (fundSimilarityQuestion || /\b(overlaps?|overlapping|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
   {
     const byInstrument = new Map();
     for (const row of valid) {
@@ -1191,7 +1194,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         'A repeated ISIN is a review flag, not proof of double counting. Different fund ISINs can still own the same underlying securities; AMC disclosures are dated, and constituent look-through is unverified here.' :
         'A repeated stock ISIN is a review flag, not proof of double counting. Check accounts, report dates and whether separate positions were intended.', '#holdings', 'Inspect matching rows');
   }
-  if (/\b(coverage|complete|missing holdings|all my investments|what.{0,20}missed)\b/.test(input)) {
+  if (/\b(coverage|complete|missing holdings|all my investments|what.{0,20}missed)\b/.test(input) ||
+      /\b(?:which|what) (?:assets|investments|holdings) (?:are|am i) missing\b/.test(input)) {
     const label = value => ({ all: 'all included', some: 'some included', none: 'none included', unsure: 'unsure' })[value] || 'not answered';
     return answer(`${lead}mutual-fund coverage is ${label(coverage?.mutualFunds)}, direct-stock coverage is ${label(coverage?.directStocks)}, and other-investment coverage is ${label(coverage?.otherInvestments)}.`,
       `Used your self-reported coverage answers and ${valid.length} entered holding rows; no account or statement was independently checked.`,
@@ -1569,7 +1573,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(largest.value)} ÷ ${money(total)} ${selectedGoal ? 'assigned' : 'entered'} ${label} value; exact matching supplied ISINs${asksFund ? ' and fund-house summaries' : ''} are grouped. ${result.asOfSummary}.`,
       `This uses supplied dated values. ${asksFund ? 'A fund-house summary may contain several schemes, and fund constituents' : 'Corporate actions and quantities'} or missing investments are not verified.`, selectedGoal ? '#goals' : '#holdings', `Inspect this ${asksFund ? 'fund' : 'stock'}`);
   }
-  if (/\b(biggest|largest|concentrat(?:ion|ed|e|ing)?|top holding|single holding)\b/.test(input)) {
+  if (/\b(biggest|largest|concentrat(?:ion|ed|e|ing)?|overexpos\w*|top holding|single holding)\b/.test(input)) {
     const selectedGoal = Boolean(goalScopeRequested);
     if (selectedGoal) {
       const unavailable = unavailableGoalScope();
