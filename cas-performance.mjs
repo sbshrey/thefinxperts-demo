@@ -73,6 +73,50 @@ export function statementXirr(scheme) {
   return Number.isFinite(annualPercent) ? Math.round(annualPercent * 100) / 100 : null;
 }
 
+/** Only purchases explicitly marked SIP within a detailed CAS period; no mandate inference. */
+export function statementSipPurchases(document, today = new Date()) {
+  if (document?.cas_type !== 'DETAILED' ||
+      !['CAMS', 'KFINTECH'].includes(document.file_type) ||
+      !Array.isArray(document.folios)) return null;
+  const from = document.statement_period?.from;
+  const to = document.statement_period?.to;
+  const firstDay = day(from);
+  const lastDay = day(to);
+  const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  if (firstDay === null || lastDay === null || firstDay > lastDay || to > indiaToday) return null;
+  let inspected = 0;
+  let count = 0;
+  let totalPaise = 0n;
+  let latestDate = null;
+  for (const folio of document.folios) {
+    if (!Array.isArray(folio?.schemes)) return null;
+    for (const scheme of folio.schemes) {
+      if (!Array.isArray(scheme?.transactions)) return null;
+      inspected += scheme.transactions.length;
+      if (inspected > 2000) return null;
+      for (const transaction of scheme.transactions) {
+        if (transaction?.type !== 'PURCHASE_SIP') continue;
+        const date = day(transaction.date);
+        const amount = positivePaise(transaction.amount);
+        if (date === null || date < firstDay || date > lastDay || amount === null ||
+            !(signedUnits(transaction.units) > 0n)) return null;
+        totalPaise += amount;
+        if (totalPaise > 100_000_000_000_000n) return null;
+        count++;
+        if (latestDate === null || transaction.date > latestDate) latestDate = transaction.date;
+      }
+    }
+  }
+  return count ? { from, to, latestDate, count, total: Number(totalPaise) / 100 } : null;
+}
+
+function positivePaise(value) {
+  if (typeof value !== 'string' || !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(value)) return null;
+  const [whole, fraction = ''] = value.split('.');
+  const paise = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+  return paise > 0n && paise <= 100_000_000_000_000n ? paise : null;
+}
+
 function positiveAmount(value) {
   if (typeof value !== 'string' || !/^\d+(?:\.\d+)?$/.test(value) ||
       /[1-9]/.test((value.split('.')[1] || '').slice(2))) return null;

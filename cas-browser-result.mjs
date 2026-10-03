@@ -1,4 +1,4 @@
-import { normalizeCasHoldings } from './cas-adapter.mjs?v=42cb3692c36c';
+import { normalizeCasHoldings } from './cas-adapter.mjs?v=cf5150899ee0';
 
 /** Keep only reviewed holdings, derived returns and count-safe messages across the worker boundary. */
 export function normalizeBrowserCasResult(parsed) {
@@ -12,5 +12,5 @@ export function normalizeBrowserCasResult(parsed) {
     holdings: normalized.holdings, errors: normalized.errors,
     notices: normalized.notices, combinedRows: normalized.combinedRows,
     ownershipUnverified: normalized.ownershipUnverified === true,
-    performance: normalized.performance };
+    performance: normalized.performance, sipSummary: normalized.sipSummary };
 }

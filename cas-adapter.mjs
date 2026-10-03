@@ -3,8 +3,8 @@
  * This boundary deliberately drops investor, PAN, folio, nominee and transaction data.
  * No PDF is parsed here; callers must use a separately verified CAS PDF parser.
  */
-import { statementXirr } from './cas-performance.mjs?v=42cb3692c36c';
-import { normalizeDematHoldings } from './demat-adapter.mjs?v=42cb3692c36c';
+import { statementSipPurchases, statementXirr } from './cas-performance.mjs?v=cf5150899ee0';
+import { normalizeDematHoldings } from './demat-adapter.mjs?v=cf5150899ee0';
 
 const MAX_PREVIEW_PERFORMANCE_TRANSACTIONS = 2000;
 
@@ -169,10 +169,12 @@ export function normalizeCasHoldings(document) {
     notices.push(`${visiblePerformance.length} of ${holdings.length} current schemes have enough simple, reconciled cash-flow history for an indicative statement-period money-weighted return. Unavailable returns stay unknown.`);
     if (performanceBudgetExceeded) notices.push('Some returns were left unavailable because the statement has too many transactions to calculate safely in this preview. Holdings are still shown.');
   }
+  const sipSummary = errors.length || ownershipUnverified ? null : statementSipPurchases(document);
+  if (sipSummary) notices.push(`This detailed CAS explicitly marks ${sipSummary.count} SIP purchase ${sipSummary.count === 1 ? 'entry' : 'entries'} totalling ₹${sipSummary.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from ${sipSummary.from} to ${sipSummary.to}; the latest marked entry is ${sipSummary.latestDate}. These are statement-period purchases, not proof of an active mandate, bank debits or complete SIP history.`);
   return { holdings: errors.length ? [] : holdings, errors, notices,
     combinedRows: errors.length ? 0 : combinedRows,
     ownershipUnverified,
-    performance: errors.length ? [] : visiblePerformance };
+    performance: errors.length ? [] : visiblePerformance, sipSummary };
 }
 
 function parseDecimal(value, places) {
