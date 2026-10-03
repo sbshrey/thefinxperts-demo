@@ -764,20 +764,24 @@ function renderReview() {
     });
     item.append(ask);
     const dateIssue = valuationDateIssue(row.asOf);
+    const canEstimate = Boolean(row.asOf &&
+      ((row.type === 'Mutual fund' && row.granularity !== 'fund_house' && row.units) ||
+        (row.type === 'Stock' && row.shares)));
     if (dateIssue) {
       const badge = document.createElement('span');
       badge.className = 'valuation-badge';
       badge.textContent = dateIssue === 'stale' ? 'Value over 90 days old · check a newer source' :
         dateIssue === 'future' ? 'Future value date · check the source' : 'Value date missing · check the source';
       item.append(badge);
-      if (state.account?.portfolio?.holdings?.length === rows.length) {
-        const action = document.createElement('button');
-        action.className = 'value-check-action';
-        action.type = 'button';
-        action.textContent = 'Check or update this value';
-        action.addEventListener('click', () => guideValueRefresh(index, row, dateIssue));
-        item.append(action);
-      }
+    }
+    if ((dateIssue || canEstimate) && state.account?.portfolio?.holdings?.length === rows.length) {
+      const action = document.createElement('button');
+      action.className = 'value-check-action';
+      action.type = 'button';
+      action.textContent = dateIssue ? 'Check or update this value' :
+        row.type === 'Mutual fund' ? 'Check newer NAV' : 'Check newer share price';
+      action.addEventListener('click', () => guideValueRefresh(index, row, dateIssue));
+      item.append(action);
     }
     holdings.append(item);
   }
