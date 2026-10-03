@@ -1,23 +1,23 @@
-import { analyzePortfolio, sampleHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=65491240e0a7';
-import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=65491240e0a7';
-import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=65491240e0a7';
+import { analyzePortfolio, sampleHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=356c52d3090e';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=356c52d3090e';
+import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=356c52d3090e';
 import { validateImportReview, validateImportMerge, findImportMergeConflicts, possibleManualDuplicate, isRepeatedActiveStatement,
-  planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs?v=65491240e0a7';
-import { prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=65491240e0a7';
-import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=65491240e0a7';
-import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=65491240e0a7';
-import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=65491240e0a7';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=65491240e0a7';
-import { buildReadableReport } from './readable-report.mjs?v=65491240e0a7';
-import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=65491240e0a7';
-import { validReserve, reserveMonths } from './reserve.mjs?v=65491240e0a7';
-import { contextNeedsReview } from './market-context.mjs?v=65491240e0a7';
-import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=65491240e0a7';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=65491240e0a7';
-import { chooseNextReviewStep } from './next-step.mjs?v=65491240e0a7';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=65491240e0a7';
-import { answerReviewQuestion } from './review-questions.mjs?v=65491240e0a7';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=65491240e0a7';
+  planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs?v=356c52d3090e';
+import { prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=356c52d3090e';
+import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=356c52d3090e';
+import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=356c52d3090e';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=356c52d3090e';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=356c52d3090e';
+import { buildReadableReport } from './readable-report.mjs?v=356c52d3090e';
+import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=356c52d3090e';
+import { validReserve, reserveMonths } from './reserve.mjs?v=356c52d3090e';
+import { contextNeedsReview } from './market-context.mjs?v=356c52d3090e';
+import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=356c52d3090e';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=356c52d3090e';
+import { chooseNextReviewStep } from './next-step.mjs?v=356c52d3090e';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=356c52d3090e';
+import { answerReviewQuestion } from './review-questions.mjs?v=356c52d3090e';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=356c52d3090e';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -1345,7 +1345,7 @@ $('#broker-read').addEventListener('click', async () => {
       brokerRows = parseBrokerCsvRows(await file.text());
       brokerSource = 'Broker CSV';
     } else if (file.name.toLowerCase().endsWith('.xlsx')) {
-      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=65491240e0a7');
+      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=356c52d3090e');
       brokerRows = await readBrokerWorkbook(file);
       brokerSource = 'Broker XLSX';
     } else throw new Error('Choose a broker holdings XLSX or CSV report.');
@@ -1723,7 +1723,7 @@ $('#preview-active').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Reading in this tab…';
   try {
-    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=65491240e0a7');
+    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=356c52d3090e');
     const result = await previewActiveStatementFile(file, password);
     if (result.errors.length) {
       $('#active-error').textContent = result.errors.slice(0, 5).join(' ');
@@ -1777,7 +1777,7 @@ $('#preview-cas').addEventListener('click', async () => {
     let result;
     let responseOk = true;
     if (casMode === 'browser') {
-      const { previewBrowserCas } = await import('./cas-browser.mjs?v=65491240e0a7');
+      const { previewBrowserCas } = await import('./cas-browser.mjs?v=356c52d3090e');
       result = await previewBrowserCas(file, password);
     } else {
       const bytes = new Uint8Array(await file.arrayBuffer());

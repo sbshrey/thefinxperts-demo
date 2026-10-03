@@ -1,4 +1,4 @@
-import { parseAmount } from './assistant-clarify.mjs?v=65491240e0a7';
+import { parseAmount } from './assistant-clarify.mjs?v=356c52d3090e';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -162,6 +162,19 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
         !Number.isInteger(target) || target < 1000 || target > 1_000_000_000_000)
       return { error: 'Check your own age, the goal horizon and the target amount in today’s rupees before saving.' };
     return { facts: { age, years, target } };
+  }
+  const scenarioBundle = /^monthly contribution(?: is)?\s+(.+?)\s*[,;]\s*growth assumption(?: is)?\s+(.+?)\s*[,;]\s*inflation assumption(?: is)?\s+(.+?)[.!]?$/i.exec(input);
+  if (scenarioBundle) {
+    const monthlyContribution = enteredAmount(scenarioBundle[1]);
+    const growth = /^(-?\d{1,2}(?:\.\d{1,2})?)%$/.exec(scenarioBundle[2].trim());
+    const inflation = /^(-?\d{1,2}(?:\.\d{1,2})?)%$/.exec(scenarioBundle[3].trim());
+    const returnPct = Number(growth?.[1]);
+    const inflationPct = Number(inflation?.[1]);
+    if (monthlyContribution === null || monthlyContribution > 100_000_000 ||
+        !growth || returnPct < -20 || returnPct > 13 ||
+        !inflation || inflationPct < -5 || inflationPct > 15)
+      return { error: 'Check all three inputs: your monthly contribution from ₹0 to ₹10 crore, growth assumption from -20% to 13%, and inflation assumption from -5% to 15%. These are your what-if inputs, not forecasts.' };
+    return { facts: { monthlyContribution, returnPct, inflationPct } };
   }
   if (/^clear goal mix[.!]?$/i.test(input)) return { facts: { targetMix: null } };
   const mixRequest = /^(?:(?:my )?(?:goal|target) mix|my chosen(?: goal)? mix)(?: is)?\s+(.+?)[.!]?$/i.exec(input);
