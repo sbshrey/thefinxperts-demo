@@ -1,7 +1,7 @@
 import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh,
-  planDematCasRefresh } from './import-review.mjs';
-import { removeHoldingAllocation } from './goals.mjs';
-import { rupees } from './assistant-import-audit.mjs';
+  planDematCasRefresh } from './import-review.mjs?v=bdc3c5a41d5b';
+import { removeHoldingAllocation } from './goals.mjs?v=bdc3c5a41d5b';
+import { rupees } from './assistant-import-audit.mjs?v=bdc3c5a41d5b';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const paise = rows => rows.reduce((total, row) => total + Math.round(row.value * 100), 0);

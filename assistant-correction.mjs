@@ -1,8 +1,8 @@
-import { parseAmount } from './assistant-clarify.mjs';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs';
-import { removeHoldingAllocation } from './goals.mjs';
-import { estimateNavValue, realDate } from './nav-estimate.mjs';
-import { estimateStockValue, validShares } from './stock-estimate.mjs';
+import { parseAmount } from './assistant-clarify.mjs?v=bdc3c5a41d5b';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=bdc3c5a41d5b';
+import { removeHoldingAllocation } from './goals.mjs?v=bdc3c5a41d5b';
+import { estimateNavValue, realDate } from './nav-estimate.mjs?v=bdc3c5a41d5b';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=bdc3c5a41d5b';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const indiaToday = today => new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
