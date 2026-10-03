@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=2a1028e6d02e';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=2a1028e6d02e';
-import { reserveMonths } from './reserve.mjs?v=2a1028e6d02e';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=65491240e0a7';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=65491240e0a7';
+import { reserveMonths } from './reserve.mjs?v=65491240e0a7';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=2a1028e6d02e';
-import { asksForAdvice } from './question-scope.mjs?v=2a1028e6d02e';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=2a1028e6d02e';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=2a1028e6d02e';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=2a1028e6d02e';
-import { parseAmount } from './assistant-clarify.mjs?v=2a1028e6d02e';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=2a1028e6d02e';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=65491240e0a7';
+import { asksForAdvice } from './question-scope.mjs?v=65491240e0a7';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=65491240e0a7';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=65491240e0a7';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=65491240e0a7';
+import { parseAmount } from './assistant-clarify.mjs?v=65491240e0a7';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=65491240e0a7';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=2a1028e6d02e';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=65491240e0a7';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -940,6 +940,26 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       (fund ? ` If you checked the exact scheme NAV and still own its ${fund.units} statement units, say “set NAV of holding ${holdings.indexOf(fund) + 1} to ₹125.4321 as of YYYY-MM-DD” to preview a dated estimate.` : ''),
       result.asOfSummary,
       'A recent statement value may still differ from the current market value. An entered NAV times old units is only an estimate until you confirm the units have not changed.', '#holdings', 'Check entered dates');
+  }
+  const incomeGap = /^what if i (?:lost|lose|had no) (?:my )?(?:income|salary|pay) for (\d{1,2}) months?[?.!]*$/.exec(input) ||
+    /^could (?:my )?(?:reserve|emergency fund|emergency buffer) cover (\d{1,2}) months?(?: without income)?[?.!]*$/.exec(input);
+  if (incomeGap) {
+    const months = Number(incomeGap[1]);
+    if (months < 1 || months > 36) return answer(
+      'Choose a period from 1 to 36 months for this arithmetic what-if, such as “What if I had no income for 6 months?”',
+      'No valid period was supplied.',
+      'The period is your own scenario, not a reserve target chosen by this review.', '#goals', 'Choose a period');
+    if (reserveMonths(reserve) === null) return answer(
+      `For a ${months}-month income-gap check, first enter monthly essentials and accessible money outside these holdings, then confirm both totals.`,
+      'The review does not have both separate reserve totals needed for this calculation.',
+      'Investment holding values are not assumed to be accessible cash.', '#goals', 'Add separate reserve totals');
+    const expenses = reserve.monthlyEssentials * months;
+    const difference = reserve.accessibleMoney - expenses;
+    return answer(`For ${months} months without income, your entered ${money(reserve.monthlyEssentials)} monthly essentials total ${money(expenses)}. Your entered ${money(reserve.accessibleMoney)} accessible money outside holdings would ${difference < 0 ?
+      `be short by ${money(-difference)}` : `leave ${money(difference)}`} by subtraction.`,
+      `${money(reserve.monthlyEssentials)} × ${months} months = ${money(expenses)} essential spending; ${money(reserve.accessibleMoney)} separate accessible money minus ${money(expenses)} = ${difference < 0 ? '-' : ''}${money(Math.abs(difference))}. No holding value was counted.`,
+      'This fixed-spending what-if assumes no other income and does not verify access to the money. Other costs, debt payments and changing expenses are not included. It is not a reserve target or personal advice.',
+      'https://investor.sebi.gov.in/moneymatters-inc-exp.html', 'Read SEBI emergency-fund context');
   }
   if (/\b(?:reserve|emergency buffer|emergency fund)\b/.test(input)) {
     const months = reserveMonths(reserve);
