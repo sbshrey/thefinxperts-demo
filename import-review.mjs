@@ -63,23 +63,34 @@ export function validateImportMerge(existing, incoming) {
   if (!Number.isFinite(total) || total > 1_000_000_000_000)
     return ['The combined portfolio value is too large.'];
   for (const [index, added] of incoming.entries()) {
+    let conflict = null;
     for (const current of existing) {
-      if (added.isin && current.isin && added.isin === current.isin)
-        return [`Holding ${index + 1}: this ISIN already appears in your review. Check the two sources before adding it.`];
+      if (added.isin && current.isin && added.isin === current.isin) {
+        conflict = `Holding ${index + 1}: this ISIN already appears in your review. Check the two sources before adding it.`;
+        break;
+      }
       if (added.type === 'Mutual fund' && current.type === 'Mutual fund' &&
-          added.amfi && current.amfi && added.amfi === current.amfi)
-        return [`Holding ${index + 1}: this AMFI scheme code already appears in your review. Check the two sources before adding it.`];
+          added.amfi && current.amfi && added.amfi === current.amfi) {
+        conflict = `Holding ${index + 1}: this AMFI scheme code already appears in your review. Check the two sources before adding it.`;
+        break;
+      }
       const sameName = typeof added.name === 'string' && typeof current.name === 'string' &&
         added.name.trim().toLocaleLowerCase('en-IN') === current.name.trim().toLocaleLowerCase('en-IN');
-      if (sameName && added.type === current.type)
-        return [`Holding ${index + 1}: a holding with this name already appears in your review. Check for duplicate positions.`];
+      if (sameName && added.type === current.type) {
+        conflict = `Holding ${index + 1}: a holding with this name already appears in your review. Check for duplicate positions.`;
+        break;
+      }
       if (added.type === 'Mutual fund' && current.type === 'Mutual fund' &&
           (added.granularity === 'fund_house' || current.granularity === 'fund_house') &&
-          (!added.amc || !current.amc || added.amc.trim().toLocaleLowerCase('en-IN') === current.amc.trim().toLocaleLowerCase('en-IN')))
-        return [`Holding ${index + 1}: a fund-house summary could already include this fund. Add direct stocks separately or replace the review.`];
+          (!added.amc || !current.amc || added.amc.trim().toLocaleLowerCase('en-IN') === current.amc.trim().toLocaleLowerCase('en-IN'))) {
+        conflict = `Holding ${index + 1}: a fund-house summary could already include this fund. Add direct stocks separately or replace the review.`;
+        break;
+      }
     }
+    if (conflict) errors.push(conflict);
+    if (errors.length >= 5) break;
   }
-  return [];
+  return errors;
 }
 
 /** A manual row may be a separate account position, but an exact match needs investor confirmation. */
