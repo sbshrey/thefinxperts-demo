@@ -209,6 +209,7 @@ body{margin:0}
 body[data-mode="browser-only"] .messages{padding-top:8px;padding-bottom:8px}
 body[data-mode="browser-only"] .panel-heading p{display:none}
 body[data-mode="browser-only"] .mobile-data-link{display:inline-block;margin-top:3px;font-size:11px}
+.suggested-questions button[data-guided-question="Which of my funds say Regular or Direct Plan?"],.suggested-questions button[data-guided-question="Am I on track?"],.suggested-questions button[data-guided-question="What is my goal gap?"]{display:none}
 .top-actions{gap:7px}
 .top-actions>.quiet{padding:8px 9px;white-space:nowrap;font-size:12px}
 .tools-toggle{display:block;border:1px solid #aacbb5;border-radius:9px;background:#f5faf5;color:#174d3f;padding:8px 10px;font:700 12px Arial,Helvetica,sans-serif;cursor:pointer}
@@ -219,5 +220,5 @@ body[data-mode="browser-only"] .mobile-data-link{display:inline-block;margin-top
 .tools-items>.quiet:hover{background:#edf5ee}
 .tools-items>.quiet:disabled{opacity:.5}
 }
-@media(max-width:360px){.suggested-questions button[data-guided-question="Which of my funds say Regular or Direct Plan?"],.suggested-questions button[data-guided-question="Goal readiness"]{display:none}}
-@media(max-height:600px){.workspace{grid-template-rows:minmax(0,1fr) minmax(125px,22dvh)}.panel-heading{padding:8px 12px 7px}.panel-heading .eyebrow{display:none}.panel-heading h1{margin:0;font-size:18px}.starter-actions{width:100%;margin:0;padding:0;border:0;background:transparent;gap:0}.starter-actions strong,.starter-actions small,.starter-actions button:not(:first-of-type){display:none}.starter-actions button:first-of-type{width:100%;text-align:center;padding:9px 10px}}
+@media(max-width:360px){.suggested-questions button[data-guided-question="How diversified am I?"]{display:none}}
+@media(max-height:600px){.workspace{grid-template-rows:minmax(0,1fr) minmax(125px,22dvh)}.panel-heading{padding:8px 12px 7px}.panel-heading .eyebrow{display:none}.panel-heading h1{margin:0;font-size:18px}.starter-actions{width:100%;margin:0;padding:0;border:0;background:transparent;gap:0}.starter-actions strong,.starter-actions small,.starter-actions button:not(:first-of-type):not(#starter-describe){display:none}.starter-actions button:first-of-type,.starter-actions #starter-describe{width:100%;text-align:center;padding:9px 10px}}

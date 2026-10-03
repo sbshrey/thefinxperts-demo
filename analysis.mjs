@@ -324,11 +324,25 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       limitation: 'An imported ISIN is not registry-verified, and a fund count does not prove overlap; current scheme holdings are needed to compare companies.' });
   }
   if (findings.length === 0 && total > 0) {
+    const hasStock = valid.some(holding => holding.type === 'Stock');
+    const hasOther = valid.some(holding => holding.type === 'Other investment');
+    const detail = fundValue ?
+      'A holdings snapshot shows composition, but transactions and current fund disclosures are needed for performance and precise overlap.' :
+      hasStock && hasOther ?
+        'This snapshot shows dated stock and other-investment values. Broker records and product statements are needed to check current positions, access terms and performance.' :
+        hasStock ?
+          'This snapshot shows dated stock values. Check current settled shares and transaction history against broker records before calculating performance.' :
+          'This snapshot shows manually entered other-investment values. Check a current statement and withdrawal or maturity terms before counting them toward a goal.';
+    const question = fundValue ? 'Which missing statement or fund disclosure would answer your next portfolio question?' :
+      hasStock && hasOther ? 'Which broker report or product statement would check these values and access terms?' :
+        hasStock ? 'Which broker holdings report or transaction history can check these shares and costs?' :
+          'Which statement and product terms establish this balance and when it can be used?';
     findings.push({ key: 'review', tone: 'blue', label: 'Next review', title: 'Check the missing details',
-      detail: 'A holdings snapshot shows composition, but transactions and current fund disclosures are needed for performance and precise overlap.',
-      question: 'Which missing statement or fund disclosure would answer your next portfolio question?',
+      detail, question,
       basis: `Calculated composition from ${valid.length} entered holding ${valid.length === 1 ? 'value' : 'values'}; no other rule yielded a priority review item.`,
-      limitation: 'A snapshot has no transaction history or verified fund constituents, so performance and precise overlap remain unknown.' });
+      limitation: fundValue ?
+        'A snapshot has no transaction history or verified fund constituents, so performance and precise overlap remain unknown.' :
+        'Entered balances and dates are not independently verified. This snapshot has no complete transaction history or proof that every position and access term is current.' });
   }
 
   return {

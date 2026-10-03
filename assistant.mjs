@@ -607,7 +607,7 @@ function renderReview() {
   const selectedGoal = state.account?.portfolio?.goals?.find(goal =>
     goal.id === state.account.portfolio.activeGoalId);
   $('#count').closest('.stat-grid').hidden = !rows.length;
-  $('#goal-card').hidden = !rows.length && (!selectedGoal || isEmptyGoalPlaceholder(selectedGoal));
+  $('#goal-card').hidden = !selectedGoal || isEmptyGoalPlaceholder(selectedGoal);
   $('#asset-bars').closest('.section-card').hidden = !rows.length;
   $('#holding-list').closest('.section-card').hidden = !rows.length;
   const inflationCard = $('#inflation-context');
@@ -1664,6 +1664,14 @@ $('#message').addEventListener('keydown', event => {
 $('#report-help-open')?.addEventListener('click', () => $('#report-help-dialog').showModal());
 $('#report-help-close')?.addEventListener('click', () => $('#report-help-dialog').close());
 $('#starter-upload')?.addEventListener('click', () => $('#upload').click());
+$('#starter-describe')?.addEventListener('click', () => {
+  if (state.busy || state.drafts.length || state.file || $('#message').value.trim()) {
+    say('note', 'Finish the selected file, possible holdings or draft message before describing another investment.');
+    return;
+  }
+  say('assistant', 'Start with one investment. Say “I own a mutual fund called NAME” or “I own a stock called NAME” using its actual name. I will ask for its total value, a value date, and any missing category before you confirm it. You can also name NPS, EPF, PPF, a deposit or gold. Leave out account numbers and PAN.');
+  $('#message').focus();
+});
 $('#upload-trigger')?.addEventListener('click', () => $('#upload').click());
 $('#starter-open')?.addEventListener('click', () => {
   if (deviceRecord()) $('#device-review-action').click();
