@@ -13,15 +13,15 @@
  *   cdsl.js            CDSL
  */
 
-import { CASFileType, FileType } from '../enums.js?v=607f6560b525';
-import { CASParseError } from '../exceptions.js?v=607f6560b525';
-import { CASData, NSDLCASData } from '../types.js?v=607f6560b525';
-import { Decimal, ZERO } from '../decimal.js?v=607f6560b525';
-import { asDate } from '../dates.js?v=607f6560b525';
-import { batchEquitySymbols, batchIsinMetadata } from '../isin.js?v=607f6560b525';
-import { resolveBackend } from '../pdf/backend.js?v=607f6560b525';
-import { detectCasType, detectFileType } from './detect.js?v=607f6560b525';
-import { cas2csv, cas2json } from './utils.js?v=607f6560b525';
+import { CASFileType, FileType } from '../enums.js?v=d6a7378c871b';
+import { CASParseError } from '../exceptions.js?v=d6a7378c871b';
+import { CASData, NSDLCASData } from '../types.js?v=d6a7378c871b';
+import { Decimal, ZERO } from '../decimal.js?v=d6a7378c871b';
+import { asDate } from '../dates.js?v=d6a7378c871b';
+import { batchEquitySymbols, batchIsinMetadata } from '../isin.js?v=d6a7378c871b';
+import { resolveBackend } from '../pdf/backend.js?v=d6a7378c871b';
+import { detectCasType, detectFileType } from './detect.js?v=d6a7378c871b';
+import { cas2csv, cas2json } from './utils.js?v=d6a7378c871b';
 
 /**
  * Sorts each scheme's transactions by date and recomputes the running balance from the
@@ -143,10 +143,10 @@ export async function readCasPdf(source, password = '', options = {}) {
     if (fileType === FileType.CAMS || fileType === FileType.KFINTECH) {
       const casType = await detectCasType(document);
       if (casType === CASFileType.DETAILED) {
-        const { parse } = await import('./cams_detailed.js?v=607f6560b525');
+        const { parse } = await import('./cams_detailed.js?v=d6a7378c871b');
         data = await parse(document, fileType);
       } else if (casType === CASFileType.SUMMARY) {
-        const { parse } = await import('./cams_summary.js?v=607f6560b525');
+        const { parse } = await import('./cams_summary.js?v=d6a7378c871b');
         data = await parse(document, fileType);
       } else {
         throw new CASParseError(
@@ -155,10 +155,10 @@ export async function readCasPdf(source, password = '', options = {}) {
       }
       if (shouldSort && data instanceof CASData) data = sortTransactions(data);
     } else if (fileType === FileType.NSDL) {
-      const { parseNsdl } = await import('./nsdl.js?v=607f6560b525');
+      const { parseNsdl } = await import('./nsdl.js?v=d6a7378c871b');
       data = await parseNsdl(document, FileType.NSDL);
     } else if (fileType === FileType.CDSL) {
-      const { parseCdsl } = await import('./cdsl.js?v=607f6560b525');
+      const { parseCdsl } = await import('./cdsl.js?v=d6a7378c871b');
       data = await parseCdsl(document, FileType.CDSL);
     } else {
       throw new CASParseError(`Unsupported file type: ${fileType}`);

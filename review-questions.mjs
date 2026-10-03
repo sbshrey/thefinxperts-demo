@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=607f6560b525';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=607f6560b525';
-import { reserveMonths } from './reserve.mjs?v=607f6560b525';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=d6a7378c871b';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=d6a7378c871b';
+import { reserveMonths } from './reserve.mjs?v=d6a7378c871b';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=607f6560b525';
-import { asksForAdvice } from './question-scope.mjs?v=607f6560b525';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=607f6560b525';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=607f6560b525';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=607f6560b525';
-import { parseAmount } from './assistant-clarify.mjs?v=607f6560b525';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=607f6560b525';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=d6a7378c871b';
+import { asksForAdvice } from './question-scope.mjs?v=d6a7378c871b';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=d6a7378c871b';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=d6a7378c871b';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=d6a7378c871b';
+import { parseAmount } from './assistant-clarify.mjs?v=d6a7378c871b';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=d6a7378c871b';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=607f6560b525';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=d6a7378c871b';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -494,13 +494,21 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   }
   const oneChosenEquityFall = /\bequity\b/.test(input) &&
     (input.match(/\d+(?:\.\d+)?\s*%/g) || []).length === 1;
-  const wholePortfolioFall = (/\b(?:portfolio|holdings|investments)\b/.test(input) || oneChosenEquityFall) &&
+  const namesDirectStocks = /\b(?:my|direct|held)\s+(?:equity\s+)?(?:stocks?|shares?)\b|\b(?:stocks?|shares?)\s+(?:i|we)\s+(?:own|hold)\b/.test(input);
+  const oneChosenStockFall = namesDirectStocks && (input.match(/\d+(?:\.\d+)?\s*%/g) || []).length === 1;
+  const oneChosenMarketFall = /\bstock market\b/.test(input) && (input.match(/\d+(?:\.\d+)?\s*%/g) || []).length === 1;
+  const wholePortfolioFall = (/\b(?:portfolio|holdings|investments)\b/.test(input) || oneChosenEquityFall || oneChosenStockFall || oneChosenMarketFall) &&
     /\b(?:fall|falls|fell|drop|drops|dropped)\b/.test(input) &&
     /\b(?:what if|if|test|simulate)\b/.test(input) &&
     !/\b(?:largest|biggest|single|one holding|one position)\b/.test(input);
   if (wholePortfolioFall) {
     const scoped = Boolean(goalScopeRequested);
-    const equityOnly = /\b(?:equity|stocks?|stock market)\b/.test(input);
+    const directStockOnly = namesDirectStocks && !/\bstock market\b|\bequity\s+(?:mutual\s+)?funds?\b/.test(input);
+    const equityOnly = !directStockOnly && /\bequity\b/.test(input);
+    if (!equityOnly && !directStockOnly && /\b(?:stocks?|shares?|stock market)\b/.test(input))
+      return answer('Do you mean a hypothetical fall in only your directly held stocks, or in every entered holding labelled Equity, including equity mutual funds? Name one group and your chosen percentage, for example “What if my direct stocks fell 20%?”',
+        'Directly held stocks and Equity-labelled mutual funds are different parts of the entered review; a broad market move does not tell us how much each holding would change.',
+        'This question needs a chosen group and percentage for one-time arithmetic; it cannot predict how investments respond to a market move.', '#holdings', 'Review entered groups');
     if (scoped) {
       const unavailable = unavailableGoalScope();
       if (unavailable) return unavailable;
@@ -528,7 +536,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       return answer(`Check when the ${money(result.goalAccessCheck.value)} assigned from other investments can be used for ${goal.name} before applying a fall to its goal value.`,
         `${result.goalAccessCheck.count} linked other-investment ${result.goalAccessCheck.count === 1 ? 'row has' : 'rows have'} unverified access for this goal.`,
         'A gross balance may not be available when the goal arrives; this calculation is paused rather than treating it as spendable.', '#holdings', 'Check access terms');
-    if (equityOnly) {
+    if (equityOnly || directStockOnly) {
       const labelsByIsin = new Map();
       for (const row of rows) {
         if (!/^[A-Z]{2}[A-Z0-9]{10}$/.test(row.isin || '')) continue;
@@ -537,23 +545,32 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         labelsByIsin.set(row.isin, labels);
       }
       if ([...labelsByIsin.values()].some(labels => labels.size > 1))
-        return answer('Check the conflicting type or asset labels on rows with the same supplied ISIN before applying an equity fall.',
+        return answer('Check the conflicting type or asset labels on rows with the same supplied ISIN before applying this fall.',
           'At least one supplied ISIN has different classifications in this review.',
           'The Equity portion cannot be trusted until those source labels are checked.', '#holdings', 'Check identifiers');
     }
     const equity = assets.Equity;
+    const directStocks = rows.filter(row => row.type === 'Stock').reduce((sum, row) => sum + Number(row.value), 0);
+    if (directStockOnly && rows.some(row => row.type === 'Stock' && row.asset !== 'Equity'))
+      return answer('Check the asset label of your directly held stock before testing its fall. A stock row here is not labelled Equity.',
+        `${rows.filter(row => row.type === 'Stock' && row.asset !== 'Equity').length} direct-stock row has a conflicting asset label.`,
+        'The entered category needs source review before this group can be described as direct-stock equity.', '#holdings', 'Check stock labels');
+    if (directStockOnly && !directStocks) return answer('No directly held stock value is entered for this review scope. Add or assign a current broker holding before testing a direct-stock fall.',
+      `${money(total)} ${scoped ? 'assigned' : 'entered'} value; ${money(directStocks)} in direct-stock rows.`,
+      `This does not establish whether you own stocks outside the review. ${coverageNote}`, '#holdings', 'Check stock holdings');
     if (equityOnly && !equity) return answer('No entered value is labelled Equity, so this review cannot show an equity-loss amount for your holdings. Check any rows labelled Other against their source.',
       `${money(total)} ${scoped ? 'assigned' : 'entered'} value; ${money(equity)} labelled Equity; ${result.asOfSummary}.`,
       `An Other label may conceal equity exposure; fund constituents and investments outside this review are unknown. ${coverageNote}`, '#holdings', 'Check asset labels');
-    const movedValue = equityOnly ? equity : total;
+    const movedValue = directStockOnly ? directStocks : equityOnly ? equity : total;
     const loss = movedValue * dropPct / 100;
     const after = total - loss;
     const gap = scoped ? ` The gap to ${goal.name}'s entered target in today's rupees would be ${money(Math.max(0, Number(goal.target) - after))}.` : '';
     return answer(scoped ?
-      `If ${equityOnly ? 'the assigned value labelled Equity' : 'every assigned holding value'} for ${goal.name} fell ${dropPct}% once${equityOnly ? ' while its other asset labels stayed fixed' : ''}, its assigned value would fall by ${money(loss)} to ${money(after)} (${percent(loss, total)} lower).${gap}` : equityOnly ?
+      `If ${directStockOnly ? 'the assigned direct-stock value' : equityOnly ? 'the assigned value labelled Equity' : 'every assigned holding value'} for ${goal.name} fell ${dropPct}% once${directStockOnly ? ' while all other holdings stayed fixed' : equityOnly ? ' while its other asset labels stayed fixed' : ''}, its assigned value would fall by ${money(loss)} to ${money(after)} (${percent(loss, total)} lower).${gap}` : directStockOnly ?
+      `If only your entered directly held stocks fell ${dropPct}% once while all other holdings stayed fixed, this entered portfolio would fall by ${money(loss)} to ${money(after)} (${percent(loss, result.total)} lower).` : equityOnly ?
       `If all entered value labelled Equity fell ${dropPct}% once while Debt, Gold and Other values stayed fixed, this entered portfolio would fall by ${money(loss)} to ${money(after)} (${percent(loss, result.total)} lower).` :
       `If every entered holding value fell ${dropPct}% once, this entered portfolio would fall by ${money(loss)} to ${money(after)} (${percent(loss, result.total)} lower).`,
-      `${money(movedValue)} ${equityOnly ? 'labelled Equity' : scoped ? 'across assigned holdings' : 'across all entered holdings'} × ${dropPct}% = ${money(loss)} hypothetical loss; ${money(total)} ${scoped ? 'assigned' : 'entered'} value − ${money(loss)} = ${money(after)}. ${result.asOfSummary}.`,
+      `${money(movedValue)} ${directStockOnly ? 'in direct-stock rows' : equityOnly ? 'labelled Equity' : scoped ? 'across assigned holdings' : 'across all entered holdings'} × ${dropPct}% = ${money(loss)} hypothetical loss; ${money(total)} ${scoped ? 'assigned' : 'entered'} value − ${money(loss)} = ${money(after)}. ${result.asOfSummary}.`,
       `This is one-time arithmetic from supplied dated values${scoped ? " against your goal target in today's rupees" : ''}, not a forecast, stress limit, suitability verdict or trade instruction. ${equityOnly ? 'Other labels may conceal equity, and ' : ''}Fund constituents, other price moves, taxes and unentered holdings are unknown. ${coverageNote}`, scoped ? '#goals' : '#holdings', scoped ? 'Review selected goal' : 'Review entered mix');
   }
   const holdingDetail = /^(?:review|show|describe|inspect|check|tell me about)\s+holding\s*#?(\d{1,4})[?.!]*$/.exec(input);
