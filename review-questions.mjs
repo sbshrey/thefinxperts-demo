@@ -154,6 +154,10 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
   const asksGoalHorizon = /\bhow (?:many|long)\s+years?\s+(?:until|till|to|before)\b/.test(input) &&
     /\b(?:goal|retir\w*)\b/.test(input);
   if (asksAgeAtGoal || asksGoalHorizon) {
+    if (/\bretir\w*\b/.test(input) && !/\bretir\w*\b/i.test(goal?.name || ''))
+      return answer(`The selected goal is ${goal?.name || 'unfinished'}, not Retirement. Select or create your retirement goal before asking for its age or time horizon.`,
+        'Only the selected goal’s confirmed age and horizon are available to this answer.',
+        'Using another goal’s horizon would give the wrong retirement age.', '#goals', 'Select retirement goal');
     const age = Number(goal?.age);
     const years = Number(goal?.years);
     if (goal?.confirmed !== true || !Number.isInteger(age) || age < 18 || age > 100 ||
