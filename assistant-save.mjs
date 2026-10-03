@@ -1,5 +1,6 @@
-import { validShares } from './stock-estimate.mjs?v=b9d80b022f0d';
-import { validCostBasis } from './cost-basis.mjs?v=b9d80b022f0d';
+import { validShares } from './stock-estimate.mjs?v=21e3efb3b75f';
+import { validCostBasis } from './cost-basis.mjs?v=21e3efb3b75f';
+import { npsTier } from './account-label.mjs?v=21e3efb3b75f';
 
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const SOURCES = new Set(['manual', 'active_statement', 'broker_csv', 'broker_xlsx', 'simple_csv', 'cas', 'demat_cas', 'epfo_passbook', 'nps_statement']);
@@ -50,6 +51,13 @@ export function findAssistantOverlap(existing, draft, { allowComplementarySummar
     if (!row || typeof row.name !== 'string') continue;
     if (row.type === draft.type && key(row) === key(draft)) return { existingName: row.name, reason: 'name' };
     if (isin && row.isin === isin) return { existingName: row.name, reason: 'ISIN' };
+    if (row.type === 'Other investment' && draft.type === 'Other investment' &&
+        (row.entryOrigin === 'nps_statement') !== (draft.entryOrigin === 'nps_statement')) {
+      const oldTier = npsTier(row.name), nextTier = npsTier(draft.name);
+      if (oldTier && nextTier && !(oldTier === 'one' && nextTier === 'two') &&
+          !(oldTier === 'two' && nextTier === 'one'))
+        return { existingName: row.name, reason: 'possible NPS account' };
+    }
     if (row.type === 'Mutual fund' && draft.type === 'Mutual fund') {
       if (draft.amfi && row.amfi && draft.amfi === row.amfi)
         return { existingName: row.name, reason: 'AMFI code' };

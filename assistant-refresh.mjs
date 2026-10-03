@@ -1,7 +1,8 @@
 import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh,
-  planDematCasRefresh } from './import-review.mjs?v=b9d80b022f0d';
-import { removeHoldingAllocation } from './goals.mjs?v=b9d80b022f0d';
-import { rupees } from './assistant-import-audit.mjs?v=b9d80b022f0d';
+  planDematCasRefresh } from './import-review.mjs?v=21e3efb3b75f';
+import { removeHoldingAllocation } from './goals.mjs?v=21e3efb3b75f';
+import { rupees } from './assistant-import-audit.mjs?v=21e3efb3b75f';
+import { npsTier } from './account-label.mjs?v=21e3efb3b75f';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const paise = rows => rows.reduce((total, row) => total + Math.round(row.value * 100), 0);
@@ -56,9 +57,31 @@ export function prepareAssistantNpsRefresh(saved, incoming) {
       !Number.isFinite(incoming.value) || incoming.value <= 0 || incoming.value > 10_000_000_000 ||
       !realDate(incoming.asOf)) return null;
   const matches = saved.holdings.filter(row => row.name === incoming.name);
-  if (!matches.length) return null;
-  const current = matches[0];
-  if (matches.length !== 1 || current.entryOrigin !== 'nps_statement' ||
+  const possibleTierOne = saved.holdings.filter(row => row.type === 'Other investment' &&
+    npsTier(row.name) !== null && npsTier(row.name) !== 'two');
+  if (!matches.length && !possibleTierOne.length) return null;
+  if (matches.length > 1 || possibleTierOne.length > 1 ||
+      (matches.length && possibleTierOne[0] !== matches[0]))
+    return { errors: ['This review has more than one possible NPS Tier I row. Check which account each covers before importing; no value changed.'] };
+  const current = matches[0] || possibleTierOne[0];
+  if (!matches.length) {
+    if (npsTier(current.name) !== 'one' ||
+        ![undefined, 'manual'].includes(current.entryOrigin) ||
+        current.asset !== 'Other' || typeof current.id !== 'string' || !current.id ||
+        !Number.isFinite(current.value) || current.value <= 0 ||
+        (current.asOf != null && !realDate(current.asOf)))
+      return { errors: ['A saved NPS row may overlap this statement, but its tier or source is unclear. Check that row before importing; no value changed.'] };
+    if (current.asOf && incoming.asOf < current.asOf)
+      return { errors: ['This NPS statement is older than the manually entered value. Check the dates before replacing it; no value changed.'] };
+    const portfolio = structuredClone(saved);
+    portfolio.holdings = portfolio.holdings.map(row => row.id === current.id ?
+      { ...incoming, id: current.id } : row);
+    return { portfolio, errors: [], kind: 'nps', replacesManual: true,
+      changes: [`Replace ${current.name}: ${money(current.value)} (${current.asOf || 'date unknown'}) → ${incoming.name}: ${money(incoming.value)} (${incoming.asOf})`],
+      description: `Replace one manually entered NPS Tier I row with the dated statement preview. Check that both describe the same PRAN and Tier I balance, and that the manual row did not include Tier II or another account. The entered value changes from ${money(current.value)} (${current.asOf || 'date unknown'}) to ${money(incoming.value)} (${incoming.asOf}); it is not added a second time. The holding's goal links stay. If you cannot confirm the same account, discard this change. Verify every statement scheme and the total; the asset mix and goal access remain unknown.`,
+      result: 'The checked NPS Tier I statement replaced the manual row without adding another holding. Its goal links stayed; verify the dated balance against the original.' };
+  }
+  if (current.entryOrigin !== 'nps_statement' ||
       current.type !== 'Other investment' || current.asset !== 'Other' ||
       typeof current.id !== 'string' || !current.id || !realDate(current.asOf) ||
       !Number.isFinite(current.value) || current.value <= 0)
