@@ -9,6 +9,7 @@ body{margin:0}
 .mark{text-decoration:none}
 .beta{font-size:10px;letter-spacing:.1em;color:#52766c;background:#e8f4ec;padding:7px 9px;border-radius:99px}
 .quiet{border:0;background:transparent;color:#376356;font:inherit;cursor:pointer}
+.detailed-link{text-decoration:none}
 .top-actions{position:relative;display:flex;align-items:center;gap:12px;font-size:13px}
 .tools-toggle{display:none}
 .tools-items{display:flex;align-items:center;gap:12px}

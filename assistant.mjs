@@ -260,7 +260,7 @@ function sayDetailedHandoff(message, source) {
   const item = say('note', `${message} Select the file again there; it stays on your device and is not carried between tabs.${state.confirmed.length ? ' If you need the holdings already confirmed here, save a private review file and open it in the detailed review first.' : ''}`);
   const link = document.createElement('a');
   link.className = 'detailed-handoff';
-  link.href = `./index.html?import=${source}#input-choice`;
+  link.href = `./detailed-review.html?import=${source}#input-choice`;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
   link.textContent = 'Open detailed review ↗';
