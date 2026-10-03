@@ -151,6 +151,13 @@ const validValueDate = (value, todayIso) => {
   const date = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value && value <= todayIso;
 };
+/** Old source dates cannot support a present issuer exposure view. */
+export function datedSourceIssue(value, todayIso, maxAgeDays = 90) {
+  if (!validValueDate(todayIso, todayIso) || !validValueDate(value, todayIso) ||
+      !Number.isInteger(maxAgeDays) || maxAgeDays < 1) return 'invalid';
+  const ageDays = (Date.parse(`${todayIso}T00:00:00Z`) - Date.parse(`${value}T00:00:00Z`)) / 86_400_000;
+  return ageDays > maxAgeDays ? 'stale' : null;
+}
 const roundPaise = value => Math.round(value * 100) / 100;
 
 /** Dated, identified portion of entered portfolio value; unmatched value remains unknown. */
@@ -161,16 +168,16 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
   const total = rows.reduce((sum, row) => sum + row.value, 0);
   const latestByScheme = new Map();
   for (const disclosure of disclosures) {
-    if (disclosure?.scope !== 'listed_equity' || !validValueDate(disclosure.asOf, todayIso)) continue;
+    if (disclosure?.scope !== 'listed_equity' || datedSourceIssue(disclosure.asOf, todayIso)) continue;
     const key = disclosureSchemeKey(disclosure);
     const previous = latestByScheme.get(key);
     if (!previous || disclosure.asOf > previous.asOf) latestByScheme.set(key, disclosure);
   }
   const matched = [...latestByScheme.values()].flatMap(disclosure => {
-    const match = disclosure?.scope === 'listed_equity' && validValueDate(disclosure.asOf, todayIso) ?
+    const match = disclosure?.scope === 'listed_equity' && !datedSourceIssue(disclosure.asOf, todayIso) ?
       matchFundDisclosure(disclosure, rows) : null;
     return match ? [{ disclosure, holdings: match.matches.filter(row =>
-      validValueDate(row.asOf, todayIso)) }] : [];
+      !datedSourceIssue(row.asOf, todayIso)) }] : [];
   }).filter(source => source.holdings.length);
   const byIsin = new Map();
   const visibleIsins = new Set();
@@ -195,7 +202,7 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
   let directCovered = 0;
   const directDates = new Set();
   for (const row of rows) {
-    if (row.type !== 'Stock' || !validValueDate(row.asOf, todayIso) ||
+    if (row.type !== 'Stock' || datedSourceIssue(row.asOf, todayIso) ||
         !visibleIsins.has(row.isin)) continue;
     const exposure = byIsin.get(row.isin);
     exposure.directValue += row.value;

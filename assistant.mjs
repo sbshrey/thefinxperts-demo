@@ -1,43 +1,43 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=d4e06b84f22c';
-import { previewBrowserCas } from './cas-browser.mjs?v=d4e06b84f22c';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=d4e06b84f22c';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=d4e06b84f22c';
-import { goalShare } from './goals.mjs?v=d4e06b84f22c';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=03fe4f2cff52';
+import { previewBrowserCas } from './cas-browser.mjs?v=03fe4f2cff52';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=03fe4f2cff52';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=03fe4f2cff52';
+import { goalShare } from './goals.mjs?v=03fe4f2cff52';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=d4e06b84f22c';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=d4e06b84f22c';
-import { previewAssistantImport } from './assistant-import.mjs?v=d4e06b84f22c';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=d4e06b84f22c';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=d4e06b84f22c';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=03fe4f2cff52';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=03fe4f2cff52';
+import { previewAssistantImport } from './assistant-import.mjs?v=03fe4f2cff52';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=03fe4f2cff52';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=03fe4f2cff52';
 import { analyzePortfolio, freshFictionalHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=d4e06b84f22c';
-import { buildReadableReport } from './readable-report.mjs?v=d4e06b84f22c';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=d4e06b84f22c';
-import { parseReviewBackup } from './review-backup.mjs?v=d4e06b84f22c';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=d4e06b84f22c';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=d4e06b84f22c';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=d4e06b84f22c';
-import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=d4e06b84f22c';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=03fe4f2cff52';
+import { buildReadableReport } from './readable-report.mjs?v=03fe4f2cff52';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=03fe4f2cff52';
+import { parseReviewBackup } from './review-backup.mjs?v=03fe4f2cff52';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=03fe4f2cff52';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=03fe4f2cff52';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=03fe4f2cff52';
+import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=03fe4f2cff52';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalSetup, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=d4e06b84f22c';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=03fe4f2cff52';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=d4e06b84f22c';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=d4e06b84f22c';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=03fe4f2cff52';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=03fe4f2cff52';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=d4e06b84f22c';
-import { validReserve, reserveMonths } from './reserve.mjs?v=d4e06b84f22c';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=03fe4f2cff52';
+import { validReserve, reserveMonths } from './reserve.mjs?v=03fe4f2cff52';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=d4e06b84f22c';
-import { validShares } from './stock-estimate.mjs?v=d4e06b84f22c';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=d4e06b84f22c';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=d4e06b84f22c';
-import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=d4e06b84f22c';
-import { inflationContext } from './market-context.mjs?v=d4e06b84f22c';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=d4e06b84f22c';
-import { compareFundDisclosures, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=d4e06b84f22c';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=03fe4f2cff52';
+import { validShares } from './stock-estimate.mjs?v=03fe4f2cff52';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=03fe4f2cff52';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=03fe4f2cff52';
+import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=03fe4f2cff52';
+import { inflationContext } from './market-context.mjs?v=03fe4f2cff52';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=03fe4f2cff52';
+import { compareFundDisclosures, datedSourceIssue, disclosureSchemeKey, estimateVisibleIssuerExposure,
+  matchFundDisclosure } from './fund-disclosure.mjs?v=03fe4f2cff52';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -781,16 +781,19 @@ function renderDisclosureReview() {
   const matched = state.disclosures.filter(item => matchFundDisclosure(item, state.confirmed));
   card.hidden = !matched.length;
   if (!matched.length) return;
+  const todayIso = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  const recent = matched.filter(item => !datedSourceIssue(item.asOf, todayIso));
   for (const item of matched) {
     const line = document.createElement('p');
-    line.textContent = `${item.scheme} · disclosure ${item.asOf} · ${item.securities.length} listed shares covering ${item.coveredPct.toFixed(2)}% of fund net assets. ${item.notIncludedPct.toFixed(2)}% is outside this listed equity section.`;
+    const old = datedSourceIssue(item.asOf, todayIso);
+    line.textContent = `${item.scheme} · disclosure ${item.asOf} · ${item.securities.length} listed shares covering ${item.coveredPct.toFixed(2)}% of fund net assets. ${item.notIncludedPct.toFixed(2)}% is outside this listed equity section.${old ? ' This sheet is over 90 days old or has an unusable date; add a newer one before comparing present exposure.' : ''}`;
     root.append(line);
   }
-  for (let first = 0; first < matched.length; first++) for (let second = first + 1; second < matched.length; second++) {
-    const overlap = compareFundDisclosures(matched[first], matched[second]);
+  for (let first = 0; first < recent.length; first++) for (let second = first + 1; second < recent.length; second++) {
+    const overlap = compareFundDisclosures(recent[first], recent[second]);
     if (!overlap) continue;
     const line = document.createElement('p');
-    line.textContent = `${matched[first].scheme} and ${matched[second].scheme}: ${overlap.common.length} shared listed security ISIN${overlap.common.length === 1 ? '' : 's'}; minimum observed shared listed equity weight ${overlap.sharedPct.toFixed(2)}%, using the smaller reported weight for each shared security. ${overlap.sameDate ? 'Same disclosure date.' : 'Disclosure dates differ.'} This is only the supplied listed equity sections, not full fund overlap, your rupee exposure, or a current price.`;
+    line.textContent = `${recent[first].scheme} and ${recent[second].scheme}: ${overlap.common.length} shared listed security ISIN${overlap.common.length === 1 ? '' : 's'}; minimum observed shared listed equity weight ${overlap.sharedPct.toFixed(2)}%, using the smaller reported weight for each shared security. ${overlap.sameDate ? 'Same disclosure date.' : 'Disclosure dates differ.'} This is only the supplied listed equity sections, not full fund overlap, your rupee exposure, or a current price.`;
     root.append(line);
   }
   const exposure = estimateVisibleIssuerExposure(state.confirmed, matched);
@@ -798,7 +801,7 @@ function renderDisclosureReview() {
     const heading = document.createElement('h4');
     heading.textContent = 'Visible issuer exposure from dated values';
     const coverage = document.createElement('p');
-    coverage.textContent = `${money(exposure.coveredValue)} (${exposure.coveragePct.toFixed(2)}%) of ${money(exposure.total)} entered portfolio value is mapped to listed share ISINs. ${money(exposure.unknownValue)} remains outside this view, including unsupported funds, assets and undated values.`;
+    coverage.textContent = `${money(exposure.coveredValue)} (${exposure.coveragePct.toFixed(2)}%) of ${money(exposure.total)} entered portfolio value is mapped to listed share ISINs. ${money(exposure.unknownValue)} remains outside this view, including unsupported funds, assets and holding values with missing or older than 90-day dates.`;
     root.append(heading, coverage);
     for (const source of exposure.sources) {
       const line = document.createElement('p');
@@ -1674,7 +1677,7 @@ $('#cas-preview').addEventListener('click', async () => {
       }
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=d4e06b84f22c');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=03fe4f2cff52');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1710,7 +1713,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=d4e06b84f22c');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=03fe4f2cff52');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -1773,7 +1776,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=d4e06b84f22c');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=03fe4f2cff52');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1781,7 +1784,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=d4e06b84f22c');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=03fe4f2cff52');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
