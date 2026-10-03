@@ -8,6 +8,66 @@ import { goalShare, summarizeGoalCoverage } from './goals.mjs';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
+const investorDefinitions = new Map([
+  ['diversification', {
+    text: 'Diversification means spreading investments across different assets or holdings so one loss does not determine the whole result. Owning several funds does not prove their underlying companies are different.',
+    limitation: 'It reduces some concentration risk but cannot remove all investment risk. This definition does not assess your portfolio.',
+    href: 'https://investor.sebi.gov.in/investment_risk_managment.html',
+  }],
+  ['asset allocation', {
+    text: 'Asset allocation is how investment value is divided among asset classes such as equity, debt and gold. A goal, time horizon and ability to bear losses matter when choosing a mix.',
+    limitation: 'This explanation does not choose percentages for you. Ask “How is my asset mix?” to see only the shares in your entered holdings.',
+    href: 'https://investor.sebi.gov.in/investment-thingsbeforeinv.html',
+  }],
+  ['equity', {
+    text: 'Equity is ownership in a company through shares. An equity mutual fund holds shares on investors’ behalf; its value can rise or fall with those holdings.',
+    limitation: 'An Equity label in this review is supplied or checked by you; it is not a verified look-through of every fund.',
+    href: 'https://investor.sebi.gov.in/investment-assetclasses.html',
+  }],
+  ['debt', {
+    text: 'Debt investments include bonds, where an issuer borrows money and promises payments under stated terms. Debt mutual funds hold such securities and their value can also change.',
+    limitation: 'A Debt label does not mean guaranteed return or immediate access to the money.',
+    href: 'https://investor.sebi.gov.in/investment-assetclasses.html',
+  }],
+  ['nav', {
+    text: 'NAV means net asset value: a mutual fund’s value per unit on a stated date after its assets and liabilities are accounted for. Units held × that dated NAV gives an estimated holding value.',
+    limitation: 'The estimate needs the exact scheme, plan and option plus a confirmed current unit balance. NAV is not a continuously changing stock quote.',
+    href: 'https://investor.sebi.gov.in/securities-mf-investments.html',
+  }],
+  ['expense ratio', {
+    text: 'A mutual fund expense ratio is its ongoing operating cost expressed as a percentage of scheme assets. It is reflected in the fund’s NAV rather than added as a second bill to the holding value.',
+    limitation: 'A fund name alone does not establish its current dated expense ratio. Check the exact scheme and plan before comparing costs.',
+    href: 'https://investor.sebi.gov.in/regular_and_direct_mutual_funds.html',
+  }],
+  ['direct and regular plans', {
+    text: 'Direct and Regular are two plans of the same mutual fund scheme. The underlying portfolio is generally the same; a Regular plan includes distributor involvement and typically has a higher expense ratio.',
+    limitation: 'The plan label alone does not account for service received, taxes, exit loads or whether changing plans would suit you.',
+    href: 'https://investor.sebi.gov.in/regular_and_direct_mutual_funds.html',
+  }],
+  ['sip', {
+    text: 'SIP means Systematic Investment Plan: a way to put a chosen amount into a mutual fund at regular intervals. It is a payment method, not a separate asset class or a guaranteed return.',
+    limitation: 'A snapshot of current holdings cannot reconstruct all past SIP payments or calculate a lifetime return.',
+    href: 'https://investor.sebi.gov.in/pdf/downloadable-documents/Financial%20Education%20Booklet%20-%20English.pdf',
+  }],
+]);
+const definitionAliases = new Map([
+  ['diversified', 'diversification'], ['portfolio diversification', 'diversification'],
+  ['allocation', 'asset allocation'], ['equity shares', 'equity'], ['bonds', 'debt'],
+  ['net asset value', 'nav'], ['ter', 'expense ratio'], ['total expense ratio', 'expense ratio'],
+  ['expense ratios', 'expense ratio'],
+  ['regular plan', 'direct and regular plans'], ['direct plan', 'direct and regular plans'],
+  ['direct vs regular plan', 'direct and regular plans'],
+  ['difference between direct and regular plans', 'direct and regular plans'],
+  ['regular and direct plans', 'direct and regular plans'],
+  ['systematic investment plan', 'sip'],
+]);
+function investorDefinition(input) {
+  const match = /^(?:what (?:is|are|does)|explain|define|meaning of|tell me about)\s+(.+?)[?.!]*$/.exec(input);
+  if (!match) return null;
+  const term = match[1].replace(/^(?:a|an|the)\s+/, '')
+    .replace(/\s+(?:mean|stand for)$/, '').trim();
+  return investorDefinitions.get(definitionAliases.get(term) || term) || null;
+}
 
 /** Answer a narrow set of portfolio questions from the current in-tab review. */
 export function answerReviewQuestion(question, { holdings, goal, goals, source, coverage, reserve, result, today = new Date() }) {
@@ -48,6 +108,11 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer(`I cannot calculate that metric separately for ${goal?.name || 'the selected goal'} from this review. Ask about the goal’s assigned value or asset mix, or ask for the whole-portfolio metric without naming a goal.`,
       'Goal links assign shares of current holding value; checked cost, fund fees and overlap are not allocated to individual goals here.',
       'Using a whole-portfolio figure as a goal figure would be misleading.', '#goals', 'Review goal assignments');
+
+  const definition = investorDefinition(input);
+  if (definition) return answer(definition.text,
+    'Plain-language term explanation from SEBI investor education; no personal holding value was calculated.',
+    definition.limitation, definition.href, 'Read the SEBI explanation');
 
   const planQuestion = /\b(?:regular|direct)\s+plans?\b/.test(input) &&
     /^(?:which|what|how many|how much|do i|show|list)\b/.test(input);

@@ -1032,7 +1032,18 @@ async function aiTurn(message, pdf = null) {
     const result = analyzePortfolio(holdings, goal, new Date(), portfolio?.reserve, portfolio?.coverage);
     const response = answerReviewQuestion(message, { holdings, goal, goals: portfolio?.goals || [],
       source: 'user', coverage: portfolio?.coverage || null, reserve: portfolio?.reserve || null, result });
-    if (response) say('assistant', `${response.text}\n\nHow I worked this out: ${response.basis}\n\nKeep in mind: ${response.limitation}`);
+    if (response) {
+      const item = say('assistant', `${response.text}\n\nHow I worked this out: ${response.basis}\n\nKeep in mind: ${response.limitation}`);
+      if (response.href?.startsWith('https://investor.sebi.gov.in/')) {
+        const source = document.createElement('a');
+        source.className = 'definition-source';
+        source.href = response.href;
+        source.target = '_blank';
+        source.rel = 'noopener noreferrer';
+        source.textContent = `${response.action} ↗`;
+        item.append(source);
+      }
+    }
     else say('assistant', 'Ask about the holdings you entered, or upload a supported CAMS Active Statement or broker report.');
     return;
   }

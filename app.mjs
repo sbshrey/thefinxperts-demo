@@ -46,6 +46,10 @@ function renderReviewAnswer() {
   $('#review-answer-limit').textContent = response.limitation;
   $('#review-answer-link').href = response.href;
   $('#review-answer-link').textContent = `${response.action} →`;
+  const externalSource = response.href?.startsWith('https://investor.sebi.gov.in/');
+  $('#review-answer-link').target = externalSource ? '_blank' : '_self';
+  if (externalSource) $('#review-answer-link').rel = 'noopener noreferrer';
+  else $('#review-answer-link').removeAttribute('rel');
 }
 $('#review-answer-link').addEventListener('click', () => {
   if ($('#review-answer-link').getAttribute('href') === '#goal-assumptions') $('#goal-assumptions').open = true;
