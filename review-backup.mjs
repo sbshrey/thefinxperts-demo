@@ -98,8 +98,9 @@ export function parseReviewBackup(text) {
         ((holding.costBasis !== undefined || holding.costBasisAsOf !== undefined) &&
           (holding.granularity === 'fund_house' || !validCostBasis(holding.costBasis, holding.costBasisAsOf))) ||
         (holding.type === 'Stock' && (holding.asset !== 'Equity' || holding.amc || holding.amfi)) ||
-        (holding.type === 'Other investment' && (holding.entryOrigin !== 'manual' ||
+        (holding.type === 'Other investment' && (!['manual', 'epfo_passbook'].includes(holding.entryOrigin) ||
           !['Other', 'Gold'].includes(holding.asset) ||
+          (holding.entryOrigin === 'epfo_passbook' && (holding.asset !== 'Other' || !/^EPF account [A-F0-9]{12}$/.test(holding.name))) ||
           (holding.asset === 'Gold' && !/\bgold\b/i.test(holding.name)) ||
           holding.amc || holding.amfi || holding.isin || holding.units || holding.statementCategory ||
           holding.expenseRatioPct !== undefined || holding.navEstimate || holding.shares ||

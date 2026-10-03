@@ -31,6 +31,7 @@ const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
 const browserOnly = document.body.dataset.mode === 'browser-only';
 const DEVICE_KEY = 'thefinxperts:encrypted-review:v1';
+let aiConsentGranted = false;
 let devicePassphrase = null;
 let deviceSaveRevision = 0;
 let deviceBusy = false;
@@ -702,6 +703,30 @@ async function writeAccount(portfolio, conflictMessage) {
   acceptAccount({ portfolio, revision: result.revision });
 }
 
+function chooseAiConsent() {
+  const dialog = $('#ai-consent-dialog');
+  if (!dialog) return Promise.resolve(false);
+  return new Promise(resolve => {
+    let finished = false;
+    const finish = accepted => {
+      if (finished) return;
+      finished = true;
+      $('#ai-consent-continue').removeEventListener('click', approve);
+      $('#ai-consent-cancel').removeEventListener('click', decline);
+      dialog.removeEventListener('cancel', escape);
+      dialog.close();
+      resolve(accepted);
+    };
+    const approve = () => finish(true);
+    const decline = () => finish(false);
+    const escape = event => { event.preventDefault(); finish(false); };
+    $('#ai-consent-continue').addEventListener('click', approve);
+    $('#ai-consent-cancel').addEventListener('click', decline);
+    dialog.addEventListener('cancel', escape);
+    dialog.showModal();
+  });
+}
+
 async function aiTurn(message, pdf = null) {
   if (browserOnly) {
     const portfolio = state.account?.portfolio;
@@ -725,13 +750,25 @@ async function aiTurn(message, pdf = null) {
   assistantStatusRevision++;
   state.busy = true; $('#send').disabled = true; $('#service-status').textContent = 'Reviewing…';
   try {
-    const response = await fetch('/api/assistant', { method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Local': '1', 'X-Thefinxperts-Intent': 'assistant' },
+    const send = consent => fetch('/api/assistant', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Thefinxperts-Local': '1',
+        'X-Thefinxperts-Intent': 'assistant', ...(consent ? { 'X-Thefinxperts-AI-Consent': '1' } : {}) },
       body: JSON.stringify({ message, history: state.history.slice(0, -1).slice(-8),
         holdings: state.confirmed.slice(0, 100).map(({ name, type, asset, value, asOf }) => ({ name, type, asset, value, asOf })),
         drafts: state.drafts.map(({ name, type, asset, value, asOf }) => ({ name, type, asset, value, asOf })),
         ...(pdf ? { pdf } : {}) }) });
-    const result = await response.json();
+    let response = await send(aiConsentGranted);
+    let result = await response.json();
+    if (response.status === 428 && result.code === 'consent_required') {
+      if (!await chooseAiConsent()) {
+        if (state.history.at(-1)?.role === 'user') state.history.pop();
+        say('note', 'Nothing was sent to OpenAI and no credit was used. You can still ask factual questions about your saved review.');
+        return;
+      }
+      aiConsentGranted = true;
+      response = await send(true);
+      result = await response.json();
+    }
     if (result.credits && Number.isInteger(result.credits.remaining)) {
       state.credits = result.credits;
       renderCredits();
@@ -880,6 +917,18 @@ function stageCasResult(result) {
   return true;
 }
 
+function stageEpfoResult(result) {
+  if (!result?.holding || result.errors?.length) return false;
+  const draft = normalizedDraft(result.holding);
+  if (!draft || !Number.isFinite(draft.value) || draft.value <= 0 || !draft.asOf) return false;
+  state.drafts = [draft];
+  renderDrafts();
+  sayImportNote(`I found one EPF member passbook balance of ${money(draft.value)}. Its report was printed on ${draft.asOf}; this is a dated passbook snapshot, not proof that later contributions or transfers are included. The employee and employer balances match the final Grand Total; the separate pension contribution is not counted. The account is labelled with a short one-way code so a later upload of the same member account is caught as an overlap. Check the passbook and confirm the draft before it changes your review. EPF withdrawal and access conditions still need checking for your goal. The PDF stayed in this browser.`,
+    'Check the report balance, date and member account before confirming.');
+  clearFile();
+  return true;
+}
+
 $('#active-preview').addEventListener('click', async () => {
   if (state.busy || !state.file) return;
   const password = $('#active-password').value;
@@ -975,6 +1024,14 @@ $('#upload').addEventListener('change', async event => {
     return;
   }
   if (stageActiveStatement(parsed)) return;
+  if (/\.pdf$/i.test(file.name)) {
+    state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
+    try {
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs');
+      if (stageEpfoResult(await previewEpfoPassbook(file))) return;
+    } catch { /* Other supported readers may still recognize the PDF. */ }
+    finally { state.busy = false; renderCredits(); renderDrafts(); }
+  }
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Trying supported statement readers in this browser…');
     try {
