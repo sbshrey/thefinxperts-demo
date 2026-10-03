@@ -1,4 +1,5 @@
-import { parseActiveStatementHtml } from './active-statement.mjs?v=d72ec1ed8b13';
+import { parseActiveStatementHtml } from './active-statement.mjs?v=21b36f77140f';
+import { unsupportedPdfHint } from './document-hint.mjs';
 
 /** Accept the extracted HTML attachment or its enclosing PDF without sending either to a server. */
 export async function previewActiveStatementFile(file, password = '') {
@@ -20,8 +21,8 @@ export async function previewActiveStatementFile(file, password = '') {
 export async function previewActiveStatementPdf(file, password) {
   if (!file || file.size > 15_000_000 || !file.name.toLowerCase().endsWith('.pdf'))
     return { holdings: [], errors: ['Choose a CAMS Active Statement PDF smaller than 15 MB.'], notices: [] };
-  const pdfjs = await import('./vendor/pdfjs/pdf.mjs?v=d72ec1ed8b13');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=d72ec1ed8b13', import.meta.url).href;
+  const pdfjs = await import('./vendor/pdfjs/pdf.mjs?v=21b36f77140f');
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=21b36f77140f', import.meta.url).href;
   let document;
   try {
     const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), password,
@@ -46,7 +47,16 @@ export async function previewActiveStatementPdf(file, password) {
         return parseActiveStatementHtml(html);
       }
     }
-    return { holdings: [], errors: ['No supported CAMS Active Statement HTML attachment was found in this PDF.'], notices: [] };
+    let documentHint = null;
+    try {
+      const text = [];
+      for (let pageNumber = 1; pageNumber <= Math.min(document.numPages, 2); pageNumber++) {
+        const content = await (await document.getPage(pageNumber)).getTextContent();
+        text.push(content.items.map(item => item.str || '').join(' ').slice(0, 25_000));
+      }
+      documentHint = unsupportedPdfHint(text.join(' '));
+    } catch { /* An unsupported hint must never block the normal statement readers. */ }
+    return { holdings: [], errors: ['No supported CAMS Active Statement HTML attachment was found in this PDF.'], notices: [], documentHint };
   } catch (error) {
     const message = error?.name === 'PasswordException' ? 'The PDF needs a different password.' :
       'The PDF could not be read as a CAMS Active Statement.';
