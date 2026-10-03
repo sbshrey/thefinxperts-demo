@@ -73,6 +73,14 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  if (/\bnet worth\b/.test(input))
+    return answer(valid.length ?
+      `The entered investment holdings total ${money(result.total)}. That is a gross, dated investment subtotal, not your net worth.` :
+      'No investment holdings are entered here yet. I cannot calculate your net worth from this review.',
+    valid.length ? `${valid.length} positive entered holding ${valid.length === 1 ? 'value' : 'values'} added once; ${result.asOfSummary}.` :
+      'No positive investment holding values are entered.',
+    `Net worth needs all assets minus all liabilities. This review does not record your complete assets, loans and other debts. ${coverageNote}`,
+    '#holdings', 'Check investment holdings');
   if ((/\b(?:mutual funds?|funds?)\b/.test(input) && /\b(?:stocks?|shares?)\b/.test(input) &&
       /\b(?:how much|how many|percent(?:age)?|share|split|breakdown|versus|vs)\b/.test(input)) ||
       /\b(?:product|investment)\s+(?:type|category)\s+(?:split|breakdown|mix)\b/.test(input)) {
