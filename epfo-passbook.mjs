@@ -7,6 +7,13 @@ export async function parseEpfoPassbookPages(pages) {
     return fail('This EPF passbook is too large or has an unsupported layout. No holding was added.');
   const first = pages[0].map(item => item.trim());
   const labels = first.map(item => item.toLowerCase());
+  const firstText = labels.join(' ');
+  if (/\bservice\s+history\b/.test(firstText) && /\bmember\s+id\b/.test(firstText) &&
+      /\buan\b/.test(firstText) && /\bestablishment\b/.test(firstText) &&
+      !labels.includes('employee share'))
+    return { holding: null, recognized: true, errors: [
+      'This appears to be an EPFO service-history report. It lists employment records but no current EPF balance. Download the Member Passbook PDF to review a balance; no holding was added.',
+    ] };
   const firstTable = labels.findIndex(item => item === 'particulars');
   if (firstTable < 15 || !labels.includes('employee share') || !labels.includes('employer share') ||
       !labels.some(item => /^member id\s*\/\s*name$/.test(item)))
