@@ -36,6 +36,7 @@ body{margin:0}
 .account-menu button:disabled{opacity:.5;cursor:wait}
 .workspace{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(350px,.85fr);min-height:0;flex:1}
 .chat-panel{display:flex;flex-direction:column;min-height:0;min-width:0;background:#fff}
+.chat-panel.dragging{outline:3px solid #2b7960;outline-offset:-3px;background:#f1f8f2}
 .panel-heading{padding:26px 32px 17px;border-bottom:1px solid #e7ede8}
 .eyebrow{font-size:10px;letter-spacing:.15em;font-weight:800;color:#5b846f}
 .panel-heading h1{font-size:27px;letter-spacing:-.04em;margin:9px 0 6px}

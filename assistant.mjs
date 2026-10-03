@@ -1085,6 +1085,42 @@ $('#upload').addEventListener('change', async event => {
   await offerUnsupportedPdf(file, parsed);
 });
 
+const chatDropZone = document.querySelector('.chat-panel');
+const draggedFiles = event => Array.from(event.dataTransfer?.types || []).includes('Files');
+document.addEventListener('dragover', event => {
+  if (draggedFiles(event)) event.preventDefault();
+});
+document.addEventListener('drop', event => {
+  if (!draggedFiles(event)) return;
+  event.preventDefault();
+  chatDropZone.classList.remove('dragging');
+  if (!chatDropZone.contains(event.target))
+    say('note', 'Drop one supported statement or holdings file onto the chat area.');
+});
+chatDropZone.addEventListener('dragenter', event => {
+  if (draggedFiles(event)) chatDropZone.classList.add('dragging');
+});
+chatDropZone.addEventListener('dragleave', event => {
+  if (!chatDropZone.contains(event.relatedTarget)) chatDropZone.classList.remove('dragging');
+});
+chatDropZone.addEventListener('drop', event => {
+  if (!draggedFiles(event)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  chatDropZone.classList.remove('dragging');
+  const files = event.dataTransfer?.files;
+  if (!files?.length) return;
+  if (files.length !== 1) { say('note', 'Drop one file at a time so you can check each preview before adding holdings.'); return; }
+  const file = files[0];
+  if (!/\.(?:pdf|html?|csv|xlsx)$/i.test(file.name)) {
+    say('note', 'Use a PDF, HTML, CSV or XLSX statement or holdings file. No data was added.');
+    return;
+  }
+  if (state.busy) { say('note', 'Wait for the current report preview to finish before opening another file.'); return; }
+  $('#upload').files = files;
+  $('#upload').dispatchEvent(new Event('change', { bubbles: true }));
+});
+
 $('#composer').addEventListener('submit', async event => {
   event.preventDefault();
   if (state.busy) return;
