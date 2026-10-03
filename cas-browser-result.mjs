@@ -11,5 +11,6 @@ export function normalizeBrowserCasResult(parsed) {
     (['NSDL', 'CDSL'].includes(parsed.file_type) ? 'Demat CAS' : 'CAS'),
     holdings: normalized.holdings, errors: normalized.errors,
     notices: normalized.notices, combinedRows: normalized.combinedRows,
+    ownershipUnverified: normalized.ownershipUnverified === true,
     performance: normalized.performance };
 }

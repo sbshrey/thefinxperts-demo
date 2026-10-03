@@ -41,6 +41,8 @@ export function prepareAssistantCasDrafts(result, { local = false, browser = fal
   }
   const combined = Number.isInteger(result.combinedRows) && result.combinedRows > 0 &&
     result.combinedRows <= 500 ? ` ${result.combinedRows} matching folio ${result.combinedRows === 1 ? 'row was' : 'rows were'} combined by exact ISIN and valuation details; check the total against your CAS.` : '';
+  const ownership = result.ownershipUnverified === true ?
+    ' One or more folios do not print an owner PAN. Check ownership in the original statement before confirming these rows.' : '';
   const performance = [];
   if (result.source !== 'Demat CAS' && Array.isArray(result.performance)) {
     const positions = new Map();
@@ -59,5 +61,5 @@ export function prepareAssistantCasDrafts(result, { local = false, browser = fal
       performance.push({ index, annualPercent: item.annualPercent });
     }
   }
-  return { drafts, errors: [], performance, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS. ${importValueAndDates(drafts)} Only positive current positions were staged; compare the parsed value with your statement total. The supported CAS reader did not provide a statement grand total.${combined} ${performance.length ? ` ${performance.length} of ${drafts.length} schemes have an indicative statement-period XIRR in the unconfirmed row preview. It uses supported reconciled cash flows and the statement's dated valuation, not a live price or forecast. The rate disappears after a row edit and is not saved with holdings.` : ''} ${browser ? 'This browser tab read the PDF and password; neither was sent to a server.' : `The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview.`} Check the rows before confirming.${browser ? '' : ' If you later ask AI about these drafts, their names and values may be sent.'}` };
+  return { drafts, errors: [], performance, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS. ${importValueAndDates(drafts)} Only positive current positions were staged; compare the parsed value with your statement total. The supported CAS reader did not provide a statement grand total.${combined}${ownership} ${performance.length ? ` ${performance.length} of ${drafts.length} schemes have an indicative statement-period XIRR in the unconfirmed row preview. It uses supported reconciled cash flows and the statement's dated valuation, not a live price or forecast. The rate disappears after a row edit and is not saved with holdings.` : ''} ${browser ? 'This browser tab read the PDF and password; neither was sent to a server.' : `The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview.`} Check the rows before confirming.${browser ? '' : ' If you later ask AI about these drafts, their names and values may be sent.'}` };
 }

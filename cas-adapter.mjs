@@ -23,6 +23,26 @@ export function normalizeCasHoldings(document) {
   if (document.parse_warnings.length) {
     return { holdings: [], errors: ['The CAS parser reported unit-balance warnings. Check the original statement before importing.'], notices, performance };
   }
+  const ownerPans = new Set();
+  const folioOwnerPans = [];
+  for (const folio of document.folios) {
+    if (folio?.PAN == null || typeof folio.PAN === 'string' && !folio.PAN.trim()) {
+      folioOwnerPans.push(null);
+      continue;
+    }
+    if (typeof folio.PAN !== 'string' || !/^[A-Z]{5}\d{4}[A-Z]$/.test(folio.PAN.trim().toUpperCase())) {
+      return { holdings: [], errors: ['A folio owner identifier could not be checked. No holdings were imported.'], notices, performance };
+    }
+    const ownerPan = folio.PAN.trim().toUpperCase();
+    folioOwnerPans.push(ownerPan);
+    ownerPans.add(ownerPan);
+    if (ownerPans.size > 1) {
+      return { holdings: [], errors: ['This CAS contains folios with different owner PANs. Use a separate review for each investor; no holdings were imported.'], notices, performance };
+    }
+  }
+  const ownershipUnverified = document.folios.length > 1 && folioOwnerPans.some(pan => !pan);
+  if (ownershipUnverified)
+    notices.push('One or more folios do not print an owner PAN. Check ownership in the original statement before adding these holdings.');
   if (document.cas_type === 'SUMMARY') {
     notices.push('This summary statement contains a holdings snapshot; transaction history and performance cannot be verified from it.');
   }
@@ -98,6 +118,11 @@ export function normalizeCasHoldings(document) {
       let holdingId = holding.id;
       const previous = holding.isin ? byIsin.get(holding.isin) : null;
       if (previous) {
+        if (previous.folioIndex !== folioIndex &&
+            (!previous.ownerPan || !folioOwnerPans[folioIndex])) {
+          errors.push(`${location}: repeated ISIN spans folios without a verified same owner. Use a detailed CAS or check separate account positions before importing.`);
+          continue;
+        }
         const same = value => value?.trim().toLocaleLowerCase('en-IN').replace(/\s+/g, ' ') || null;
         if (same(previous.row.name) !== same(holding.name) ||
             same(previous.row.amc) !== same(holding.amc) ||
@@ -119,7 +144,8 @@ export function normalizeCasHoldings(document) {
         combinedRows++;
       } else {
         holdings.push(holding);
-        if (holding.isin) byIsin.set(holding.isin, { row: holding, units, valuePaise, navScaled });
+        if (holding.isin) byIsin.set(holding.isin, { row: holding, units, valuePaise, navScaled,
+          folioIndex, ownerPan: folioOwnerPans[folioIndex] });
       }
       if (document.cas_type === 'DETAILED') {
         const transactionCount = Array.isArray(scheme.transactions) ? scheme.transactions.length : 0;
@@ -145,6 +171,7 @@ export function normalizeCasHoldings(document) {
   }
   return { holdings: errors.length ? [] : holdings, errors, notices,
     combinedRows: errors.length ? 0 : combinedRows,
+    ownershipUnverified,
     performance: errors.length ? [] : visiblePerformance };
 }
 
