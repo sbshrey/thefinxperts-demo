@@ -729,6 +729,18 @@ function renderReview() {
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
     const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.shares ? ` · ${row.shares} reported shares; verify current balance` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${savedRow?.stockEstimate ? ' · user-entered stock-price estimate; shares assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
     item.append(name, meta);
+    const ask = document.createElement('button'); ask.className = 'holding-review-action'; ask.type = 'button';
+    ask.textContent = 'Review this holding';
+    ask.addEventListener('click', () => {
+      if (state.busy || $('#message').value.trim() || state.file || state.drafts.length || state.goalFacts ||
+          state.reserveFacts || state.correction || state.refresh || state.pendingGoalName || state.coverageQueue) {
+        say('note', 'Finish the pending review change, or send or clear your draft message or file, before opening a holding review.'); return;
+      }
+      if (mobileReview.matches) setReviewExpanded(false);
+      $('#message').value = `Review holding ${index + 1}`;
+      $('#composer').requestSubmit();
+    });
+    item.append(ask);
     const dateIssue = valuationDateIssue(row.asOf);
     if (dateIssue) {
       const badge = document.createElement('span');

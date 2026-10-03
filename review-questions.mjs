@@ -201,6 +201,27 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  const holdingDetail = /^(?:review|show|describe|inspect|check|tell me about)\s+holding\s*#?(\d{1,4})[?.!]*$/.exec(input);
+  if (holdingDetail) {
+    const number = Number(holdingDetail[1]);
+    const row = holdings[number - 1];
+    if (!row || !Number.isFinite(Number(row.value)) || Number(row.value) <= 0)
+      return answer(`Holding #${number} is not a confirmed positive-value row in this review. Choose a number from the displayed holdings.`,
+        `${holdings.length} holding ${holdings.length === 1 ? 'row is' : 'rows are'} available in this tab.`,
+        'A row number only refers to the current review and may change when you import or edit holdings.', '#holdings', 'Choose a holding');
+    const issue = valuationDateIssue(row.asOf, today);
+    const dateCheck = issue === 'stale' ? 'Its value date is over 90 days old; check a newer statement or broker report.' :
+      issue === 'future' ? 'Its value date is in the future; check the source.' :
+      issue ? 'Its value date is missing; check the source.' : 'Check that the holding amount and date still match a current source.';
+    const detail = row.granularity === 'fund_house' ?
+      'This is a fund-house summary; individual schemes and their plan labels are unknown.' :
+      row.type === 'Mutual fund' ? `The entered scheme name ${planFromName(row.name) === 'Unclear' ? 'has no clear Direct or Regular Plan label' : `says ${planFromName(row.name)} Plan`}.` :
+      row.type === 'Stock' ? 'This is labelled a directly held stock; verify the current settled share balance.' :
+      'This is a manually described other investment; check its access and withdrawal terms.';
+    return answer(`Holding #${number}, ${row.name}, is ${money(Number(row.value))} (${percent(Number(row.value), result.total)}) of entered investment value, labelled ${row.asset}, as of ${row.asOf || 'an unknown date'}. ${detail} ${dateCheck}`,
+      `${money(Number(row.value))} ÷ ${money(result.total)} entered value; row #${number} is ${row.type}; ${row.asOf ? `supplied value date ${row.asOf}` : 'no supplied value date'}.`,
+      `This is one supplied, dated row, not a verified current price, fund look-through, performance result or suitability verdict. ${coverageNote}`, '#holdings', 'Check this holding');
+  }
   const portfolioRiskQuestion = /\b(?:risks?|risky|safe|volatile|volatility)\b/.test(input) &&
     (/\b(?:portfolio|holdings|investments|asset mix|allocation)\b/.test(input) ||
       /\bam i taking too much risk\b/.test(input)) &&

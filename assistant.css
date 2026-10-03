@@ -164,8 +164,8 @@ body{margin:0}
 .holding-item strong{display:block;font-size:13px}
 .holding-item span{color:#65776c}
 .holding-item .valuation-badge{display:inline-block;margin-top:7px;padding:5px 8px;border:1px solid #ead3b5;border-radius:6px;background:#fff8ee;color:#8b461f;font-size:11px;font-weight:700}
-.holding-item .value-check-action{display:block;margin-top:8px;border:1px solid #9abda4;border-radius:8px;background:#fff;color:#174d3f;padding:7px 9px;font:700 11px Arial,Helvetica,sans-serif;cursor:pointer}
-.holding-item .value-check-action:hover,.holding-item .value-check-action:focus-visible{background:#eaf4ec}
+.holding-item .value-check-action,.holding-item .holding-review-action{display:block;margin-top:8px;border:1px solid #9abda4;border-radius:8px;background:#fff;color:#174d3f;padding:7px 9px;font:700 11px Arial,Helvetica,sans-serif;cursor:pointer}
+.holding-item .value-check-action:hover,.holding-item .value-check-action:focus-visible,.holding-item .holding-review-action:hover,.holding-item .holding-review-action:focus-visible{background:#eaf4ec}
 .value-source-link{color:#176344;font-weight:700}
 .review-limit{font-size:11px;color:#6d7d74;line-height:1.4;margin:0}
 .review-limit summary{cursor:pointer;color:#285d43;font-weight:700;padding:4px 0}
