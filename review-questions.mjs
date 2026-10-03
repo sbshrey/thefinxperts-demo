@@ -96,11 +96,14 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     if (!result.goalTotal) return answer(`For ${goal.name}, first link the holdings you intend to count toward it.`,
       `You entered age ${goal.age} and ${goal.years} years until this goal; ₹0 of ${money(result.total)} entered value is assigned to it.`,
       'Only assigned shares count toward a goal. The link does not prove the money can be used then.', '#goals', 'Review goal assignments');
-    const context = `For ${goal.name}, you entered age ${goal.age}, ${goal.years} years until the goal, and ${money(result.goalTotal)} of assigned value. `;
+    const uncertainScope = [['mutualFunds', 'mutual funds'], ['directStocks', 'direct stocks'],
+      ['otherInvestments', 'other investments']].filter(([key]) =>
+      ['some', 'unsure'].includes(coverage?.[key])).map(([, label]) => label);
+    const context = `For ${goal.name}, you entered age ${goal.age}, ${goal.years} years until the goal, and ${money(result.goalTotal)} of assigned value. ` +
+      (uncertainScope.length ? `You reported partial or unsure coverage for ${uncertainScope.join(', ')}; the remaining checks use only entered holdings. ` : '');
     const basis = `${result.goalHoldingCount} assigned holding ${result.goalHoldingCount === 1 ? 'row' : 'rows'}; ${result.asOfSummary}.`;
     const incomplete = [['mutualFunds', 'mutual funds'], ['directStocks', 'direct stocks'],
-      ['otherInvestments', 'other investments']].find(([key]) =>
-      !['all', 'none'].includes(coverage?.[key]));
+      ['otherInvestments', 'other investments']].find(([key]) => coverage?.[key] == null);
     if (incomplete) return answer(context + `First check whether the entered ${incomplete[1]} cover everything you own in that group. Say “I included all my ${incomplete[1]}”, “I included some of my ${incomplete[1]}”, or say you are unsure, using your latest statement.`,
       `${basis} Coverage for ${incomplete[1]} is ${coverage?.[incomplete[0]] || 'not answered'}.`,
       'Coverage is self reported. This review cannot inspect accounts you have not provided.', '#holdings', 'Check review coverage');
