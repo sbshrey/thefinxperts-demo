@@ -33,6 +33,7 @@ const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
 const browserOnly = document.body.dataset.mode === 'browser-only';
 const DEVICE_KEY = 'thefinxperts:encrypted-review:v1';
+const casPreviewPerformance = new WeakMap();
 let aiConsentGranted = false;
 let devicePassphrase = null;
 let deviceSaveRevision = 0;
@@ -317,7 +318,8 @@ function renderDrafts() {
   for (const [index, row] of state.drafts.entries()) {
     const item = document.createElement('li');
     const match = matchesByIndex.get(index);
-    item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}${row.shares ? ` · ${row.shares} report shares; check current balance` : ''}${match ? ` · May overlap ${match.existingName} (${match.reason} match)` : ''}`;
+    const rate = casPreviewPerformance.get(row);
+    item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}${row.shares ? ` · ${row.shares} report shares; check current balance` : ''}${rate == null ? '' : ` · Indicative CAS statement-period XIRR ${rate.toFixed(2)}%/yr (preview only)`}${match ? ` · May overlap ${match.existingName} (${match.reason} match)` : ''}`;
     list.append(item);
   }
   $('#draft-list').append(list);
@@ -1009,6 +1011,7 @@ function stageCasResult(result) {
   }
   const drafts = prepared.drafts.map(row => normalizedDraft(row));
   if (drafts.some(row => !row)) { say('note', 'A CAS row could not be staged safely. No rows were added.'); return false; }
+  for (const item of prepared.performance) casPreviewPerformance.set(drafts[item.index], item.annualPercent);
   if (state.account?.portfolio) {
     const refresh = result.source === 'Demat CAS' ?
       prepareAssistantDematRefresh(state.account.portfolio, drafts) :
