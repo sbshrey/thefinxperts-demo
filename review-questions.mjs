@@ -116,14 +116,38 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     if (!goal.emergencyFunding) return answer(context + 'Next say whether a nearer unexpected essential expense would use separate money, these goal holdings, or whether you are unsure.',
       `${basis} No unexpected-expense funding answer is confirmed for this goal.`,
       'Age and time horizon alone do not show whether this goal can stay invested through an earlier need.', '#goals', 'Check nearer expenses');
-    if (!goal.targetMix) return answer(context + 'If you already have a mix chosen for this goal, enter it to compare with the assigned holdings. The review cannot choose percentages for you.',
-      `${basis} Assigned labels: Equity ${percent(result.goalAssets.Equity, result.goalTotal)}, Debt ${percent(result.goalAssets.Debt, result.goalTotal)}, Gold ${percent(result.goalAssets.Gold, result.goalTotal)}.`,
-      'These are supplied labels and dated values. A chosen mix is optional and should not be inferred from age.', '#goals', 'Compare a chosen mix');
+    let riskSummary = '';
+    let riskBasis = '';
+    if (result.goalAssets.Equity > 0) {
+      if (goal.equityDropPct === undefined) return answer(context + 'Next choose a hypothetical one-time equity fall to test, such as “equity fall 25%”. You choose the size; it is not a market forecast.',
+        `${basis} ${money(result.goalAssets.Equity)} of assigned value is labelled Equity.`,
+        'This arithmetic will hold other assets fixed and cannot establish your risk profile or a suitable allocation.', '#goals', 'Test a hypothetical fall');
+      if (result.stressPause || !result.shock) return answer(context + 'The equity-fall check needs its assigned values and labels reviewed before it can be interpreted.',
+        `${basis} Stress calculation status: ${result.stressPause || 'unavailable'}.`,
+        'An unverified balance or category can change the illustrated loss.', '#holdings', 'Check source details');
+      const shock = result.shock;
+      if (goal.affordableLoss === undefined) return answer(context + `At your ${shock.dropPct}% hypothetical equity fall, the assigned value would fall by ${money(shock.loss)}. Next say “loss I can cover ₹50,000” with the amount you could actually cover without disrupting essentials.`,
+        `${money(result.goalAssets.Equity)} assigned Equity × ${shock.dropPct}% = ${money(shock.loss)} illustrated loss; ${basis}`,
+        'The example is a one-time fall, not a forecast. The entered cover amount is your statement, not a verified capacity assessment.', '#goals', 'Check loss capacity');
+      if (goal.tolerableLoss === undefined) return answer(context + `At your ${shock.dropPct}% hypothetical equity fall, the assigned value would fall by ${money(shock.loss)}. You entered ${money(goal.affordableLoss)} as a loss you could cover. Next say “loss I can tolerate ₹50,000” with your own separate tolerance amount.`,
+        `${money(result.goalAssets.Equity)} assigned Equity × ${shock.dropPct}% = ${money(shock.loss)} illustrated loss; ${basis}`,
+        'A loss someone says they can tolerate may differ from what they can afford. Neither amount is independently checked.', '#goals', 'Check loss tolerance');
+      const covered = result.lossLimits?.affordable;
+      const tolerated = result.lossLimits?.tolerable;
+      const compare = (check, label) => check.excess > 0 ?
+        `exceeds the ${money(check.limit)} you said you could ${label} by ${money(check.excess)}` :
+        `does not exceed the ${money(check.limit)} you said you could ${label}`;
+      riskSummary = `At your ${shock.dropPct}% hypothetical equity fall, the assigned loss is ${money(shock.loss)}; this ${compare(covered, 'cover')}, and ${compare(tolerated, 'tolerate')}. `;
+      riskBasis = ` ${money(result.goalAssets.Equity)} assigned Equity × ${shock.dropPct}% = ${money(shock.loss)}; compared with your entered cover limit ${money(covered.limit)} and tolerance limit ${money(tolerated.limit)}.`;
+    }
+    if (!goal.targetMix) return answer(context + riskSummary + 'If you already have a mix chosen for this goal, enter it to compare with the assigned holdings. The review cannot choose percentages for you.',
+      `${basis}${riskBasis} Assigned labels: Equity ${percent(result.goalAssets.Equity, result.goalTotal)}, Debt ${percent(result.goalAssets.Debt, result.goalTotal)}, Gold ${percent(result.goalAssets.Gold, result.goalTotal)}.`,
+      'These are supplied labels and dated values. The hypothetical fall is not a worst case; a chosen mix is optional and should not be inferred from age.', '#goals', 'Compare a chosen mix');
     if (result.mixComparison) {
       const largest = result.mixComparison.reduce((best, row) =>
         !best || Math.abs(row.differencePct) > Math.abs(best.differencePct) ? row : best, null);
-      return answer(context + `${largest.asset} is ${largest.currentPct.toFixed(1)}% of assigned value versus ${largest.plannedPct.toFixed(1)}% in the mix you entered. Review whether your chosen mix still reflects this goal.`,
-        `${basis} ${money(result.goalAssets[largest.asset])} assigned to ${largest.asset} ÷ ${money(result.goalTotal)} = ${largest.currentPct.toFixed(1)}%.`,
+      return answer(context + riskSummary + `${largest.asset} is ${largest.currentPct.toFixed(1)}% of assigned value versus ${largest.plannedPct.toFixed(1)}% in the mix you entered. Review whether your chosen mix still reflects this goal.`,
+        `${basis}${riskBasis} ${money(result.goalAssets[largest.asset])} assigned to ${largest.asset} ÷ ${money(result.goalTotal)} = ${largest.currentPct.toFixed(1)}%.`,
         'This comparison does not assess whether the chosen mix is suitable or tell you to trade. Fund constituents, tax and transaction costs are unknown.', '#goals', 'Review chosen mix');
     }
     return answer(context + 'Check the original fund or broker detail behind this goal before interpreting its mix.',
