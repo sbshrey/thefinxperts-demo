@@ -1,12 +1,12 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=73d0fcf44fb0';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=73d0fcf44fb0';
-import { reserveMonths } from './reserve.mjs?v=73d0fcf44fb0';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=73d0fcf44fb0';
-import { asksForAdvice } from './question-scope.mjs?v=73d0fcf44fb0';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=73d0fcf44fb0';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=73d0fcf44fb0';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=73d0fcf44fb0';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=ac10580afedd';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=ac10580afedd';
+import { reserveMonths } from './reserve.mjs?v=ac10580afedd';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=ac10580afedd';
+import { asksForAdvice } from './question-scope.mjs?v=ac10580afedd';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ac10580afedd';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ac10580afedd';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=ac10580afedd';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -125,14 +125,24 @@ function positionChangeIntent(question) {
   losing: /\b(?:loss|losses|lost|losing|down|red)\b/.test(input) };
 }
 
-/** Expand only short, factual gain/loss follow-ups from the previous answered question. */
-export function resolveReviewFollowUp(message, previousQuestion) {
-  const previous = positionChangeIntent(previousQuestion);
-  if (!previous || typeof message !== 'string') return null;
+function shortReviewFollowUp(message) {
+  if (typeof message !== 'string') return null;
   const input = message.trim().toLocaleLowerCase('en-IN');
   const namedType = /^(?:and\s+)?(?:(?:what|how)\s+about\s+)?(?:the\s+)?(mutual funds?|funds?|stocks?|shares?|holdings?|positions?)[?.!]*$/.exec(input);
   const namedDirection = /^(?:and\s+)?(?:(?:what|how)\s+about\s+)?(?:the\s+)?(loss(?:es)?|gains?|profits?)[?.!]*$/.exec(input);
-  if (!namedType && !namedDirection) return null;
+  return namedType || namedDirection ? { namedType, namedDirection } : null;
+}
+
+export function isShortReviewFollowUp(message) {
+  return Boolean(shortReviewFollowUp(message));
+}
+
+/** Expand only short, factual gain/loss follow-ups from the previous answered question. */
+export function resolveReviewFollowUp(message, previousQuestion) {
+  const previous = positionChangeIntent(previousQuestion);
+  const followUp = shortReviewFollowUp(message);
+  if (!previous || !followUp) return null;
+  const { namedType, namedDirection } = followUp;
   const kind = namedType ? /^mutual fund|^fund/.test(namedType[1]) ? 'funds' :
     /^stock|^share/.test(namedType[1]) ? 'stocks' : 'holdings' :
     previous.kind === 'Mutual fund' ? 'funds' : previous.kind === 'Stock' ? 'stocks' : 'holdings';
@@ -728,7 +738,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const dateChecks = covered.filter(item => valuationDateIssue(item.row.asOf, today)).length;
     return answer(ranked.length ?
       `${lead}${ranked.length} of ${covered.length} covered ${scope} ${covered.length === 1 ? 'row shows' : 'rows show'} an entered unrealized ${direction}, totaling ${rupeesWithPaise(total)}: ${list}${ranked.length > 5 ? `; and ${ranked.length - 5} more` : ''}.` :
-      `${lead}none of the ${covered.length} covered ${scope} ${covered.length === 1 ? 'row shows' : 'rows show'} an entered unrealized ${direction}.`,
+      covered.length === 1 ? `${lead}the one covered ${scope} row does not show an entered unrealized ${direction}.` :
+        `${lead}none of the ${covered.length} covered ${scope} rows show an entered unrealized ${direction}.`,
       `Compared ${covered.length} covered current-position ${covered.length === 1 ? 'value with its' : 'values with each row’s'} checked cost; ${rows.length - covered.length} ${scope} ${rows.length - covered.length === 1 ? 'row lacks' : 'rows lack'} a usable pair.${dateChecks ? ` ${dateChecks} covered ${dateChecks === 1 ? 'value date needs' : 'value dates need'} a freshness check.` : ''}`,
       `These are per-row, dated differences, not annual returns, benchmark performance, lifetime profit or a reason to trade. They exclude sold positions, distributions, taxes, exit loads and unchecked costs. ${coverageNote}`, '#holdings', 'Inspect covered holdings');
   }
@@ -1166,7 +1177,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const funds = valid.filter(row => row.type === 'Mutual fund').length;
     const stocks = valid.filter(row => row.type === 'Stock').length;
     const other = valid.filter(row => row.type === 'Other investment').length;
-    return answer(`${lead}${funds} mutual-fund rows, ${stocks} direct-stock rows and ${other} other-investment rows total ${money(result.total)}. ${result.asOfSummary}.`,
+    return answer(`${lead}${funds} mutual-fund ${funds === 1 ? 'row' : 'rows'}, ${stocks} direct-stock ${stocks === 1 ? 'row' : 'rows'} and ${other} other-investment ${other === 1 ? 'row' : 'rows'} total ${money(result.total)}. ${result.asOfSummary}.`,
       `Added ${valid.length} positive values entered or imported in this tab; a fund-house summary may represent several schemes.`,
       `${coverageNote} This is not a live account balance.`, '#holdings', 'Inspect included holdings');
   }
