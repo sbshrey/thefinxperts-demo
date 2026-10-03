@@ -436,6 +436,13 @@ function renderRefresh() {
 
 function renderReview() {
   const rows = state.confirmed;
+  const quickGoal = $('#quick-goal');
+  if (quickGoal) {
+    quickGoal.hidden = rows.length > 0;
+    for (const prompt of document.querySelectorAll('.suggested-questions [data-guided-question]'))
+      prompt.hidden = rows.length === 0;
+    $('.suggested-questions span').textContent = rows.length ? 'Ask this review' : 'Start here';
+  }
   const total = rows.reduce((sum, row) => sum + row.value, 0);
   const assets = { Equity: 0, Debt: 0, Gold: 0, Other: 0 };
   for (const row of rows) assets[row.asset] += row.value;
@@ -1437,11 +1444,10 @@ $('#starter-open')?.addEventListener('click', () => {
   if (deviceRecord()) $('#device-review-action').click();
   else $('#restore-tab-file').click();
 });
-$('#starter-goal')?.addEventListener('click', () => {
+$('#quick-goal')?.addEventListener('click', () => {
   say('assistant', 'What goal would you like to plan for? Say “I want to plan for retirement” or name one other goal. I will ask for your age, time horizon and amount before showing goal figures.');
   $('#message').focus();
 });
-$('#starter-report')?.addEventListener('click', () => $('#report-help-dialog').showModal());
 for (const prompt of document.querySelectorAll('[data-guided-question]')) {
   prompt.addEventListener('click', () => {
     if (state.busy) return;
