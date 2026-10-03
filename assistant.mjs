@@ -668,11 +668,13 @@ function renderGoalReview() {
       const comparison = document.createElement('div'); comparison.className = 'mix-compare';
       for (const row of review.mixComparison) {
         const line = document.createElement('p');
-        line.textContent = `${row.asset}: ${row.currentPct.toFixed(1)}% in linked holdings · ${row.plannedPct.toFixed(1)}% you chose · ${Math.abs(row.differencePct).toFixed(1)} percentage points ${row.differencePct >= 0 ? 'above' : 'below'}`;
+        const difference = Math.abs(row.differenceValue) < 0.5 ? 'at your rupee reference' :
+          `${money(Math.abs(row.differenceValue))} ${row.differenceValue > 0 ? 'above' : 'below'} the rupee reference at this total`;
+        line.textContent = `${row.asset}: ${row.currentPct.toFixed(1)}% in linked holdings · ${row.plannedPct.toFixed(1)}% you chose · ${Math.abs(row.differencePct).toFixed(1)} percentage points ${row.differencePct >= 0 ? 'above' : 'below'} · ${difference}`;
         comparison.append(line);
       }
       root.append(comparison);
-      root.append(paragraph('This compares dated values and asset labels you supplied. It does not account for fund constituents, tax or transaction costs, and it is not a trade instruction. Say “clear goal mix” to remove the comparison.'));
+      root.append(paragraph('The rupee reference applies your chosen percentages to the same linked total; it is not money to move or add. This compares dated values and asset labels you supplied. It does not account for fund constituents, tax or transaction costs. Say “clear goal mix” to remove the comparison.'));
     } else {
       const pause = { no_holdings: 'Link at least one holding to this goal first.',
         other_investment: 'Linked NPS, EPF, deposit or other manual savings have no verified asset split; compare only what their source confirms.',

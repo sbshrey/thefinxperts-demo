@@ -456,11 +456,14 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         `Selected goal ${goal.name}; comparison status ${result.mixPause || 'unavailable'}.`,
         'The chosen percentages came from you. This review does not create an allocation or suggest trades.', '#goals', 'Check goal inputs');
     }
-    const parts = result.mixComparison.map(row =>
-      `${row.asset} ${row.currentPct.toFixed(1)}% entered versus ${row.plannedPct.toFixed(1)}% chosen`);
+    const parts = result.mixComparison.map(row => {
+      const difference = Math.abs(row.differenceValue) < 0.5 ? 'at your rupee reference' :
+        `${money(Math.abs(row.differenceValue))} ${row.differenceValue > 0 ? 'above' : 'below'} the rupee reference at this total`;
+      return `${row.asset} ${row.currentPct.toFixed(1)}% entered versus ${row.plannedPct.toFixed(1)}% chosen (${difference})`;
+    });
     return answer(`For ${goal.name}, ${parts.join('; ')}.`,
-      `${money(result.goalTotal)} of entered value is linked to this goal; each share is its labelled asset value divided by that total.`,
-      'These are supplied dated values and your own chosen percentages. Fund constituents, taxes and transaction costs are not assessed. A difference is a review prompt, not an instruction to trade.', '#goals', 'Review chosen mix');
+      `${money(result.goalTotal)} of entered value is linked to this goal. Each percentage is labelled asset value divided by that total; each rupee reference is the same total times your chosen percentage.`,
+      'These are supplied dated values and your own chosen percentages. The rupee reference is not money to move or add. Fund constituents, taxes and transaction costs are not assessed. A difference is a review prompt, not an instruction to trade.', '#goals', 'Review chosen mix');
   }
   if (/\b(?:equity|stock market).{0,25}\b(?:fall(?:s|en)?|drop(?:s|ped)?)\b|\b(?:stress test|hypothetical loss)\b/.test(input)) {
     if (goal?.equityDropPct === undefined) return answer('Choose a hypothetical equity fall first, such as “equity fall 25%”, then confirm it. I will apply it once to the entered Equity value linked to this goal.',
