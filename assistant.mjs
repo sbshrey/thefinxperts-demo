@@ -2013,8 +2013,16 @@ $('#download-readable-review')?.addEventListener('click', () => {
 
 $('.detailed-link')?.addEventListener('click', event => {
   const portfolio = state.account?.portfolio;
-  if (!browserOnly || !portfolio?.holdings?.length || typeof BroadcastChannel === 'undefined') return;
+  if (!browserOnly || !portfolio?.holdings?.length) return;
+  if (typeof BroadcastChannel === 'undefined') {
+    event.preventDefault();
+    say('note', 'This browser cannot hand your review to the detailed tab. Save a private review file here and open it there.');
+    return;
+  }
   const token = crypto.randomUUID();
+  const destination = new URL('./detailed-review.html', location.href);
+  destination.hash = `handoff=${token}`;
+  event.currentTarget.href = destination.href;
   const channel = new BroadcastChannel(`thefinxperts-review-handoff-${token}`);
   let sent = false;
   const timeout = setTimeout(() => channel.close(), 15_000);
@@ -2027,9 +2035,6 @@ $('.detailed-link')?.addEventListener('click', event => {
       channel.close();
     }
   };
-  const destination = new URL('./detailed-review.html', location.href);
-  destination.hash = `handoff=${token}`;
-  event.currentTarget.href = destination.href;
 });
 
 $('#download-tab-review')?.addEventListener('click', () => {
