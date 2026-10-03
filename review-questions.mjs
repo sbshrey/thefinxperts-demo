@@ -1,8 +1,9 @@
-import { planFromName, valuationDateIssue } from './analysis.mjs';
+import { planFromName, positionsByIsin, valuationDateIssue } from './analysis.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
 import { reserveMonths } from './reserve.mjs';
 import { confirmedGoalAssumptions } from './goal-scenario.mjs';
 import { asksForAdvice } from './question-scope.mjs';
+import { goalShare } from './goals.mjs';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -296,6 +297,26 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `${money(largestValue)} ÷ ${money(total)}; ${selectedGoal ? `${result.goalHoldingCount} assigned holding ${result.goalHoldingCount === 1 ? 'row' : 'rows'} for the selected goal` : `${valid.length} entered holding ${valid.length === 1 ? 'row' : 'rows'}`}. ${top.length > 1 ? `The largest ${top.length} positions sum to ${money(topValue)}. ` : ''}Exact matching supplied ISINs and fund-house summary names are grouped; rows without those identifiers stay separate. ${result.asOfSummary}.`,
       `${dateNote}${categoryNote}Fund constituents and holdings outside this review are not verified. These shares do not establish whether the mix suits your age, risk capacity or goal. ${coverageNote}`,
       selectedGoal ? '#goals' : '#holdings', selectedGoal ? 'Review this goal' : 'Inspect holdings');
+  }
+  if (/\b(?:biggest|largest|highest\s+(?:entered\s+)?value)\b/.test(input) &&
+      /\b(?:fund|funds|mutual fund|mutual funds)\b/.test(input)) {
+    const selectedGoal = Boolean(goalScopeRequested);
+    if (selectedGoal) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const funds = valid.filter(row => row.type === 'Mutual fund').flatMap(row => {
+      const share = selectedGoal ? goalShare(goal, row.id) : 100;
+      return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+    });
+    if (!funds.length) return answer('No mutual-fund value is entered for this review scope.',
+      selectedGoal ? `No mutual-fund value is assigned to ${goal.name}.` : 'No mutual-fund row has a positive entered value.',
+      'This does not establish what you own outside the entered review.', '#holdings', 'Check fund holdings');
+    const largest = positionsByIsin(funds)[0];
+    const total = funds.reduce((sum, row) => sum + Number(row.value), 0);
+    return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}${largest.name} is the largest entered ${largest.granularity === 'fund_house' ? 'fund-house summary' : 'fund position'} at ${money(largest.value)}, or ${percent(largest.value, total)} of ${selectedGoal ? 'assigned' : 'entered'} mutual-fund value.`,
+      `${money(largest.value)} ÷ ${money(total)} ${selectedGoal ? 'assigned' : 'entered'} mutual-fund value; exact matching supplied ISINs and fund-house summaries are grouped. ${result.asOfSummary}.`,
+      'This uses supplied dated values. A fund-house summary may contain several schemes, and fund constituents or missing investments are not verified.', selectedGoal ? '#goals' : '#holdings', 'Inspect this fund');
   }
   if (/\b(biggest|largest|concentrat(?:ion|ed|e|ing)?|top holding|single holding)\b/.test(input)) {
     const selectedGoal = Boolean(goalScopeRequested);

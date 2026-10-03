@@ -339,7 +339,7 @@ export function planFromName(name) {
 }
 
 /** Combine only entries with the same valid-format ISIN and classification. */
-function positionsByIsin(holdings) {
+export function positionsByIsin(holdings) {
   const positions = new Map();
   holdings.forEach((holding, index) => {
     const identified = typeof holding.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin);
