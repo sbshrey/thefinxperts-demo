@@ -4,6 +4,18 @@ export function confirmedGoalAssumptions(goal) {
     .every(field => goal?.assumptionsChecked?.[field] === true);
 }
 
+/** Divide only today's entered gap across the entered horizon; no future-value inputs. */
+export function calculateStraightLineGap(currentValue, goal) {
+  const years = Number(goal?.years);
+  const targetToday = Number(goal?.target);
+  if (![currentValue, years, targetToday].every(Number.isFinite) ||
+      currentValue < 0 || currentValue > 1e12 || !Number.isInteger(years) ||
+      years < 1 || years > 50 || targetToday < 1000 || targetToday > 1e12) return null;
+  const gapToday = Math.max(0, targetToday - currentValue);
+  const months = years * 12;
+  return { gapToday, months, roundedMonthly: Math.ceil(gapToday / months) };
+}
+
 /** Pure arithmetic scenario; no expected-return forecast or suitability decision. */
 export function calculateGoalScenario(currentValue, goal) {
   const years = Number(goal.years);

@@ -1,7 +1,7 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, valuationDateIssue } from './analysis.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
 import { reserveMonths } from './reserve.mjs';
-import { confirmedGoalAssumptions } from './goal-scenario.mjs';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs';
 import { asksForAdvice } from './question-scope.mjs';
 import { goalShare, summarizeGoalCoverage } from './goals.mjs';
 
@@ -406,6 +406,34 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer(`${lead}${missing} ${missing === 1 ? 'holding lacks' : 'holdings lack'} a date, ${stale} ${stale === 1 ? 'is' : 'are'} dated over 90 days ago, and ${future} ${future === 1 ? 'has a' : 'have'} future ${future === 1 ? 'date' : 'dates'}.${list} ${String(result.asOfSummary).replace(/\.$/, '')}.`,
       `Compared the dates on ${valid.length} entered ${valid.length === 1 ? 'holding' : 'holdings'} with today's date in India; the 90-day threshold is a review prompt.`,
       'A dated entry is not a verified live quote. Refresh values from the original source.', '#holdings', 'Check dated values');
+  }
+  const monthlyGoalQuestion = /\b(?:per month|monthly)\b/.test(input) &&
+    /\b(?:goal|target|gap)\b/.test(input);
+  const straightLineQuestion = monthlyGoalQuestion &&
+    (/\b(?:simple|straight[ -]line|today|without (?:returns?|growth)|zero growth)\b/.test(input) ||
+      !confirmedGoalAssumptions(goal) && !/\b(?:future|project\w*|growth|inflation)\b/.test(input));
+  if (straightLineQuestion) {
+    if (goal?.confirmed !== true) return answer('Confirm the selected goal’s age, target in today’s rupees and time horizon first.',
+      'The selected goal details are unfinished.',
+      'A monthly gap cannot be divided without a confirmed goal amount and horizon.', '#goals', 'Confirm goal details');
+    if (!result.goalTotal) return answer('Link at least one entered holding to this goal before dividing its current gap across months.',
+      `Selected goal ${goal.name}; no holding value is assigned.`,
+      'An empty or unassigned review does not show what you own.', '#holdings', 'Link a holding');
+    if (result.goalDateCheck.count) return answer('Check the missing, future or over-90-day values linked to this goal before using a monthly gap figure.',
+      `${result.goalDateCheck.count} assigned ${result.goalDateCheck.count === 1 ? 'value needs' : 'values need'} a valuation-date check.`,
+      'An old or undated starting amount can materially change the division.', '#holdings', 'Check dated values');
+    if (result.goalAccessCheck.count) return answer('Check when the other investments linked to this goal can be used before dividing its current gap across months.',
+      `${money(result.goalAccessCheck.value)} of manually entered other investments is assigned to ${goal.name}.`,
+      'Gross current value does not prove this money is spendable at the goal date.', '#holdings', 'Check access to savings');
+    const straight = calculateStraightLineGap(result.goalTotal, goal);
+    if (!straight) return answer('The selected goal amount or horizon needs checking before I can divide its current gap.',
+      `Selected goal ${goal.name}; the simple monthly calculation is unavailable.`,
+      'No value is inferred from invalid goal inputs.', '#goals', 'Check goal details');
+    return answer(straight.gapToday > 0 ?
+      `The current gap for ${goal.name} is ${money(straight.gapToday)} in today’s rupees. Dividing it evenly across ${straight.months} months is about ${money(straight.roundedMonthly)} per month, rounded up.` :
+      `The entered value assigned to ${goal.name} meets or exceeds its target in today’s rupees, so the simple monthly gap is ₹0.`,
+      `${money(goal.target)} target today minus ${money(result.goalTotal)} assigned entered value = ${money(straight.gapToday)} current gap; ${goal.years} years × 12 = ${straight.months} months; divide and round up to whole rupees.`,
+      `This is division of today's gap, not a savings instruction or future forecast. It excludes inflation, returns, taxes, future contributions and unentered holdings. ${coverageNote}`, '#goals', 'Review selected goal');
   }
   const futureGoalQuestion = /\b(?:future|project(?:ion|ed)?|goal[ -]date|in \d+ years|per month|monthly)\b/.test(input) &&
     /\b(?:goal|target|gap|need|cost|contribut(?:ion|e)|retirement)\b/.test(input);

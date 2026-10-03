@@ -575,6 +575,12 @@ function renderGoalReview() {
     cell.append(small, strong); stats.append(cell);
   }
   root.append(stats);
+  if (review.straightLineGap) {
+    const straight = review.straightLineGap;
+    root.append(paragraph(straight.gapToday > 0 ?
+      `Simple monthly gap: ${money(straight.gapToday)} in today's rupees spread across ${straight.months} months is about ${money(straight.roundedMonthly)} per month, rounded up. This is division only; it excludes inflation, returns, taxes, future contributions and any holdings missing from your review. It is not an amount to invest or a forecast.` :
+      'The entered value assigned here meets or exceeds this target in today’s rupees. That does not establish whether the goal will be funded when it arrives; future costs and access to money may differ.'));
+  }
   if (Number.isInteger(review.age)) root.append(paragraph(
     `You entered your age as ${review.age} today. This should be your age, even if the goal is for someone else; it does not set an asset mix.`));
   const coverageLabel = value => ({ all: 'all included', some: 'some missing',

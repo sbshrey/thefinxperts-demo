@@ -1,5 +1,6 @@
 import { analyzePortfolio } from './analysis.mjs';
 import { goalShare } from './goals.mjs';
+import { calculateStraightLineGap } from './goal-scenario.mjs';
 
 /** The chat dashboard reads saved facts; all scenario numbers come from the review engine. */
 export function buildAssistantGoalReview(portfolio, today = new Date()) {
@@ -20,8 +21,11 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
   const scenarioStatus = missingAssumptions.length ? 'assumptions' :
     result.goalDateCheck.count ? 'valuation_dates' : result.goalAccessCheck.count ? 'access_uncertain' :
       result.scenario ? 'ready' : 'invalid';
+  const straightLineGap = result.goalTotal && !result.goalDateCheck.count && !result.goalAccessCheck.count ?
+    calculateStraightLineGap(result.goalTotal, goal) : null;
   return { kind: 'confirmed', name: goal.name, age: goal.age, years: goal.years, target: goal.target,
     linkedValue: result.goalTotal, linkedCount: result.goalHoldingCount, gapToday: result.goalGap,
+    straightLineGap,
     coverage: portfolio.coverage || null, emergencyFunding: goal.emergencyFunding || null,
     dateCheckCount: result.goalDateCheck.count, accessCheck: result.goalAccessCheck,
     scenario: scenarioStatus === 'ready' ? result.scenario : null,
