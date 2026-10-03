@@ -87,6 +87,19 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       return answer(`The selected goal is ${goal?.name || 'unfinished'}, not Retirement. Select or create your retirement goal so this question uses its own target and assigned holdings.`,
         'Only the selected goal can supply a target, horizon and assigned value.',
         'Another goal’s balance cannot establish retirement readiness.', '#goals', 'Select retirement goal');
+    const retirementAge = /\bretir\w*\s+(?:at|by)\s+(?:age\s+)?(\d{2,3})\b/.exec(input);
+    if (retirementAge && goal?.confirmed === true) {
+      const askedAge = Number(retirementAge[1]);
+      const goalAge = Number(goal.age) + Number(goal.years);
+      if (askedAge < 18 || askedAge > 100)
+        return answer('Check the retirement age in your question; this review accepts ages from 18 to 100.',
+          `You entered age ${goal.age} and a ${goal.years}-year horizon for ${goal.name}.`,
+          'No retirement-readiness comparison is made from an invalid age.', '#goals', 'Check retirement age');
+      if (goalAge !== askedAge)
+        return answer(`You asked about retiring at age ${askedAge}, but the selected ${goal.name} goal is set for approximately age ${goalAge} (age ${goal.age} plus ${goal.years} years). Check and update that goal’s horizon before I use its target and assigned value for this question.`,
+          `Entered age ${goal.age} + entered horizon ${goal.years} years = approximate goal age ${goalAge}; asked age ${askedAge}.`,
+          'The goal has no exact date or birthday, and a different retirement age may require a different target. I cannot decide whether retirement is affordable.', '#goals', 'Check goal timing');
+    }
     if (goal?.confirmed !== true)
       return answer('Confirm the selected goal’s age, target in today’s rupees and time horizon before checking its entered value.',
         `The selected goal ${goal?.name || 'unnamed'} is unfinished.`,
@@ -103,7 +116,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     if (!gap) return answer('Check the selected goal amount and horizon before comparing its entered value with the target.',
       `Selected goal ${goal.name}; current-gap arithmetic is unavailable.`,
       'No on-track conclusion is inferred from invalid goal inputs.', '#goals', 'Check goal details');
-    return answer(`I cannot tell whether ${goal.name} is on track from a holdings snapshot. You entered ${money(result.goalTotal)} assigned toward a ${money(goal.target)} target in today’s rupees, leaving a current gap of ${money(gap.gapToday)} across ${goal.years} years.`,
+    return answer(`I cannot tell whether ${goal.name} is on track from a holdings snapshot. You entered ${money(result.goalTotal)} assigned toward a ${money(goal.target)} target in today’s rupees, leaving a current gap of ${money(gap.gapToday)} across ${goal.years} years. ${confirmedGoalAssumptions(goal) ? 'Ask “future goal gap” to see a separate what-if using the assumptions you confirmed.' : 'To explore a separate future what-if, confirm your own monthly contribution, growth and inflation assumptions.'}`,
       `${money(goal.target)} target today minus ${money(result.goalTotal)} assigned value = ${money(gap.gapToday)} current gap; ${result.asOfSummary}.`,
       `This is a current comparison, not a forecast or a retirement-readiness verdict. Future contributions, inflation, returns, taxes and unentered holdings are not established. ${coverageNote}`, '#goals', 'Review goal inputs');
   }
