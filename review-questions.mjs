@@ -78,6 +78,42 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
   }
 
+  const goalRiskQuestion = /\b(?:safe|risky|risk|suitable|appropriate|right)\b/.test(input) &&
+    (/(?:\b(?:goal|retirement)\b.{0,60}\b(?:safe|risky|risk|suitable|appropriate|right)\b)/.test(input) ||
+      /\b(?:safe|risky|risk|suitable|appropriate|right)\b.{0,60}\b(?:goal|retirement|my age|age and goal)\b/.test(input));
+  if (goalRiskQuestion && !/\b(?:buy|sell|switch|redeem|rebalance|replace|increase|reduce|move|shift|trade|invest|allocate|recommend|suggest|optimi[sz]e)\b/.test(input)) {
+    if (goal?.confirmed !== true)
+      return answer('Confirm the selected goal’s age, target and years until it is due before checking the exposure of its assigned holdings.',
+        `The selected goal ${goal?.name || 'unnamed'} is unfinished.`,
+        'Age alone cannot establish a suitable allocation or whether a goal is safe.', '#goals', 'Confirm goal details');
+    const statedHorizon = /\b(?:goal|retirement)\b.{0,20}\b(?:in|due in)\s+(\d{1,2})\s+years?\b/.exec(input);
+    if (statedHorizon && Number(statedHorizon[1]) !== Number(goal.years))
+      return answer(`You asked about a goal in ${statedHorizon[1]} years, but ${goal.name} is set for ${goal.years} years. Check the selected goal’s horizon before using its exposure for this question.`,
+        `The question says ${statedHorizon[1]} years; the confirmed selected goal says ${goal.years} years.`,
+        'A different date can change the goal target and which holdings you intend to use.', '#goals', 'Check goal timing');
+    if (!result.goalTotal)
+      return answer(`Link the holdings you intend to count toward ${goal.name} before checking its exposure.`,
+        `No entered holding value is assigned to ${goal.name}.`,
+        'An empty goal review does not mean you own no investments.', '#goals', 'Link goal holdings');
+    const hasFundHouseSummary = valid.some(row => goalShare(goal, row.id) > 0 && row.granularity === 'fund_house');
+    if (result.goalDateCheck.count || result.goalAccessCheck.count || result.goalAssets.Other > 0 ||
+        hasFundHouseSummary) {
+      const checks = [
+        result.goalDateCheck.count ? `${result.goalDateCheck.count} assigned value ${result.goalDateCheck.count === 1 ? 'date' : 'dates'}` : null,
+        result.goalAccessCheck.count ? 'withdrawal access for linked other investments' : null,
+        result.goalAssets.Other > 0 ? 'asset labels for linked Other value' : null,
+        hasFundHouseSummary ? 'scheme detail behind fund-house summaries' : null,
+      ].filter(Boolean);
+      return answer(`For ${goal.name}, check ${checks.join(', ')} before relying on its asset exposure.`,
+        `${money(result.goalTotal)} of entered value is assigned to this ${goal.years}-year goal; ${result.asOfSummary}.`,
+        `These gaps can change the apparent mix. I cannot decide whether the goal is safe or the mix suitable. ${coverageNote}`, '#holdings', 'Check goal holdings');
+    }
+    const equity = result.goalAssets.Equity;
+    return answer(`For ${goal.name}, due in ${goal.years} ${goal.years === 1 ? 'year' : 'years'}, ${money(equity)} (${percent(equity, result.goalTotal)}) of assigned value is labelled Equity. ${equity ? 'To see a one-time fall using a percentage you choose, say “equity fall 20%” with your own figure.' : 'No assigned value is labelled Equity in this snapshot.'}`,
+      `${money(equity)} labelled Equity ÷ ${money(result.goalTotal)} assigned value; entered age ${goal.age} and ${goal.years}-year horizon; ${result.asOfSummary}.`,
+      `This describes entered exposure, not whether it is safe or suitable for your age or goal. It does not choose an allocation or trade, and fund constituents, other risks and unentered holdings are unknown. ${coverageNote}`, '#goals', 'Review goal exposure');
+  }
+
   if (asksForAdvice(input))
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
