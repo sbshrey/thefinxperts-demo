@@ -151,7 +151,11 @@ body[data-mode="browser-only"] .tools-items>.quiet:disabled{opacity:.5}
 .public-context .context-links a{color:#246b50;font-size:12px;font-weight:700}
 .public-context .context-status{font-size:11px;color:#657c6e;margin-bottom:0}
 .section-card ul{margin:0;padding-left:18px}
-#review-questions{list-style:none;padding:0}
+#review-questions,#review-more-questions{list-style:none;padding:0}
+#review-more{margin-top:12px;border-top:1px solid #e9eee9;padding-top:12px}
+#review-more[hidden]{display:none}
+#review-more>summary{cursor:pointer;color:#215b3c;font-size:13px;font-weight:700}
+#review-more-questions{margin:12px 0 0}
 .review-check+.review-check{border-top:1px solid #e9eee9;padding-top:12px;margin-top:12px}
 .review-check>strong{font-size:13px;color:#244b39}
 .review-check p{margin:5px 0 0}

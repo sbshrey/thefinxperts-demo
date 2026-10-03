@@ -8,8 +8,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
   <title>Guided browser review · TheFinxperts</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./assistant.css?v=08d96a3caf31">
-  <script type="module" src="./assistant.mjs?v=08d96a3caf31"></script>
+  <link rel="stylesheet" href="./assistant.css?v=0b4c00b40d26">
+  <script type="module" src="./assistant.mjs?v=0b4c00b40d26"></script>
 </head>
 <body data-mode="browser-only">
   <div class="shell">
@@ -61,7 +61,7 @@
           <div class="section-card" id="goal-card"><h3>Selected goal</h3><div id="goal-review"><p>Add a goal to see how its assigned holdings compare with its target.</p></div></div>
           <div class="section-card"><h3>Asset picture</h3><div id="asset-bars" class="asset-bars"><p>Nothing to compare yet.</p></div></div>
           <div class="section-card" id="fund-disclosure-card" hidden><h3>Inside your funds</h3><div id="fund-disclosure-review"></div></div>
-          <div class="section-card"><h3>What to check next</h3><ul id="review-questions"><li>Describe one holding or upload a CAMS Active Statement or holdings report to start.</li></ul></div>
+          <div class="section-card"><h3>What to check next</h3><ul id="review-questions"><li>Describe one holding or upload a CAMS Active Statement or holdings report to start.</li></ul><details id="review-more" hidden><summary id="review-more-label">More review checks</summary><ul id="review-more-questions"></ul></details></div>
           <div class="section-card"><h3>Included holdings</h3><div id="holding-list" class="holding-list"><p>Confirmed rows will appear here.</p></div></div>
           <details class="review-limit"><summary>How to update this review and what it cannot verify</summary><p>Upload a complete newer CAMS Active Statement to preview a fund refresh. A newer original mutual-fund CAS or broker report can update exact unique ISIN matches after confirmation; unmatched rows stay out and no holdings are removed by those partial refreshes. Active Statement additions stay unassigned and absent funds lose goal links only after confirmation. For a scheme with statement units, say “set NAV of holding 1 to ₹125.4321 as of YYYY-MM-DD” to preview a dated estimate after checking the exact scheme and unchanged units. For a stock with checked shares, say “set price of holding 1 to ₹125.43 as of YYYY-MM-DD” and check the listed security and current shares before confirming. To fix one row in chat, say “update value of NAME to ₹50,000 as of YYYY-MM-DD” or “remove NAME”. Use its number when names repeat. For an individual fund labelled Other, check its source and say classify holding 1 as Debt with the category you found. This is a factual review of supplied values; it does not verify current prices or give buy, sell, switch or allocation instructions. Drafts remain separate until you confirm them. Choose encrypted device saving or download a private review file to continue later.</p></details>
         </div>

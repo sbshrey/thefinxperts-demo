@@ -1,6 +1,6 @@
-import { analyzePortfolio } from './analysis.mjs?v=08d96a3caf31';
-import { goalShare } from './goals.mjs?v=08d96a3caf31';
-import { calculateStraightLineGap } from './goal-scenario.mjs?v=08d96a3caf31';
+import { analyzePortfolio } from './analysis.mjs?v=0b4c00b40d26';
+import { goalShare } from './goals.mjs?v=0b4c00b40d26';
+import { calculateStraightLineGap } from './goal-scenario.mjs?v=0b4c00b40d26';
 
 /** The chat dashboard reads saved facts; all scenario numbers come from the review engine. */
 export function buildAssistantGoalReview(portfolio, today = new Date()) {
@@ -51,7 +51,7 @@ export function buildAssistantReviewChecks(holdings, portfolio, today = new Date
   const goal = portfolio?.goals?.find(item => item.id === portfolio.activeGoalId) ||
     { name: 'My goal', age: null, years: null, target: null, confirmed: false, linkedIds: [] };
   const result = analyzePortfolio(rows, goal, today, portfolio?.reserve, portfolio?.coverage);
-  return [...result.findings, ...result.additionalFindings].slice(0, 3).map(item => ({
+  return [...result.findings, ...result.additionalFindings].map(item => ({
     key: item.key, title: item.title, detail: item.detail, question: item.question,
     basis: item.basis, limitation: item.limitation,
   }));
