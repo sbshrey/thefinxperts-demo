@@ -126,6 +126,7 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
     const value = numericAmount(raw);
     if (/^(?:grand )?total$/i.test(name)) {
       if (value === null) errors.push(`Report row ${index + 1}: the reported total is invalid.`);
+      else if (reportedTotal !== null) errors.push(`Report row ${index + 1}: more than one total row was found. Check the report before import.`);
       else reportedTotal = value;
       continue;
     }
@@ -159,7 +160,9 @@ export function parseBrokerHoldingsRows(rows, headerIndex, columns, asOf,
   const total = holdings.reduce((sum, holding) => sum + holding.value, 0);
   if (reportedTotal !== null && Math.abs(reportedTotal - total) > 1)
     errors.push('The report total does not match the selected rows and value column.');
-  return { holdings: errors.length ? [] : holdings, errors: errors.slice(0, 5), notices };
+  return { holdings: errors.length ? [] : holdings, errors: errors.slice(0, 5), notices,
+    reportedTotal: errors.length ? null : reportedTotal,
+    parsedTotal: errors.length ? null : Math.round(total * 100) / 100 };
 }
 
 function numericAmount(raw) {
