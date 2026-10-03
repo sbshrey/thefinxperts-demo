@@ -84,6 +84,8 @@ const state = { confirmed: [], drafts: [], history: [], file: null, busy: false,
   goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
   correction: null, refresh: null, casAvailable: false, casLocal: false,
   capacityReached: false, coveragePrompted: false, coverageQueue: null, pendingGoalName: false };
+const isEmptyGoalPlaceholder = goal => goal?.name === 'My goal' && goal.confirmed === false &&
+  goal.age == null && goal.years == null && goal.target == null;
 const starterActions = $('#starter-actions');
 function addPublicInflationContext() {
   if (!browserOnly) return;
@@ -536,7 +538,10 @@ function renderReview() {
   const rows = state.confirmed;
   const quickGoal = $('#quick-goal');
   if (quickGoal) {
-    quickGoal.hidden = rows.length > 0;
+    const goals = state.account?.portfolio?.goals || [];
+    const hasNamedGoal = goals.some(goal => !isEmptyGoalPlaceholder(goal));
+    quickGoal.hidden = goals.some(goal => !goal.confirmed && !isEmptyGoalPlaceholder(goal));
+    quickGoal.textContent = hasNamedGoal ? 'Add a goal' : 'Start a goal';
     for (const prompt of document.querySelectorAll('.suggested-questions [data-guided-question]'))
       prompt.hidden = rows.length === 0;
     $('.suggested-questions span').textContent = rows.length ? 'Ask this review' : 'Start here';
@@ -1341,8 +1346,7 @@ $('#composer').addEventListener('submit', async event => {
     let prepared = prepareAssistantGoalCommand(state.account.portfolio, goalCommand);
     if (browserOnly && goalCommand.kind === 'create' && state.account.portfolio?.goals?.length === 1) {
       const placeholder = state.account.portfolio.goals[0];
-      if (placeholder.name === 'My goal' && placeholder.confirmed === false &&
-          placeholder.age == null && placeholder.years == null && placeholder.target == null &&
+       if (isEmptyGoalPlaceholder(placeholder) &&
           goalCommand.goalName.length >= 2 && goalCommand.goalName.length <= 60) {
         const portfolio = structuredClone(state.account.portfolio);
         portfolio.goals[0].name = goalCommand.goalName;
