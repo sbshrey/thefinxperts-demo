@@ -1,13 +1,13 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=a89bfb381950';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=a89bfb381950';
-import { reserveMonths } from './reserve.mjs?v=a89bfb381950';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=169d43a83b97';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=169d43a83b97';
+import { reserveMonths } from './reserve.mjs?v=169d43a83b97';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=a89bfb381950';
-import { asksForAdvice } from './question-scope.mjs?v=a89bfb381950';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=a89bfb381950';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=a89bfb381950';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=a89bfb381950';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=169d43a83b97';
+import { asksForAdvice } from './question-scope.mjs?v=169d43a83b97';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=169d43a83b97';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=169d43a83b97';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=169d43a83b97';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -812,7 +812,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This is age arithmetic, not a suitability assessment or an asset-allocation suggestion. Your birthday and exact goal date were not entered.', '#goals', 'Review selected goal');
   }
   if (!valid.length) {
-    if (/^(?:what if|test|compare)\s+(?:the\s+)?(?:annual\s+)?(?:inflation|growth)(?:\s+rate)?\b/.test(input))
+    if (/^(?:what if|test|compare)\s+(?:the\s+)?(?:annual\s+)?(?:inflation|growth)(?:\s+rate)?\b/.test(input) ||
+        /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in\b|i\s+(?:reach|hit|delay|postpone|bring|move)\s+(?:my|the)\s+goal\b)/.test(input))
       return goal?.confirmed === true ? answer(`Assign at least one confirmed holding to ${goal.name} before comparing its future illustrations.`,
         `Selected goal ${goal.name}; 0 positive holding rows are entered.`,
         'An empty review does not establish that you own no investments.', '#holdings', 'Add a holding') :
@@ -1054,6 +1055,52 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(result.goalTotal)} assigned now; ${money(goal.target)} target in today's rupees; ${goal.years} years; ${money(goal.monthlyContribution)} added at each month’s end. Only annual ${kind} changed from ${goal[field]}% to ${alternative}%; ${kind === 'inflation' ? `growth stayed ${goal.returnPct}%` : `inflation stayed ${goal.inflationPct}%`}.`,
       `Both results are fixed-assumption illustrations, not forecasts, expected returns or a monthly investment instruction. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
       'https://investor.sebi.gov.in/calculators/Visual_Gold_Planner.html', 'Read SEBI’s illustration');
+  }
+  const alternateHorizonQuestion = /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in\b|i\s+(?:reach|hit|delay|postpone|bring|move)\s+(?:my|the)\s+goal\b)/.test(input);
+  if (alternateHorizonQuestion) {
+    const absolute = /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in|i\s+(?:reach|hit)\s+(?:my|the)\s+goal\s+in)\s+(\d{1,3})\s+years?(?:\s+instead of\s+(\d{1,3})\s+years?)?[?.!]*$/.exec(input);
+    const later = /^(?:what if|test|compare)\s+i\s+(?:delay|postpone)\s+(?:my|the)\s+goal\s+by\s+(\d{1,3})\s+years?[?.!]*$/.exec(input);
+    const earlier = /^(?:what if|test|compare)\s+i\s+(?:bring|move)\s+(?:my|the)\s+goal\s+(?:forward|earlier)\s+by\s+(\d{1,3})\s+years?[?.!]*$/.exec(input);
+    const savedYears = Number(goal?.years);
+    const alternative = absolute ? Number(absolute[1]) : later ? savedYears + Number(later[1]) :
+      earlier ? savedYears - Number(earlier[1]) : NaN;
+    if (!Number.isInteger(alternative) || alternative < 1 || alternative > 50 ||
+        (later && Number(later[1]) < 1) || (earlier && Number(earlier[1]) < 1))
+      return answer('Choose one alternative goal horizon from 1 to 50 years, such as “What if my goal were in 12 years?” or “What if I delay my goal by 2 years?”',
+        'No single valid alternative horizon was supplied.',
+        'The time period must be your own hypothetical choice; this review does not select a goal date for you.', '#goals', 'Choose a horizon');
+    if (goal?.confirmed !== true) return answer('Confirm the selected goal’s age, target and saved horizon before comparing a different date.',
+      `Selected goal ${goal?.name || 'unnamed'} is unfinished.`,
+      'An alternative horizon without a confirmed goal has no defined starting period.', '#goals', 'Confirm goal details');
+    if (absolute?.[2] !== undefined && Number(absolute[2]) !== savedYears)
+      return answer(`You said “instead of ${absolute[2]} years”, but ${goal.name} has ${savedYears} years saved. Check that starting horizon before comparing.`,
+        `Entered starting horizon ${absolute[2]} years; saved horizon ${savedYears} years.`,
+        'The comparison must start from the horizon you actually confirmed.', '#goals', 'Check saved horizon');
+    if (!result.goalTotal) return answer(`Assign at least one confirmed holding to ${goal.name} before comparing its future illustrations.`,
+      `Selected goal ${goal.name}; assigned holding value ₹0.`,
+      'A portfolio total cannot be substituted for the value assigned to this goal.', '#holdings', 'Link holdings');
+    if (!confirmedGoalAssumptions(goal)) return answer(`Confirm your monthly contribution, growth and inflation assumptions for ${goal.name} before changing its horizon in a what-if. You may deliberately choose zero.`,
+      'At least one saved goal assumption is not confirmed.',
+      'No default rate or contribution is treated as your plan.', '#goals', 'Confirm assumptions');
+    if (result.goalDateCheck.count) return answer(`Check ${result.goalDateCheck.count} assigned missing, future or over-90-day value ${result.goalDateCheck.count === 1 ? 'date' : 'dates'} before comparing horizons for ${goal.name}.`,
+      `${result.goalDateCheck.count} linked holding ${result.goalDateCheck.count === 1 ? 'row needs' : 'rows need'} a valuation-date check.`,
+      'A stale starting value can distort both illustrations.', '#holdings', 'Check goal values');
+    if (result.goalAccessCheck.count) return answer(`Check when linked other investments can be used for ${goal.name} before comparing goal dates.`,
+      `${money(result.goalAccessCheck.value)} in linked other investments has unverified access for this goal.`,
+      'A gross balance may not be available at either date.', '#holdings', 'Check access terms');
+    const base = result.scenario;
+    const changed = calculateGoalScenario(result.goalTotal, { ...goal, years: alternative });
+    if (!base || !changed) return answer('I cannot calculate both illustrations from these goal inputs. Check the selected goal and assumptions.',
+      `Selected goal ${goal.name}; one or both scenario calculations are unavailable.`,
+      'An invalid input must not produce an inferred future value.', '#goals', 'Check goal inputs');
+    const baseMonthly = Math.ceil(base.monthlyTotalNeeded);
+    const changedMonthly = Math.ceil(changed.monthlyTotalNeeded);
+    const monthlyChange = changedMonthly - baseMonthly;
+    const monthlyDifference = monthlyChange ? `${money(Math.abs(monthlyChange))} ${monthlyChange > 0 ? 'higher' : 'lower'}` : 'unchanged';
+    return answer(`At your saved ${savedYears}-year horizon, ${goal.name} illustrates a ${money(base.futureCost)} goal-date cost, ${money(base.projectedValue)} value, ${money(base.futureGap)} gap and ${money(baseMonthly)} total mathematical monthly amount. At your alternative ${alternative}-year horizon, those figures are ${money(changed.futureCost)}, ${money(changed.projectedValue)}, ${money(changed.futureGap)} and ${money(changedMonthly)} per month (${monthlyDifference}). This temporary comparison has not changed your saved goal.`,
+      `${money(result.goalTotal)} assigned now; ${money(goal.target)} target in today's rupees; ${money(goal.monthlyContribution)} added at each month’s end. Only the horizon changed from ${savedYears} to ${alternative} years; annual growth stayed ${goal.returnPct}% and inflation stayed ${goal.inflationPct}%.`,
+      `The two goal-date rupee amounts refer to different dates. Both results use fixed assumptions, not forecasts or savings instructions. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
+      '#goals', 'Review goal timing');
   }
   const futureGoalQuestion = /\b(?:future|project(?:ion|ed)?|goal[ -]date|in \d+ years|per month|monthly)\b/.test(input) &&
     /\b(?:goal|target|gap|need|cost|contribut(?:ion|e)|retirement)\b/.test(input);
