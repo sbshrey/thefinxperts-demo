@@ -3,10 +3,13 @@ import { parseAmount } from './assistant-clarify.mjs';
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
   if (typeof message !== 'string' || /[?\n\r]/.test(message)) return null;
-  const opening = /^(?:i (?:own|hold)|my holding is)\s+(.+?)[.!]?$/i.exec(message.trim());
+  const opening = /^(i (?:own|hold|have)|my holding is)\s+(.+?)[.!]?$/i.exec(message.trim());
   if (!opening) return null;
-  let description = opening[1].trim();
+  const hasHolding = /^i have$/i.test(opening[1]);
+  let description = opening[2].trim();
   if (/\b(?:should|buy|sell|switch|recommend|advice)\b/i.test(description)) return null;
+  if (hasHolding && /\b(?:invested|bought|paid|cost basis)\b/i.test(description))
+    return { error: 'An invested or purchase amount is not a current holding value. Name the investment and give its total current value in rupees.' };
   if (/^\d[\d,.]*\s+(?:shares?|units?)\b/i.test(description))
     return { error: 'A share or unit count alone is not a current holding value. Name one fund or stock and share its total value in rupees.' };
 
@@ -50,6 +53,7 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
       description = `${other[1]}${other[2] || ''}`.trim();
     }
   }
+  if (hasHolding && type === 'Other') return null;
   const name = description.replace(/^(?:a|an)\s+/i, '').trim();
   if (name.length < 2 || name.length > 80 || !/[a-z]/i.test(name) ||
       /[<>@\r\n]/.test(name) || /\b[A-Z]{5}\d{4}[A-Z]\b/i.test(name) || /\d{8,}/.test(name) ||
@@ -66,14 +70,14 @@ export function parseBrowserHoldingList(message, today = new Date()) {
   if (/^(?:my )?(?:holdings|investments):?$/i.test(lines[0] || '')) lines.shift();
   if (lines.length < 2) return null;
   const first = lines[0].replace(/^(?:[-*•]|\d+[.)])\s*/, '');
-  if (!/^(?:i (?:own|hold)\b|my holding is\b|(?:a |an )?(?:mutual fund|fund|stock|share|nps|epf|ppf|fixed deposit|bank deposit|physical gold|digital gold)\b)/i.test(first))
+  if (!/^(?:i (?:own|hold|have)\b|my holding is\b|(?:a |an )?(?:mutual fund|fund|stock|share|nps|epf|ppf|fixed deposit|bank deposit|physical gold|digital gold)\b)/i.test(first))
     return null;
   if (lines.length > 30) return { error: 'Paste at most 30 holdings at once, one per line.' };
   const drafts = [];
   const names = new Set();
   for (const [index, raw] of lines.entries()) {
     const line = raw.replace(/^(?:[-*•]|\d+[.)])\s*/, '').trim();
-    const statement = /^(?:i (?:own|hold)\b|my holding is\b)/i.test(line) ? line : `I own ${line}`;
+    const statement = /^(?:i (?:own|hold|have)\b|my holding is\b)/i.test(line) ? line : `I own ${line}`;
     const parsed = parseBrowserHoldingStatement(statement, today);
     if (!parsed?.draft) return { error: `Line ${index + 1} could not be staged. Give each holding its type, name and total value in rupees; leave out account details and advice questions.` };
     const key = `${parsed.draft.type}:${parsed.draft.name.toLocaleLowerCase('en-IN').replace(/\s+/g, ' ')}`;
