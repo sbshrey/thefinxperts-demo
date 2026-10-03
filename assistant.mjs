@@ -27,6 +27,7 @@ import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAs
   prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs';
 import { validShares } from './stock-estimate.mjs';
 import { fundNavLookupUrl } from './nav-estimate.mjs';
+import { inflationContext } from './market-context.mjs';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -82,6 +83,39 @@ const state = { confirmed: [], drafts: [], history: [], file: null, busy: false,
   correction: null, refresh: null, casAvailable: false, casLocal: false,
   capacityReached: false, coveragePrompted: false };
 const starterActions = $('#starter-actions');
+function addPublicInflationContext() {
+  if (!browserOnly) return;
+  const card = document.createElement('section');
+  card.className = 'section-card public-context';
+  card.id = 'inflation-context';
+  card.setAttribute('aria-labelledby', 'inflation-context-title');
+  const title = document.createElement('h3');
+  title.id = 'inflation-context-title';
+  const source = document.createElement('p');
+  source.className = 'context-source';
+  const detail = document.createElement('p');
+  const status = document.createElement('p');
+  status.className = 'context-status';
+  const indiaDate = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  const context = inflationContext(indiaDate);
+  title.textContent = context.title;
+  source.textContent = context.source;
+  detail.textContent = context.detail;
+  status.textContent = context.status;
+  const links = document.createElement('div');
+  links.className = 'context-links';
+  for (const [label, url] of context.links) {
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = label;
+    links.append(link);
+  }
+  card.append(title, source, detail, links, status);
+  $('#review-questions').closest('.section-card').after(card);
+}
+addPublicInflationContext();
 function hideStarterActions() { if (starterActions) starterActions.hidden = true; }
 function showStarterActions() {
   if (!browserOnly || !starterActions || state.confirmed.length) return;

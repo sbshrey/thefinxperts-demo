@@ -124,6 +124,11 @@ body{margin:0}
 .stat-grid strong{font-size:25px}
 .section-card h3{font-size:14px;margin:0 0 12px}
 .section-card p,.section-card li{font-size:13px;color:#5f706a;line-height:1.4}
+.public-context{background:#f9fcf9}
+.public-context .context-source{color:#173f35;font-weight:700}
+.public-context .context-links{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:10px}
+.public-context .context-links a{color:#246b50;font-size:12px;font-weight:700}
+.public-context .context-status{font-size:11px;color:#657c6e;margin-bottom:0}
 .section-card ul{margin:0;padding-left:18px}
 #review-questions{list-style:none;padding:0}
 .review-check+.review-check{border-top:1px solid #e9eee9;padding-top:12px;margin-top:12px}
