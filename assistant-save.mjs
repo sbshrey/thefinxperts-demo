@@ -47,6 +47,15 @@ export function findAssistantOverlap(existing, draft) {
   return null;
 }
 
+/** Preview saved-position matches without deciding whether they are truly duplicates. */
+export function findSavedDraftOverlaps(existing, drafts) {
+  if (!Array.isArray(drafts)) return [];
+  return drafts.flatMap((draft, index) => {
+    const match = findAssistantOverlap(existing, draft);
+    return match ? [{ index, draft, ...match }] : [];
+  });
+}
+
 /** Prepare an append-only account save. Existing goals and holding rows stay unchanged. */
 export function prepareAssistantSave(saved, drafts, { newId = () => crypto.randomUUID() } = {}) {
   const portfolio = asVersionTwo(saved, newId);

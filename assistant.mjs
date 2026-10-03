@@ -1,6 +1,6 @@
 import { previewActiveStatementFile } from './active-statement-pdf.mjs';
 import { previewBrowserCas } from './cas-browser.mjs';
-import { prepareAssistantSave, findAssistantOverlap } from './assistant-save.mjs';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs';
 import { buildAssistantGoalReview, buildAssistantReviewChecks } from './assistant-review.mjs';
 import { goalShare } from './goals.mjs';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
@@ -270,16 +270,24 @@ function renderDrafts() {
   const box = $('#drafts');
   box.hidden = !state.drafts.length;
   $('#draft-list').replaceChildren();
+  const matches = findSavedDraftOverlaps(state.account?.portfolio?.holdings || state.confirmed, state.drafts);
+  const omitButton = $('#omit-matching-drafts');
+  omitButton.hidden = !matches.length;
+  omitButton.disabled = state.busy;
+  omitButton.textContent = `Leave out ${matches.length} matching ${matches.length === 1 ? 'row' : 'rows'}`;
   if (!state.drafts.length) return;
+  const matchesByIndex = new Map(matches.map(match => [match.index, match]));
   const list = document.createElement('ul');
   for (const [index, row] of state.drafts.entries()) {
     const item = document.createElement('li');
-    item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}${row.shares ? ` · ${row.shares} report shares; check current balance` : ''}`;
+    const match = matchesByIndex.get(index);
+    item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}${row.shares ? ` · ${row.shares} report shares; check current balance` : ''}${match ? ` · May overlap ${match.existingName} (${match.reason} match)` : ''}`;
     list.append(item);
   }
   $('#draft-list').append(list);
-  $('#draft-help').textContent = nextDraftQuestion(state.drafts) ||
-    'Check these against your source before using them in the dashboard.';
+  $('#draft-help').textContent = matches.length ?
+    `${matches.length} ${matches.length === 1 ? 'row may' : 'rows may'} already be counted. Check both sources and account positions before leaving them out. ${nextDraftQuestion(state.drafts) || ''}` :
+    nextDraftQuestion(state.drafts) || 'Check these against your source before using them in the dashboard.';
   $('#confirm-drafts').disabled = state.busy || state.drafts.some(row =>
     !Number.isFinite(row.value) || row.value <= 0 || row.type === 'Other' ||
     (row.type === 'Stock' && row.asset !== 'Equity'));
@@ -1331,6 +1339,19 @@ $('#confirm-drafts').addEventListener('click', async () => {
   const count = state.drafts.length;
   state.drafts = []; renderDrafts(); renderReview();
   say('note', `${count} checked holding${count === 1 ? '' : 's'} added to this tab. Ask a question when you are ready.`);
+});
+
+$('#omit-matching-drafts').addEventListener('click', () => {
+  if (state.busy || !state.drafts.length) return;
+  const matches = findSavedDraftOverlaps(state.account?.portfolio?.holdings || state.confirmed, state.drafts);
+  if (!matches.length) return;
+  const value = matches.reduce((sum, match) => sum + (Number.isFinite(match.draft.value) ? match.draft.value : 0), 0);
+  const remaining = state.drafts.length - matches.length;
+  if (!window.confirm(`Leave out ${matches.length} matching ${matches.length === 1 ? 'row' : 'rows'} worth ${money(value)} and keep ${remaining} for review? A matching name or ISIN may be a separate account position. Check both reports and use this only when those rows are already counted. No saved holding changes yet.`)) return;
+  const omitted = new Set(matches.map(match => match.index));
+  state.drafts = state.drafts.filter((_, index) => !omitted.has(index));
+  renderDrafts();
+  say('note', `${matches.length} matching ${matches.length === 1 ? 'row was' : 'rows were'} left out of the unconfirmed list. ${remaining ? `${remaining} ${remaining === 1 ? 'row remains' : 'rows remain'} for checking and confirmation.` : 'No drafts remain.'} Saved holdings have not changed.`);
 });
 
 $('#discard-drafts').addEventListener('click', () => {

@@ -22,6 +22,7 @@ body{margin:0}
 .device-dialog-actions{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:18px}
 .device-dialog-actions button[type=submit]{border:0;background:#235d42;color:#fff;border-radius:8px;padding:10px 13px;font:inherit;font-weight:700;cursor:pointer}
 .device-dialog-actions button:disabled{opacity:.55;cursor:wait}
+.device-dialog-actions .consent-continue{border:0;background:#235d42;color:#fff;border-radius:8px;padding:10px 13px;font:inherit;font-weight:700;cursor:pointer}
 .report-help-dialog{width:min(560px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto}
 .report-help-dialog ol{padding-left:21px;margin:0 0 15px;color:#38584a;font-size:13px;line-height:1.5}
 .report-help-dialog li+li{margin-top:10px}
@@ -102,7 +103,7 @@ body{margin:0}
 .nav-correction-checks label{display:flex;align-items:flex-start;gap:6px}
 .nav-correction-checks input{margin:2px 0 0;flex:none}
 #correction-draft:has(.nav-correction-checks:not([hidden])){max-height:min(45vh,360px)}
-.draft-actions{display:flex;align-items:center;gap:13px}
+.draft-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
 .draft-actions button{font-size:12px;padding:9px 12px}
 .review-panel{display:flex;flex-direction:column;min-height:0;min-width:0;border-left:1px solid #dce6df;background:#f4f7f4}
 .review-head{display:flex;align-items:center;justify-content:space-between;padding:24px 28px 16px}
