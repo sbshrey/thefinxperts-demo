@@ -11,7 +11,7 @@ import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
 import { contextNeedsReview } from './market-context.mjs';
-import { estimateNavValue } from './nav-estimate.mjs';
+import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs';
 import { estimateStockValue, validShares } from './stock-estimate.mjs';
 import { chooseNextReviewStep } from './next-step.mjs';
 import { confirmedGoalAssumptions } from './goal-scenario.mjs';
@@ -37,7 +37,7 @@ const rupees = value => '₹' + Math.round(value).toLocaleString('en-IN');
 const $ = selector => document.querySelector(selector);
 function renderReviewAnswer() {
   const response = answerReviewQuestion(lastReviewQuestion, { holdings: state.holdings,
-    goal: state.goal, source: state.source, coverage: state.coverage, reserve: state.reserve,
+    goal: state.goal, goals: state.goals, source: state.source, coverage: state.coverage, reserve: state.reserve,
     result: currentReviewResult });
   $('#review-question-answer').hidden = !response;
   if (!response) return;
@@ -104,13 +104,23 @@ function createDatedUnitWorksheet(holding) {
   const source = fund ? document.createElement('p') : null;
   if (source) {
     source.className = 'form-hint';
-    source.append(document.createTextNode('Find the exact scheme and dated NAV on your AMC site or '));
+    const lookup = fundNavLookupUrl(holding.isin);
+    if (lookup) {
+      const lookupLink = document.createElement('a');
+      lookupLink.href = lookup;
+      lookupLink.target = '_blank';
+      lookupLink.rel = 'noopener noreferrer';
+      lookupLink.textContent = 'Search this ISIN on MFnav ↗';
+      source.append(lookupLink, document.createTextNode('. Opening it sends only the scheme ISIN to an independent site. Check its plan, option and NAV date with the AMC. '));
+    }
+    source.append(document.createTextNode(lookup ? 'You can also start on your AMC site or ' :
+      'Find the exact scheme and dated NAV on your AMC site or '));
     const link = document.createElement('a');
     link.href = 'https://www.amfiindia.com/';
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.textContent = 'open AMFI’s home page ↗';
-    source.append(link, document.createTextNode('. Nothing from this review is sent with the link.'));
+    source.append(link, document.createTextNode('. This AMFI home link sends no holding data.'));
   }
   const priceLabel = document.createElement('label');
   priceLabel.textContent = fund ? 'NAV per unit (₹)' : 'Price per share (₹)';

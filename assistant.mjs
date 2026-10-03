@@ -26,6 +26,7 @@ import { validReserve, reserveMonths } from './reserve.mjs';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
   prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs';
 import { validShares } from './stock-estimate.mjs';
+import { fundNavLookupUrl } from './nav-estimate.mjs';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -503,6 +504,17 @@ function guideValueRefresh(index, row, dateIssue) {
   }
   const note = say('assistant', message, null, false);
   if (dateIssue !== 'future' && row.type === 'Mutual fund' && row.units && row.asOf && row.granularity !== 'fund_house') {
+    const lookup = fundNavLookupUrl(row.isin);
+    if (lookup) {
+      const scheme = document.createElement('a');
+      scheme.className = 'value-source-link';
+      scheme.href = lookup;
+      scheme.target = '_blank';
+      scheme.rel = 'noopener noreferrer';
+      scheme.textContent = 'Search this ISIN on MFnav ↗';
+      note.append(document.createTextNode('\n'), scheme,
+        document.createTextNode(' (independent site; opening sends only the scheme ISIN). Check the plan, option and NAV date with the AMC.'));
+    }
     const source = document.createElement('a');
     source.className = 'value-source-link';
     source.href = 'https://www.amfiindia.com/';

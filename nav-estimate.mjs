@@ -16,6 +16,12 @@ export function estimateUnitValue(units, nav) {
 }
 export const estimateNavValue = estimateUnitValue;
 
+/** Public scheme lookup; only the validated mutual-fund ISIN enters the URL. */
+export function fundNavLookupUrl(isin) {
+  return typeof isin === 'string' && /^INF[A-Z0-9]{9}$/.test(isin) ?
+    `https://mfnav.in/?q=${encodeURIComponent(isin)}` : null;
+}
+
 export function validNavEstimate(holding, today) {
   const estimate = holding?.navEstimate;
   if (!estimate || holding.type !== 'Mutual fund' || holding.granularity === 'fund_house' || !holding.units ||
