@@ -119,6 +119,8 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const missingDates = dateIssues.filter(issue => issue === 'missing').length;
   const staleDates = dateIssues.filter(issue => issue === 'stale').length;
   const futureDates = dateIssues.filter(issue => issue === 'future').length;
+  const dateCheckValue = valid.reduce((sum, holding, index) =>
+    sum + (dateIssues[index] ? Number(holding.value) : 0), 0);
   const goalDateCheck = goalHoldings.reduce((check, holding) => {
     if (valuationDateIssue(holding.asOf, today)) {
       check.value += Number(holding.value);
@@ -187,6 +189,19 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       limitation: 'An ISIN in an import has not been checked against an instrument registry.' });
   }
 
+  if (valid.length && (missingDates || staleDates || futureDates)) {
+    const issues = [
+      missingDates ? `${missingDates} without a valuation date` : null,
+      staleDates ? `${staleDates} dated over 90 days ago` : null,
+      futureDates ? `${futureDates} dated after today` : null,
+    ].filter(Boolean).join('; ');
+    findings.push({ key: 'valuation', tone: 'amber', label: 'Data quality', title: 'Check when these values were measured',
+      detail: `${rupees(dateCheckValue)} (${(dateCheckValue / total * 100).toFixed(1)}%) of entered value needs a date check: ${issues}. Refresh or verify those values before relying on the goal figures.`,
+      question: 'Can you confirm the value and valuation date of each flagged holding?',
+      basis: `Added values for ${missingDates + staleDates + futureDates} flagged rows: ${rupees(dateCheckValue)} ÷ ${rupees(total)} entered value = ${(dateCheckValue / total * 100).toFixed(1)}%. Compared ${valid.length} entered holding dates with ${indiaToday} in India; dates before ${staleCutoff.toISOString().slice(0, 10)} are marked over 90 days old. Missing or invalid dates are counted together.`,
+      limitation: 'Ninety days is a prompt to recheck entered values, not a market-data freshness rule. The entered amounts and holdings have not been independently verified.' });
+  }
+
   if (fundHouseSummaries.size) {
     findings.push({ key: 'summary', tone: 'amber', label: 'Statement detail', title: 'Only fund-house totals are visible',
       detail: `${fundHouseSummaries.size} fund ${fundHouseSummaries.size === 1 ? 'house is' : 'houses are'} represented by summary amounts, not individual schemes. Check a detailed CAS before judging scheme overlap, plan type or costs.`,
@@ -205,19 +220,6 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       question: 'Which of these holdings can you classify from their original statements?',
       basis: `${rupees(unclassifiedValue)} labelled Other ÷ ${rupees(total)} entered value = ${(unclassifiedValue / total * 100).toFixed(1)}%. Fund-house summary portions are excluded from this check because they have a separate detail prompt.`,
       limitation: 'A statement label or fund name alone does not establish whether a holding belongs in Debt, Gold, Equity or another category. This is a data check, not a suggested allocation.' });
-  }
-
-  if (valid.length && (missingDates || staleDates || futureDates)) {
-    const issues = [
-      missingDates ? `${missingDates} without a valuation date` : null,
-      staleDates ? `${staleDates} dated over 90 days ago` : null,
-      futureDates ? `${futureDates} dated after today` : null,
-    ].filter(Boolean).join('; ');
-    findings.push({ key: 'valuation', tone: 'amber', label: 'Data quality', title: 'Check when these values were measured',
-      detail: `${issues}. Refresh or verify those values before relying on the goal figures.`,
-      question: 'Can you confirm the value and valuation date of each flagged holding?',
-      basis: `Compared ${valid.length} entered holding dates with ${indiaToday} in India; dates before ${staleCutoff.toISOString().slice(0, 10)} are marked over 90 days old. Missing or invalid dates are counted together.`,
-      limitation: 'Ninety days is a prompt to recheck entered values, not a market-data freshness rule.' });
   }
 
   const monthsOfEssentials = reserveMonths(reserve);
