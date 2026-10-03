@@ -90,7 +90,10 @@ export function prepareCoverageAnswer(saved, parsed) {
     return { portfolio: null, errors: [`Your ${label} coverage answer already says ${parsed.answer}.`] };
   const portfolio = structuredClone(saved);
   portfolio.coverage = { ...portfolio.coverage, [parsed.field]: parsed.answer };
-  const words = { all: 'all included', some: 'some included; others missing',
+  const hasRows = saved.holdings.some(row => row.type ===
+    ({ mutualFunds: 'Mutual fund', directStocks: 'Stock',
+      otherInvestments: 'Other investment' }[parsed.field]));
+  const words = { all: 'all included', some: hasRows ? 'some included; others missing' : 'some owned; none entered yet',
     none: 'none owned', unsure: 'unsure' };
   return { portfolio, errors: [],
     description: `Set self-reported ${label} coverage to “${words[parsed.answer]}”. The other coverage answers stay as shown in the review. This answer changes only the scope label; it does not add or remove a holding. Check it against your current statements.`,

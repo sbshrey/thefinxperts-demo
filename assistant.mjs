@@ -242,7 +242,39 @@ function askCoverageGroup() {
   if (!field) return false;
   const group = { mutualFunds: 'mutual funds', directStocks: 'directly held stocks',
     otherInvestments: 'other investments such as NPS, EPF, PPF, deposits or gold' }[field];
-  say('assistant', `Have you included all your ${group} in this review? Reply “all”, “some”, “none” if you own none, or “unsure”. I’ll show your answer for confirmation before saving it.`);
+  const type = { mutualFunds: 'Mutual fund', directStocks: 'Stock',
+    otherInvestments: 'Other investment' }[field];
+  const hasRows = state.account?.portfolio?.holdings?.some(row => row.type === type);
+  const choices = hasRows ? [['all', 'All included'], ['some', 'Some missing'], ['unsure', 'Unsure']] :
+    [['some', 'Some missing'], ['none', 'None owned'], ['unsure', 'Unsure']];
+  document.querySelectorAll('.coverage-replies').forEach(row => row.remove());
+  const item = say('assistant', hasRows ?
+    `Have you included all your ${group} in this review? Choose all, some or unsure, then confirm the answer.` :
+    `No ${group} are entered yet. Do you own any? Choose some missing, none owned or unsure, then confirm the answer.`);
+  const replies = document.createElement('div');
+  replies.className = 'coverage-replies';
+  replies.setAttribute('role', 'group');
+  replies.setAttribute('aria-label', `Your ${group} coverage answer`);
+  for (const [value, label] of choices) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.addEventListener('click', () => {
+      if (state.coverageQueue?.[0] !== field || state.busy || state.correction || state.drafts.length ||
+          state.goalFacts || state.reserveFacts || state.refresh) {
+        say('note', 'Finish the pending review change before answering this coverage question.'); return;
+      }
+      if ($('#message').value.trim() || state.file) {
+        say('note', 'Send or clear your draft message or selected file before choosing a coverage reply.');
+        $('#message').focus(); return;
+      }
+      $('#message').value = value;
+      $('#composer').requestSubmit();
+    });
+    replies.append(button);
+  }
+  item.append(replies);
+  $('#messages').scrollTop = $('#messages').scrollHeight;
   return true;
 }
 
@@ -277,7 +309,10 @@ function nextGoalSetupQuestion(portfolio) {
 }
 
 function say(role, text, question = null, remember = true) {
-  if (role === 'user') hideStarterActions();
+  if (role === 'user') {
+    hideStarterActions();
+    document.querySelectorAll('.coverage-replies').forEach(row => row.remove());
+  }
   const item = document.createElement('div');
   item.className = `message ${role}`;
   item.textContent = text;
@@ -1358,13 +1393,13 @@ $('#composer').addEventListener('submit', async event => {
   const coverageAnswer = message && !state.file ? parseCoverageAnswer(message, state.coverageQueue?.[0]) : null;
   if (coverageAnswer) {
     say('user', message); $('#message').value = '';
-    if (coverageAnswer.error) { say('note', coverageAnswer.error); return; }
+    if (coverageAnswer.error) { say('note', coverageAnswer.error); askCoverageGroup(); return; }
     if (state.correction) { say('note', 'Apply or discard the change already shown before preparing another.'); return; }
     if (state.drafts.length || state.goalFacts || state.reserveFacts) {
       say('note', 'Confirm or discard the current holding, goal or reserve draft before changing review coverage.'); return;
     }
     const prepared = prepareCoverageAnswer(state.account?.portfolio, coverageAnswer);
-    if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
+    if (prepared.errors.length) { say('note', prepared.errors.join(' ')); askCoverageGroup(); return; }
     state.correction = { ...prepared, kind: 'coverage', coverageField: coverageAnswer.field,
       firstCoverageAnswer: !state.account?.portfolio?.coverage, revision: state.account.revision };
     renderCorrection();
@@ -1656,7 +1691,9 @@ $('#confirm-correction')?.addEventListener('click', async () => {
   finally { state.busy = false; renderAccountActions(); }
 });
 $('#discard-correction')?.addEventListener('click', () => {
+  const wasCoverage = state.correction?.kind === 'coverage';
   state.correction = null; renderCorrection(); say('note', 'The proposed correction was discarded. Your confirmed review did not change.');
+  if (wasCoverage) askCoverageGroup();
 });
 
 $('#confirm-refresh')?.addEventListener('click', async () => {
