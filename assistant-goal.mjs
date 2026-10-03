@@ -22,6 +22,9 @@ export function parseAssistantGoalCommand(message) {
     secondPct: Number(split[4]), secondGoalName: cleanName(split[5]) };
   const assign = /^(?:assign|count) (.+?) (?:to|toward) goal (.+)$/i.exec(input);
   if (assign) return { kind: 'assign', holdingName: cleanName(assign[1]), goalName: cleanName(assign[2]) };
+  const conversationalAssign = /^(?:use|count) (holding\s*#?\d{1,3}) (?:for|toward) (?:my )?(.+?) goal[.!]?$/i.exec(input);
+  if (conversationalAssign) return { kind: 'assign',
+    holdingName: cleanName(conversationalAssign[1]), goalName: cleanName(conversationalAssign[2]) };
   const unassign = /^(?:uncount|unlink) (.+?) from goal (.+)$/i.exec(input);
   if (unassign) return { kind: 'unassign', holdingName: cleanName(unassign[1]),
     goalName: cleanName(unassign[2]) };
@@ -97,7 +100,12 @@ export function prepareAssistantGoalCommand(saved, command, { newId = () => cryp
   }
   if (typeof command.holdingName !== 'string' || !command.holdingName.trim())
     return { portfolio: null, errors: ['Name a saved holding to count toward this goal.'] };
-  const matches = portfolio.holdings.filter(row => normalized(row.name) === normalized(command.holdingName));
+  const numbered = /^(?:holding\s*)?#?(\d{1,3})$/i.exec(command.holdingName.trim());
+  const holdingByNumber = numbered ? portfolio.holdings[Number(numbered[1]) - 1] : null;
+  if (numbered && !holdingByNumber)
+    return { portfolio: null, errors: [`Use a displayed holding number from 1 to ${portfolio.holdings.length}.`] };
+  const matches = numbered ? [holdingByNumber] :
+    portfolio.holdings.filter(row => normalized(row.name) === normalized(command.holdingName));
   if (matches.length !== 1 || !matches[0].id) return { portfolio: null, errors: ['Name one saved holding exactly as shown in the review.'] };
   const holding = matches[0];
   const currentGoals = portfolio.goals.filter(item => item.linkedIds.includes(holding.id));

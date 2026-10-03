@@ -626,7 +626,7 @@ function renderGoalReview() {
   });
   if (shared.length) root.append(paragraph(`Shared holdings counted here: ${shared.slice(0, 3).join('; ')}${shared.length > 3 ? `; and ${shared.length - 3} more` : ''}.`));
   const otherGoals = portfolio?.goals?.filter(goal => goal.id !== portfolio.activeGoalId) || [];
-  if (otherGoals.length) root.append(paragraph(`Other goals: ${otherGoals.map(goal => goal.name).join(', ')}. Say “select goal NAME” to review one, “count HOLDING toward goal NAME” to assign an unassigned holding, or “split HOLDING: 60% to goal NAME, 40% to goal OTHER” to share one.`));
+  if (otherGoals.length) root.append(paragraph(`Other goals: ${otherGoals.map(goal => goal.name).join(', ')}. Say “select goal NAME” to review one, “use holding 1 for my NAME goal” using the displayed holding number, or “split holding 1: 60% to goal NAME, 40% to goal OTHER” to share one.`));
   else root.append(paragraph('Need another goal? Say “create goal named Education”.'));
   if (portfolio?.reserve) root.append(paragraph(
     `Your separate accessible money of ${money(portfolio.reserve.accessibleMoney)} divided by ${money(portfolio.reserve.monthlyEssentials)} monthly essentials is ${reserveMonths(portfolio.reserve).toFixed(1)} months. These are your totals outside the reviewed holdings, not a check that this reserve is enough or available.`));
@@ -730,7 +730,7 @@ function renderGoalReview() {
   } else if (review.scenarioStatus === 'valuation_dates') {
     root.append(paragraph('Future illustration paused until the linked holding dates are checked. Refresh missing, future or old values from their source.'));
   } else if (review.scenarioStatus === 'access_uncertain') {
-    root.append(paragraph(`Future illustration paused while linked other investments have no checked access date. This review cannot record a spendable amount from them at the goal date. Check the product terms; if one should not fund this goal, say “uncount HOLDING from goal ${review.name}”. The holding stays in your portfolio.`));
+    root.append(paragraph(`Future illustration paused while linked other investments have no checked access date. This review cannot record a spendable amount from them at the goal date. Check the product terms; if one should not fund this goal, say “uncount holding NUMBER from goal ${review.name}” using its displayed number. The holding stays in your portfolio.`));
   } else if (review.scenario) root.append(paragraph(
     `Illustration at the goal date: ${money(review.scenario.projectedValue)} against ${money(review.scenario.futureCost)} future cost; gap ${money(review.scenario.futureGap)}. Your confirmed assumptions: ${money(review.assumptions.monthlyContribution)}/month added at each month’s end, ${review.assumptions.returnPct}% constant annual growth and ${review.assumptions.inflationPct}% constant inflation. Only the assigned confirmed holdings start this calculation. ${review.flatScenario ? `For comparison, with 0% growth and the same monthly amount and inflation, the gap would be ${money(review.flatScenario.futureGap)}. ` : ''}This arithmetic is illustrative, not a forecast.`));
 }
