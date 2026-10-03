@@ -16,7 +16,7 @@ import { answerReviewQuestion } from './review-questions.mjs';
 import { parseReviewBackup } from './review-backup.mjs';
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
-import { parseBrowserGoalStart, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
+import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   nextBrowserGoalQuestion } from './assistant-local.mjs';
 import { parseHoldingCorrection, prepareHoldingCorrection,
   parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs';
@@ -83,7 +83,7 @@ const state = { confirmed: [], drafts: [], history: [], file: null, busy: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
   goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
   correction: null, refresh: null, casAvailable: false, casLocal: false,
-  capacityReached: false, coveragePrompted: false, coverageQueue: null };
+  capacityReached: false, coveragePrompted: false, coverageQueue: null, pendingGoalName: false };
 const starterActions = $('#starter-actions');
 function addPublicInflationContext() {
   if (!browserOnly) return;
@@ -278,6 +278,34 @@ function askCoverageGroup() {
   return true;
 }
 
+function askGoalName() {
+  state.pendingGoalName = true;
+  document.querySelectorAll('.goal-replies').forEach(row => row.remove());
+  const item = say('assistant', 'What goal would you like to plan for? Reply with a short name such as Retirement, Education or Home. I will ask for your age, time horizon and amount before showing goal figures.');
+  const replies = document.createElement('div');
+  replies.className = 'goal-replies';
+  replies.setAttribute('role', 'group');
+  replies.setAttribute('aria-label', 'Choose a goal name');
+  for (const name of ['Retirement', 'Education', 'Home']) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = name;
+    button.addEventListener('click', () => {
+      if (!state.pendingGoalName || state.busy) return;
+      if ($('#message').value.trim() || state.file) {
+        say('note', 'Send or clear your draft message or selected file before choosing a goal.');
+        $('#message').focus(); return;
+      }
+      $('#message').value = name;
+      $('#composer').requestSubmit();
+    });
+    replies.append(button);
+  }
+  item.append(replies);
+  $('#messages').scrollTop = $('#messages').scrollHeight;
+  $('#message').focus();
+}
+
 function resumeCoverageQuestions(portfolio) {
   if (!portfolio?.holdings?.length) {
     state.coveragePrompted = false;
@@ -311,7 +339,7 @@ function nextGoalSetupQuestion(portfolio) {
 function say(role, text, question = null, remember = true) {
   if (role === 'user') {
     hideStarterActions();
-    document.querySelectorAll('.coverage-replies').forEach(row => row.remove());
+    document.querySelectorAll('.coverage-replies, .goal-replies').forEach(row => row.remove());
   }
   const item = document.createElement('div');
   item.className = `message ${role}`;
@@ -1294,11 +1322,15 @@ $('#composer').addEventListener('submit', async event => {
     await assignGoalHoldings();
     return;
   }
-  const goalStart = browserOnly && message && !state.file ? parseBrowserGoalStart(message) : null;
+  const goalStart = browserOnly && message && !state.file ?
+    parseBrowserGoalStart(message) || (state.pendingGoalName ? parseBrowserGoalNameReply(message) : null) : null;
+  if (state.pendingGoalName && !goalStart && (message || state.file)) state.pendingGoalName = false;
   const goalCommand = goalStart?.goalName ? { kind: 'create', goalName: goalStart.goalName } :
     message && !state.file ? parseAssistantGoalCommand(message) : null;
   if (goalStart?.error) {
-    say('user', message); $('#message').value = ''; say('note', goalStart.error); return;
+    say('user', message); $('#message').value = ''; say('note', goalStart.error);
+    if (state.pendingGoalName) askGoalName();
+    return;
   }
   if (goalCommand) {
     say('user', message); $('#message').value = '';
@@ -1322,6 +1354,7 @@ $('#composer').addEventListener('submit', async event => {
     try {
       await writeAccount(prepared.portfolio,
         'The saved review changed in another tab. Check the latest goals and holdings, then repeat the command.');
+      state.pendingGoalName = false;
       const selected = prepared.portfolio.goals.find(goal => goal.id === prepared.portfolio.activeGoalId);
       say('assistant', prepared.description, browserOnly ? nextBrowserGoalQuestion(selected) : null);
     } catch (error) { say('note', error.message || 'The goal change could not be saved.'); }
@@ -1527,8 +1560,14 @@ $('#starter-open')?.addEventListener('click', () => {
   else $('#restore-tab-file').click();
 });
 $('#quick-goal')?.addEventListener('click', () => {
-  say('assistant', 'What goal would you like to plan for? Say “I want to plan for retirement” or name one other goal. I will ask for your age, time horizon and amount before showing goal figures.');
-  $('#message').focus();
+  if (state.busy || state.drafts.length || state.goalFacts || state.reserveFacts || state.correction || state.refresh) {
+    say('note', 'Finish the pending review change before starting a goal.'); return;
+  }
+  if (!browserOnly) {
+    say('assistant', 'What goal would you like to plan for? Say “I want to plan for retirement” with your own goal name. I will ask for your age, time horizon and amount before showing goal figures.');
+    $('#message').focus(); return;
+  }
+  askGoalName();
 });
 for (const prompt of document.querySelectorAll('[data-guided-question]')) {
   prompt.addEventListener('click', () => {
@@ -1750,7 +1789,7 @@ $('#delete-saved').addEventListener('click', async () => {
     if (!response.ok) throw new Error('The saved review could not be deleted. Try again later.');
     state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
     state.reserveFacts = null; state.reserveDraftRevision = null;
-    state.correction = null; state.refresh = null; state.history = []; state.coverageQueue = null; clearFile();
+    state.correction = null; state.refresh = null; state.history = []; state.coverageQueue = null; state.pendingGoalName = false; clearFile();
     acceptAccount({ portfolio: null, revision: 0 });
     renderDrafts(); renderGoalDraft(); renderReserveDraft();
     $('#messages').replaceChildren();
@@ -1765,7 +1804,7 @@ $('#new-chat').addEventListener('click', () => {
       !window.confirm('Start a new chat and discard the unconfirmed holdings, goal or reserve details, report change and selected file? Confirmed holdings and goals stay in your review.')) return;
   state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.history = []; state.coverageQueue = null; clearFile();
+  state.correction = null; state.refresh = null; state.history = []; state.coverageQueue = null; state.pendingGoalName = false; clearFile();
   $('#messages').replaceChildren();
   say('assistant', state.confirmed.length ?
     `I still have ${state.confirmed.length} confirmed holding${state.confirmed.length === 1 ? '' : 's'} in this tab. What would you like to understand next?` :
@@ -1791,7 +1830,7 @@ $('#clear-review').addEventListener('click', () => {
   }
   state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; state.coverageQueue = null; clearFile();
+  state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; state.coverageQueue = null; state.pendingGoalName = false; clearFile();
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Choose Upload for a CAMS statement, supported CAS or broker report. I’ll show possible holdings to confirm before answering questions. You can also describe one holding.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
@@ -1884,7 +1923,7 @@ $('#restore-tab-file')?.addEventListener('change', async event => {
   catch { say('note', 'The selected review file could not be read. Try another copy.'); return; }
   if (parsed.errors.length) { say('note', parsed.errors[0]); return; }
   if (state.account?.portfolio && !window.confirm('Replace the review in this tab with the selected file?')) return;
-  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null;
+  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.pendingGoalName = false;
   acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
   fileSavedSerial = reviewChangeSerial;
   await saveDeviceReview(parsed.portfolio);
@@ -1933,7 +1972,7 @@ $('#device-review-form')?.addEventListener('submit', async event => {
       if (parsed.errors.length) throw new Error('The saved review is damaged or uses an unsupported format.');
       if (state.account?.portfolio && !window.confirm('Replace the current tab review with the saved device review?')) return;
       devicePassphrase = passphrase;
-      state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null;
+      state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.pendingGoalName = false;
       acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
       deviceSavedSerial = reviewChangeSerial;
       renderDrafts(); renderGoalDraft();

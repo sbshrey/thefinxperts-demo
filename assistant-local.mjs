@@ -101,6 +101,15 @@ export function parseBrowserGoalStart(message) {
   return { goalName: name[0].toUpperCase() + name.slice(1) };
 }
 
+/** A bare goal name is meaningful only while the guided chat is asking for one. */
+export function parseBrowserGoalNameReply(message) {
+  if (typeof message !== 'string' || /[?\r\n]/.test(message)) return null;
+  const input = message.trim().replace(/[.!]$/, '').replace(/^(?:my|a|the)\s+/i, '');
+  if (!/^[a-z][a-z'’ -]{1,59}$/i.test(input) ||
+      /^(?:i|you|we|what|how|can|do|please|tell|show|help|upload|open|remove|update)\b/i.test(input)) return null;
+  return parseBrowserGoalStart(`I want to plan for ${input}`);
+}
+
 /** Narrow, explicit goal answers for the browser-only guided review. */
 export function parseBrowserGoalFact(message, goal, pending = {}) {
   if (typeof message !== 'string' || !goal) return null;
