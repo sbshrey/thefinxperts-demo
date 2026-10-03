@@ -163,6 +163,26 @@ function setReviewExpanded(expanded) {
   reviewToggle.textContent = expanded ? 'Back to chat' : 'Open review';
   syncReviewAccessibility();
 }
+function sayHoldingsAdded(count) {
+  const total = state.confirmed.reduce((sum, row) => sum + Number(row.value || 0), 0);
+  const note = say('note', `${count} checked holding${count === 1 ? '' : 's'} ${browserOnly ? 'added to this tab' : 'saved to your account'}. Entered investments now total ${money(total)} from supplied values. This may be only part of your portfolio.`);
+  const action = document.createElement('button');
+  action.type = 'button';
+  action.className = 'holding-review-action';
+  action.textContent = 'Open live review';
+  action.addEventListener('click', () => {
+    if (mobileReview.matches) {
+      setReviewExpanded(true);
+      reviewToggle.focus({ preventScroll: true });
+    } else {
+      const title = $('#review-title');
+      title.tabIndex = -1;
+      title.scrollIntoView({ block: 'start' });
+      title.focus({ preventScroll: true });
+    }
+  });
+  note.append(action);
+}
 reviewToggle?.addEventListener('click', () =>
   setReviewExpanded(reviewToggle.getAttribute('aria-expanded') !== 'true'));
 mobileReview.addEventListener('change', syncReviewAccessibility);
@@ -1719,7 +1739,7 @@ $('#confirm-drafts').addEventListener('click', async () => {
       await writeAccount(prepared.portfolio,
         'The saved portfolio changed in another tab. Its latest holdings are shown here; your drafts are still waiting. Check them, then confirm again.');
       state.drafts = []; renderDrafts();
-      say('note', `${prepared.addedCount} checked holding${prepared.addedCount === 1 ? '' : 's'} ${browserOnly ? 'added to this tab' : 'saved to your account'}. Ask a question when you are ready.`);
+      sayHoldingsAdded(prepared.addedCount);
       if (!(state.coveragePrompted ? askCoverageGroup() :
         resumeCoverageQuestions(state.account?.portfolio))) {
         const category = nextFundCategoryQuestion(state.account?.portfolio);
@@ -1746,7 +1766,7 @@ $('#confirm-drafts').addEventListener('click', async () => {
   state.confirmed.push(...added);
   const count = state.drafts.length;
   state.drafts = []; renderDrafts(); renderReview();
-  say('note', `${count} checked holding${count === 1 ? '' : 's'} added to this tab. Ask a question when you are ready.`);
+  sayHoldingsAdded(count);
 });
 
 $('#omit-matching-drafts').addEventListener('click', () => {
