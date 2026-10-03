@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=498a5c52867a';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=498a5c52867a';
-import { reserveMonths } from './reserve.mjs?v=498a5c52867a';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=66d92920cfc0';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=66d92920cfc0';
+import { reserveMonths } from './reserve.mjs?v=66d92920cfc0';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=498a5c52867a';
-import { asksForAdvice } from './question-scope.mjs?v=498a5c52867a';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=498a5c52867a';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=498a5c52867a';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=498a5c52867a';
-import { parseAmount } from './assistant-clarify.mjs?v=498a5c52867a';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=498a5c52867a';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=66d92920cfc0';
+import { asksForAdvice } from './question-scope.mjs?v=66d92920cfc0';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=66d92920cfc0';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=66d92920cfc0';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=66d92920cfc0';
+import { parseAmount } from './assistant-clarify.mjs?v=66d92920cfc0';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=66d92920cfc0';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=498a5c52867a';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=66d92920cfc0';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -363,7 +363,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   if (/\b(?:connect|link|sync)\b/.test(input) && /\b(?:zerodha|groww|upstox|broker)\b/.test(input))
     return answer('This browser review does not connect to a broker account. You can upload a supported holdings CSV or XLSX export, inspect the mapped rows and dates, and confirm only the holdings you recognize.',
       'The public site reads selected holdings files in this browser and has no broker login or account synchronization.',
-      'An export is a dated snapshot; it may omit accounts or assets and does not update itself. Check its value columns and report date before confirmation.', '#input-choice', 'Upload a holdings export');
+      'An export is a dated snapshot; it may omit accounts or assets and does not update itself. Check its value columns and report date before confirmation.', '#report-help-dialog', 'Get a broker report');
   const reviewsHoldings = /\b(?:review|analy[sz]e|assess|improv\w*)\b/.test(input);
   const reviewsFunds = /\b(?:mutual funds?|funds?)\b/.test(input);
   const reviewsStocks = /\b(?:stocks?|shares?)\b/.test(input);

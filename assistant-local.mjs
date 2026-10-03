@@ -1,4 +1,4 @@
-import { parseAmount } from './assistant-clarify.mjs?v=498a5c52867a';
+import { parseAmount } from './assistant-clarify.mjs?v=66d92920cfc0';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
