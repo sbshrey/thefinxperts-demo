@@ -17,14 +17,14 @@
  *   - notes and footer.
  */
 
-import { FileType } from '../enums.js?v=4166e33e7191';
-import { Decimal, ZERO } from '../decimal.js?v=4166e33e7191';
+import { FileType } from '../enums.js?v=622157b4b88f';
+import { Decimal, ZERO } from '../decimal.js?v=622157b4b88f';
 import {
   DematAccount, DematOwner, Equity, MutualFund, NPSAccount, NPSScheme, NSDLCASData,
   StatementPeriod,
-} from '../types.js?v=4166e33e7191';
-import * as pageobj from './pageobj.js?v=4166e33e7191';
-import { extractNsdlCdslInvestor } from './investor.js?v=4166e33e7191';
+} from '../types.js?v=622157b4b88f';
+import * as pageobj from './pageobj.js?v=622157b4b88f';
+import { extractNsdlCdslInvestor } from './investor.js?v=622157b4b88f';
 
 // ---------------------------------------------------------------------- patterns
 
