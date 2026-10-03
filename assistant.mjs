@@ -1,37 +1,37 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=cf5150899ee0';
-import { previewBrowserCas } from './cas-browser.mjs?v=cf5150899ee0';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=cf5150899ee0';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=cf5150899ee0';
-import { goalShare } from './goals.mjs?v=cf5150899ee0';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=7e12f6ca6e48';
+import { previewBrowserCas } from './cas-browser.mjs?v=7e12f6ca6e48';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=7e12f6ca6e48';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=7e12f6ca6e48';
+import { goalShare } from './goals.mjs?v=7e12f6ca6e48';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=cf5150899ee0';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=cf5150899ee0';
-import { previewAssistantImport } from './assistant-import.mjs?v=cf5150899ee0';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=cf5150899ee0';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=cf5150899ee0';
-import { analyzePortfolio, sampleHoldings, valuationDateIssue, valuationRowsNeedingCheck } from './analysis.mjs?v=cf5150899ee0';
-import { buildReadableReport } from './readable-report.mjs?v=cf5150899ee0';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=cf5150899ee0';
-import { parseReviewBackup } from './review-backup.mjs?v=cf5150899ee0';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=cf5150899ee0';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=cf5150899ee0';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=cf5150899ee0';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=7e12f6ca6e48';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=7e12f6ca6e48';
+import { previewAssistantImport } from './assistant-import.mjs?v=7e12f6ca6e48';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=7e12f6ca6e48';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=7e12f6ca6e48';
+import { analyzePortfolio, sampleHoldings, valuationDateIssue, valuationRowsNeedingCheck } from './analysis.mjs?v=7e12f6ca6e48';
+import { buildReadableReport } from './readable-report.mjs?v=7e12f6ca6e48';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=7e12f6ca6e48';
+import { parseReviewBackup } from './review-backup.mjs?v=7e12f6ca6e48';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=7e12f6ca6e48';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7e12f6ca6e48';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=7e12f6ca6e48';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=cf5150899ee0';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=7e12f6ca6e48';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=cf5150899ee0';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=cf5150899ee0';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=7e12f6ca6e48';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=7e12f6ca6e48';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=cf5150899ee0';
-import { validReserve, reserveMonths } from './reserve.mjs?v=cf5150899ee0';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=7e12f6ca6e48';
+import { validReserve, reserveMonths } from './reserve.mjs?v=7e12f6ca6e48';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs?v=cf5150899ee0';
-import { validShares } from './stock-estimate.mjs?v=cf5150899ee0';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=cf5150899ee0';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=cf5150899ee0';
-import { inflationContext } from './market-context.mjs?v=cf5150899ee0';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs?v=7e12f6ca6e48';
+import { validShares } from './stock-estimate.mjs?v=7e12f6ca6e48';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=7e12f6ca6e48';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=7e12f6ca6e48';
+import { inflationContext } from './market-context.mjs?v=7e12f6ca6e48';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -83,7 +83,7 @@ async function saveDeviceReview(portfolio) {
   }
 }
 const state = { confirmed: [], drafts: [], history: [], lastReviewQuestion: null,
-  lastReviewAnswer: null, file: null, busy: false, available: false,
+  lastReviewAnswer: null, sipSummary: null, file: null, busy: false, available: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
   demo: false,
   goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
@@ -1140,7 +1140,8 @@ async function aiTurn(message, pdf = null) {
     }
     const reviewQuestion = carriedQuestion || message;
     const response = answerReviewQuestion(reviewQuestion, { holdings, goal, goals: portfolio?.goals || [],
-      source: state.demo ? 'demo' : 'user', coverage: portfolio?.coverage || null, reserve: portfolio?.reserve || null, result });
+      source: state.demo ? 'demo' : 'user', coverage: portfolio?.coverage || null,
+      reserve: portfolio?.reserve || null, result, sipSummary: state.sipSummary });
     if (response) {
       const item = say('assistant', `${response.text}\n\nHow I worked this out: ${response.basis}\n\nKeep in mind: ${response.limitation}`);
       state.lastReviewQuestion = reviewQuestion;
@@ -1321,6 +1322,7 @@ function stageCasResult(result) {
   }
   const drafts = prepared.drafts.map(row => normalizedDraft(row));
   if (drafts.some(row => !row)) { say('note', 'A CAS row could not be staged safely. No rows were added.'); return false; }
+  state.sipSummary = prepared.sipSummary;
   for (const item of prepared.performance) casPreviewPerformance.set(drafts[item.index], item.annualPercent);
   if (state.account?.portfolio) {
     const refresh = result.source === 'Demat CAS' ?
@@ -1429,6 +1431,7 @@ $('#upload').addEventListener('change', async event => {
     clearFile(); return;
   }
   if (state.drafts.length) { state.drafts = []; renderDrafts(); }
+  state.sipSummary = null;
   if (/\.(?:csv|xlsx)$/i.test(file.name)) {
     state.busy = true; renderCredits();
     setFileLabel('Reading selected report in this browser…');
@@ -1473,7 +1476,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=cf5150899ee0');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=7e12f6ca6e48');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1908,7 +1911,7 @@ $('#broker-drafts-stock').addEventListener('click', () => {
 });
 
 $('#discard-drafts').addEventListener('click', () => {
-  state.drafts = []; renderDrafts(); say('note', 'Draft holdings discarded.');
+  state.drafts = []; state.sipSummary = null; renderDrafts(); say('note', 'Draft holdings discarded.');
 });
 
 $('#confirm-goal').addEventListener('click', async () => {
@@ -2048,7 +2051,7 @@ $('#delete-saved').addEventListener('click', async () => {
       throw new Error('The saved review changed in another tab. Check the latest holdings and confirm deletion again.');
     }
     if (!response.ok) throw new Error('The saved review could not be deleted. Try again later.');
-    state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+    state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
     state.reserveFacts = null; state.reserveDraftRevision = null;
     state.correction = null; state.refresh = null; state.history = []; state.coverageQueue = null; state.pendingGoalName = false; clearFile();
     acceptAccount({ portfolio: null, revision: 0 });
@@ -2063,7 +2066,7 @@ $('#delete-saved').addEventListener('click', async () => {
 $('#new-chat').addEventListener('click', () => {
   if ((state.drafts.length || state.goalFacts || state.reserveFacts || state.correction || state.refresh || state.file) &&
       !window.confirm('Start a new chat and discard the unconfirmed holdings, goal or reserve details, report change and selected file? Confirmed holdings and goals stay in your review.')) return;
-  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+  state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
   state.correction = null; state.refresh = null; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
   $('#messages').replaceChildren();
@@ -2093,7 +2096,7 @@ $('#clear-review').addEventListener('click', () => {
     state.demo = false;
     reviewChangeSerial++;
   }
-  state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+  state.confirmed = []; state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
   state.correction = null; state.refresh = null; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.coveragePrompted = false; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
   $('#messages').replaceChildren();
@@ -2193,7 +2196,7 @@ $('#restore-tab-file')?.addEventListener('change', async event => {
   catch { say('note', 'The selected review file could not be read. Try another copy.'); return; }
   if (parsed.errors.length) { say('note', parsed.errors[0]); return; }
   if (state.account?.portfolio && !window.confirm('Replace the review in this tab with the selected file?')) return;
-  state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.pendingGoalName = false;
+  state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.pendingGoalName = false;
   acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
   fileSavedSerial = reviewChangeSerial;
   await saveDeviceReview(parsed.portfolio);
@@ -2242,7 +2245,7 @@ $('#device-review-form')?.addEventListener('submit', async event => {
       if (parsed.errors.length) throw new Error('The saved review is damaged or uses an unsupported format.');
       if (state.account?.portfolio && !window.confirm('Replace the current tab review with the saved device review?')) return;
       devicePassphrase = passphrase;
-      state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.pendingGoalName = false;
+      state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.pendingGoalName = false;
       acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
       deviceSavedSerial = reviewChangeSerial;
       renderDrafts(); renderGoalDraft();
@@ -2296,7 +2299,7 @@ renderReview();
 if (browserOnly) receiveReviewHandoff({
   onStart: () => say('note', 'Opening your confirmed holdings from Detailed review…'),
   onPortfolio: portfolio => {
-    state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+    state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
     state.correction = null; state.refresh = null; state.pendingGoalName = false;
     acceptAccount({ portfolio, revision: state.account.revision + 1 });
     say('note', 'Your Detailed review is open in chat. The two tabs do not sync; save a private review file to keep later changes.');

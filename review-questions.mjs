@@ -1,14 +1,15 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=cf5150899ee0';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=cf5150899ee0';
-import { reserveMonths } from './reserve.mjs?v=cf5150899ee0';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=7e12f6ca6e48';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=7e12f6ca6e48';
+import { reserveMonths } from './reserve.mjs?v=7e12f6ca6e48';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=cf5150899ee0';
-import { asksForAdvice } from './question-scope.mjs?v=cf5150899ee0';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=cf5150899ee0';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=cf5150899ee0';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=cf5150899ee0';
-import { parseAmount } from './assistant-clarify.mjs?v=cf5150899ee0';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=7e12f6ca6e48';
+import { asksForAdvice } from './question-scope.mjs?v=7e12f6ca6e48';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=7e12f6ca6e48';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7e12f6ca6e48';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=7e12f6ca6e48';
+import { parseAmount } from './assistant-clarify.mjs?v=7e12f6ca6e48';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=7e12f6ca6e48';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -134,7 +135,7 @@ export function isSipAmountQuestion(question) {
   return !/^what if\b/.test(input) &&
     /^(?:how much|how many|what|show|list|am i|do i)\b/.test(input) &&
     (/(?:\bsips?\b|systematic investment plans?)\b/.test(input) &&
-      /\b(?:amount|total|active|running|pay|paid|invest\w*|contribut\w*|monthly|month|savings?)\b/.test(input) ||
+      /\b(?:amount|total|active|running|pay|paid|payments?|purchases?|invest\w*|contribut\w*|monthly|month|savings?)\b/.test(input) ||
       /\b(?:my|i)\b.{0,35}\b(?:monthly contributions?|monthly investments?|investing per month|invest each month|invest every month)\b/.test(input));
 }
 
@@ -164,7 +165,8 @@ export function resolveReviewFollowUp(message, previousQuestion) {
 }
 
 /** Answer a narrow set of portfolio questions from the current in-tab review. */
-export function answerReviewQuestion(question, { holdings, goal, goals, source, coverage, reserve, result, today = new Date() }) {
+export function answerReviewQuestion(question, { holdings, goal, goals, source, coverage, reserve,
+  result, sipSummary = null, today = new Date() }) {
   if (typeof question !== 'string' || !question.trim() || !result || !Array.isArray(holdings)) return null;
   const input = question.trim().toLocaleLowerCase('en-IN');
   const valid = holdings.filter(row => Number.isFinite(Number(row.value)) && Number(row.value) > 0);
@@ -296,6 +298,13 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
   if (isSipAmountQuestion(input)) {
+    const historical = /\b(?:invested|paid|deposited|contributed|total|purchases?|payments?)\b/.test(input);
+    const currentSchedule = /\b(?:monthly|per month|each month|every month|running|active|mandate|scheduled|currently)\b/.test(input);
+    const printedSip = source === 'demo' ? null : validatedStatementSipSummary(sipSummary, today);
+    if (printedSip && historical && !currentSchedule) return answer(
+      `The detailed CAS read in this chat explicitly marks ${printedSip.count} SIP purchase ${printedSip.count === 1 ? 'entry' : 'entries'} totalling ₹${printedSip.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} in its printed period ${printedSip.from} to ${printedSip.to}; the latest marked entry is ${printedSip.latestDate}. This is a partial statement-period total, not your lifetime SIP investment or current monthly payment.`,
+      `${printedSip.count} explicitly SIP-marked purchase ${printedSip.count === 1 ? 'row' : 'rows'} in one detailed CAS. I did not derive this from current holding values or the goal’s monthly planning input. The aggregate is kept only in this chat tab.`,
+      `Check those rows against the original statement. Other accounts or periods may be missing; a purchase label does not prove an active mandate or bank debit. This total is not saved with holdings.`, '#holdings', 'Check SIP rows');
     const plan = goal?.confirmed === true && goal.assumptionsChecked?.monthlyContribution === true ?
       `For ${goal.name}, you confirmed ${money(goal.monthlyContribution)} per month as a goal illustration input.` :
       'No monthly amount has been confirmed for the selected goal illustration.';

@@ -1,4 +1,5 @@
-import { importValueAndDates } from './assistant-import-audit.mjs?v=cf5150899ee0';
+import { importValueAndDates } from './assistant-import-audit.mjs?v=7e12f6ca6e48';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=7e12f6ca6e48';
 
 const ALLOWED_ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const today = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
@@ -63,14 +64,9 @@ export function prepareAssistantCasDrafts(result, { local = false, browser = fal
       performance.push({ index, annualPercent: item.annualPercent });
     }
   }
-  const sip = result.source !== 'Demat CAS' && result.sipSummary;
-  const sipMessage = sip && typeof sip === 'object' && !Array.isArray(sip) &&
-    Object.keys(sip).sort().join(',') === 'count,from,latestDate,to,total' &&
-    validDate(sip.from) && validDate(sip.to) && validDate(sip.latestDate) &&
-    sip.from <= sip.latestDate && sip.latestDate <= sip.to &&
-    Number.isInteger(sip.count) && sip.count >= 1 && sip.count <= 2000 &&
-    typeof sip.total === 'number' && Number.isFinite(sip.total) &&
-    sip.total >= 0.01 && sip.total <= 1_000_000_000_000 ?
+  const sip = result.source !== 'CAS' || result.ownershipUnverified === true ? null :
+    validatedStatementSipSummary(result.sipSummary);
+  const sipMessage = sip ?
       `This detailed CAS explicitly marks ${sip.count} SIP purchase ${sip.count === 1 ? 'entry' : 'entries'} totalling ₹${sip.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from ${sip.from} to ${sip.to}; the latest marked entry is ${sip.latestDate}. These are statement-period purchases, not proof of an active mandate, bank debits or complete SIP history. This total is a preview only and is not saved with holdings.` : '';
-  return { drafts, errors: [], performance, sipMessage, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS. ${importValueAndDates(drafts)} Only positive current positions were staged; compare the parsed value with your statement total. The supported CAS reader did not provide a statement grand total.${combined}${ownership} ${performance.length ? ` ${performance.length} of ${drafts.length} schemes have an indicative statement-period XIRR in the unconfirmed row preview. It uses supported reconciled cash flows and the statement's dated valuation, not a live price or forecast. The rate disappears after a row edit and is not saved with holdings.` : ''}${sipMessage ? ` ${sipMessage}` : ''} ${browser ? 'This browser tab read the PDF and password; neither was sent to a server.' : `The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview.`} Check the rows before confirming.${browser ? '' : ' If you later ask AI about these drafts, their names and values may be sent.'}` };
+  return { drafts, errors: [], performance, sipSummary: sip, sipMessage, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS. ${importValueAndDates(drafts)} Only positive current positions were staged; compare the parsed value with your statement total. The supported CAS reader did not provide a statement grand total.${combined}${ownership} ${performance.length ? ` ${performance.length} of ${drafts.length} schemes have an indicative statement-period XIRR in the unconfirmed row preview. It uses supported reconciled cash flows and the statement's dated valuation, not a live price or forecast. The rate disappears after a row edit and is not saved with holdings.` : ''}${sipMessage ? ` ${sipMessage}` : ''} ${browser ? 'This browser tab read the PDF and password; neither was sent to a server.' : `The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview.`} Check the rows before confirming.${browser ? '' : ' If you later ask AI about these drafts, their names and values may be sent.'}` };
 }

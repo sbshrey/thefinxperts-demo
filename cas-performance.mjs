@@ -110,6 +110,21 @@ export function statementSipPurchases(document, today = new Date()) {
   return count ? { from, to, latestDate, count, total: Number(totalPaise) / 100 } : null;
 }
 
+/** Recheck the identity-free aggregate when it crosses a browser or answer boundary. */
+export function validatedStatementSipSummary(value, today = new Date()) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      Object.keys(value).sort().join(',') !== 'count,from,latestDate,to,total' ||
+      day(value.from) === null || day(value.to) === null || day(value.latestDate) === null ||
+      value.from > value.latestDate || value.latestDate > value.to ||
+      value.to > new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10) ||
+      !Number.isInteger(value.count) || value.count < 1 || value.count > 2000 ||
+      typeof value.total !== 'number' || !Number.isFinite(value.total) ||
+      value.total < 0.01 || value.total > 1_000_000_000_000 ||
+      Math.abs(value.total * 100 - Math.round(value.total * 100)) > 0.01) return null;
+  return { from: value.from, to: value.to, latestDate: value.latestDate,
+    count: value.count, total: value.total };
+}
+
 function positivePaise(value) {
   if (typeof value !== 'string' || !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(value)) return null;
   const [whole, fraction = ''] = value.split('.');
