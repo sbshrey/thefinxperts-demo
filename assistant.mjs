@@ -1,42 +1,42 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=c7a5d0a3a138';
-import { previewBrowserCas } from './cas-browser.mjs?v=c7a5d0a3a138';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=c7a5d0a3a138';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=c7a5d0a3a138';
-import { goalShare } from './goals.mjs?v=c7a5d0a3a138';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=8857e57353e6';
+import { previewBrowserCas } from './cas-browser.mjs?v=8857e57353e6';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=8857e57353e6';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=8857e57353e6';
+import { goalShare } from './goals.mjs?v=8857e57353e6';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=c7a5d0a3a138';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=c7a5d0a3a138';
-import { previewAssistantImport } from './assistant-import.mjs?v=c7a5d0a3a138';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=c7a5d0a3a138';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=c7a5d0a3a138';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=8857e57353e6';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=8857e57353e6';
+import { previewAssistantImport } from './assistant-import.mjs?v=8857e57353e6';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=8857e57353e6';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=8857e57353e6';
 import { analyzePortfolio, sampleHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=c7a5d0a3a138';
-import { buildReadableReport } from './readable-report.mjs?v=c7a5d0a3a138';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=c7a5d0a3a138';
-import { parseReviewBackup } from './review-backup.mjs?v=c7a5d0a3a138';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=c7a5d0a3a138';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=c7a5d0a3a138';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=c7a5d0a3a138';
-import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=c7a5d0a3a138';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=8857e57353e6';
+import { buildReadableReport } from './readable-report.mjs?v=8857e57353e6';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=8857e57353e6';
+import { parseReviewBackup } from './review-backup.mjs?v=8857e57353e6';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=8857e57353e6';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=8857e57353e6';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=8857e57353e6';
+import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=8857e57353e6';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=c7a5d0a3a138';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=8857e57353e6';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=c7a5d0a3a138';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=c7a5d0a3a138';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=8857e57353e6';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=8857e57353e6';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=c7a5d0a3a138';
-import { validReserve, reserveMonths } from './reserve.mjs?v=c7a5d0a3a138';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=8857e57353e6';
+import { validReserve, reserveMonths } from './reserve.mjs?v=8857e57353e6';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=c7a5d0a3a138';
-import { validShares } from './stock-estimate.mjs?v=c7a5d0a3a138';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=c7a5d0a3a138';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=c7a5d0a3a138';
-import { inflationContext } from './market-context.mjs?v=c7a5d0a3a138';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=c7a5d0a3a138';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=8857e57353e6';
+import { validShares } from './stock-estimate.mjs?v=8857e57353e6';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=8857e57353e6';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=8857e57353e6';
+import { inflationContext } from './market-context.mjs?v=8857e57353e6';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=8857e57353e6';
 import { compareFundDisclosures, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=c7a5d0a3a138';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=8857e57353e6';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -1619,7 +1619,7 @@ $('#cas-preview').addEventListener('click', async () => {
       const active = await previewActiveStatementFile(state.file, password);
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=c7a5d0a3a138');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=8857e57353e6');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1654,7 +1654,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=c7a5d0a3a138');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=8857e57353e6');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -1717,7 +1717,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=c7a5d0a3a138');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=8857e57353e6');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1725,7 +1725,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=c7a5d0a3a138');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=8857e57353e6');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }

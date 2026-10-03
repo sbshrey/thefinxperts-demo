@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=c7a5d0a3a138';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=c7a5d0a3a138';
-import { reserveMonths } from './reserve.mjs?v=c7a5d0a3a138';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=8857e57353e6';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=8857e57353e6';
+import { reserveMonths } from './reserve.mjs?v=8857e57353e6';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=c7a5d0a3a138';
-import { asksForAdvice } from './question-scope.mjs?v=c7a5d0a3a138';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=c7a5d0a3a138';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=c7a5d0a3a138';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=c7a5d0a3a138';
-import { parseAmount } from './assistant-clarify.mjs?v=c7a5d0a3a138';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=c7a5d0a3a138';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=8857e57353e6';
+import { asksForAdvice } from './question-scope.mjs?v=8857e57353e6';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=8857e57353e6';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=8857e57353e6';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=8857e57353e6';
+import { parseAmount } from './assistant-clarify.mjs?v=8857e57353e6';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=8857e57353e6';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=c7a5d0a3a138';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=8857e57353e6';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -356,6 +356,10 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser. For a self-directed checklist, ask “How do I choose a target mix?”',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  if (/\bwhat should i check\b/.test(input) && /\b(?:changing|switching|selling|redeeming)\b.{0,30}\bfunds?\b/.test(input))
+    return answer('Before deciding about a fund change, check the exact scheme and plan, its dated value and cost, your goal and time horizon, the current scheme factsheet and benchmark, expense ratio, exit load, and possible tax effects. Record why you hold it and what the change would accomplish. A registered investment adviser can assess a personal decision.',
+      'This is a general due-diligence checklist. No scheme, tax lot, benchmark series or personal suitability assessment was verified for this question.',
+      'The checklist does not say whether to change a fund or which replacement to choose.', '#holdings', 'Check fund details');
   if (/\b(?:tax|taxes|ltcg|stcg)\b/.test(input) && /\b(?:sell|sale|redeem|redemption|capital gain)\b/.test(input))
     return answer('I cannot calculate tax on a sale or redemption from this holdings snapshot. Check your purchase and sale records and the applicable tax rules before using any estimate.',
       'The review stores current entered holdings and only optional checked cost for units or shares still held; it does not have complete dated tax lots or a proposed sale.',
@@ -571,7 +575,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(Number(row.value))} ÷ ${money(result.total)} entered value; row #${number} is ${row.type}; ${row.asOf ? `supplied value date ${row.asOf}` : 'no supplied value date'}.`,
       `This is one supplied, dated row, not a verified current price, fund look-through, performance result or suitability verdict. ${coverageNote}`, '#holdings', 'Check this holding');
   }
-  const portfolioRiskQuestion = /\b(?:risks?|risky|safe|volatile|volatility)\b/.test(input) &&
+  const portfolioRiskQuestion = /\b(?:risks?|risky|safe|volatile|volatility|balanced?)\b/.test(input) &&
     (/\b(?:portfolio|holdings|investments|asset mix|allocation)\b/.test(input) ||
       /\bam i taking too much risk\b/.test(input)) &&
     !/\b(?:fall|falls|drop|drops|stress|what if)\b/.test(input);
@@ -848,7 +852,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `A mutual fund may itself hold stocks or other assets, and a fund-house summary may contain multiple schemes. This is a product-type split, not underlying asset exposure. ${coverageNote}`,
       goalScopeRequested ? '#goals' : '#holdings', goalScopeRequested ? 'Review assigned holdings' : 'Inspect holdings');
   }
-  if (/\b(?:underperform\w*|outperform\w*|beat(?:ing)? (?:the )?benchmark|lag(?:ging)? (?:the )?benchmark|doing well|performing (?:best|worst))\b/.test(input))
+  if (/\b(?:portfolio|holdings|investments)\b/.test(input) &&
+      /\b(?:beat(?:ing)?|outperform(?:ing)?|underperform(?:ing)?|lag(?:ging)?)\b.{0,20}\b(?:nifty|sensex|benchmark|index)\b/.test(input))
+    return answer('I cannot establish whether your portfolio beat that benchmark from a current holdings snapshot. A fair comparison needs complete dated cash flows, a matching period and a verified benchmark series.',
+      `${valid.length} current entered holding ${valid.length === 1 ? 'row' : 'rows'}; no verified benchmark series or complete transaction history is available.`,
+      'A current value, entered gain or goal growth assumption is not a historical portfolio return.', '#holdings', 'Check transaction history');
+  if (/\b(?:underperform\w*|outperform\w*|beat(?:ing)? (?:the )?benchmark|lag(?:ging)? (?:the )?benchmark|doing well|perform(?:ed|ing)? (?:best|worst)|best.perform(?:ing|ed))\b/.test(input))
     return answer('I cannot call an entered fund an underperformer from a holdings snapshot or a current-position gain or loss. Compare the exact scheme, plan and option with its stated benchmark over the same period, using verified historical figures. For your own return, complete dated cash flows are also needed.',
       `${valid.filter(row => row.type === 'Mutual fund').length} entered mutual-fund rows; this browser review holds no verified benchmark series or complete transaction history.`,
       'An entered loss does not prove benchmark underperformance, and a gain does not prove outperformance. This answer does not rank funds or suggest an exit.', '#holdings', 'Check scheme factsheet');
@@ -1086,7 +1095,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         (visible.directCovered ? `; matching direct stocks ${money(visible.directCovered)} dated ${visible.directDates.join(', ')}` : ''),
       'This is a mixed-date, partial look-through of user-supplied values and AMC sheets. Unmatched securities, other fund assets, later trades and missing investments are unknown. It does not establish current prices, full concentration or a trade to make.', '#holdings', 'Inspect dated sources');
   }
-  if (/\b(overlaps?|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
+  if (/\b(overlaps?|overlapping|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
   {
     const byInstrument = new Map();
     for (const row of valid) {
@@ -1101,7 +1110,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const fundRows = valid.filter(row => row.type === 'Mutual fund');
     const fundHouseRows = fundRows.filter(row => row.granularity === 'fund_house');
     const fundGroups = summarizeFundGroups(fundRows);
-    const asksStockFundOverlap = /\b(?:my|our)\s+(?:direct\s+)?(?:stock|share)s?\b/.test(input) &&
+    const asksStockFundOverlap = /\b(?:my|our)\s+(?:direct\s+)?(?:stock|share)s?\b|\b(?:stock|share) holdings\b/.test(input) &&
       /\bfunds?\b/.test(input);
     const prefix = repeated.length ?
       `I found ${repeated.length} repeated instrument ${repeated.length === 1 ? 'identifier' : 'identifiers'} across ${repeatedRows} entered rows. Compare their statements and accounts before deciding whether they represent separate positions or a duplicated import.` :
@@ -1537,6 +1546,34 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}${largest.name} is the largest entered position at ${money(largest.value)}, or ${percent(largest.value, total)} of ${scope}.${additional}`,
       `${money(largest.value)} ÷ ${money(total)} ${scope}; ${largest.granularity === 'fund_house' ? 'the largest position is a fund-house summary' : largest.entries > 1 ? `${largest.entries} rows with the same supplied ISIN form the largest position` : 'the largest position is one entered row'}. Exact matching supplied ISINs and fund-house summary names are grouped; unidentified rows stay separate. ${result.asOfSummary}.`,
       `One fund can contain many securities. These shares do not measure verified company concentration or tell you what to trade. ${coverageNote}`, selectedGoal ? '#goals' : '#holdings', 'Inspect this holding');
+  }
+  if (/\btoo many\b.{0,25}\b(?:mutual\s+)?funds?\b/.test(input)) {
+    const funds = valid.filter(row => row.type === 'Mutual fund');
+    const groups = summarizeFundGroups(funds);
+    return answer(`${lead}${funds.length} mutual-fund ${funds.length === 1 ? 'row is' : 'rows are'} entered, representing ${groups.total} identifiable fund ${groups.total === 1 ? 'group' : 'groups'}. The count alone cannot tell whether you own too many funds. Check scheme identities, what each holds, and how each relates to your goals before judging overlap.`,
+      `${funds.length} positive mutual-fund rows; ${groups.total} identifiable groups after matching supplied identifiers or names.`,
+      `Fund-house summaries may contain several schemes. Different schemes can hold the same companies, and dated holdings outside this review are unknown. ${coverageNote}`, '#holdings', 'Inspect fund rows');
+  }
+  if (/\b(?:risk score|risk rating|how much could i lose|maximum loss|worst.case loss)\b/.test(input))
+    return answer('I cannot assign a personal risk score or maximum loss from this holdings snapshot. You can choose a hypothetical fall to see one-time arithmetic from the entered values, such as “What if my portfolio fell 20%?” This will not predict a future loss.',
+      `Entered value ${money(result.total)}; no validated risk model, full fund constituents, or complete financial circumstances are available.`,
+      'A hypothetical percentage is chosen by you and does not bound the possible loss or establish suitability.', '#holdings', 'Review entered exposure');
+  if (/\bwhy\b.{0,55}\b(?:portfolio|funds?|stocks?|investments?)\b.{0,25}\b(?:fell|fall|dropped|declined)\b|\bwhy\b.{0,55}\b(?:fell|fall|dropped|declined)\b.{0,25}\b(?:portfolio|funds?|stocks?|investments?)\b/.test(input))
+    return answer('I cannot identify why the portfolio changed from one holdings snapshot. Compare two dated, complete snapshots and the intervening cash flows first; then check the price and quantity changes of the same positions.',
+      `${valid.length} current entered holding ${valid.length === 1 ? 'row' : 'rows'}; this review has no complete earlier portfolio snapshot or transaction history.`,
+      'A current value or a single holding gain or loss does not establish the cause of a portfolio move.', '#holdings', 'Check dated sources');
+  if (namedGroup && /^(?:how much|what (?:percentage|percent|proportion|share|amount|value))\b/.test(input) &&
+      !/\b(?:tax|expense|cost|return|profit|loss|fee|invested)\b/.test(input)) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const rows = rowsForNamedGroup();
+    const value = rows.reduce((sum, row) => sum + Number(row.value), 0);
+    const total = goalScopeRequested ? result.goalTotal : result.total;
+    return answer(`${goalScopeRequested ? `For ${goal.name}, ` : lead}${money(value)} (${percent(value, total)}) of ${goalScopeRequested ? 'assigned' : 'entered'} value is in ${namedGroup.label}.`,
+      `${money(value)} ${namedGroup.label} ÷ ${money(total)} ${goalScopeRequested ? 'assigned' : 'entered'} value; ${rows.length} positive ${namedGroup.kind} rows. ${result.asOfSummary}.`,
+      `This is a product-type share, not underlying company or asset exposure. Fund-house summaries can contain several schemes. Values and coverage are supplied, not independently verified. ${coverageNote}`, goalScopeRequested ? '#goals' : '#holdings', 'Inspect these holdings');
   }
   const askedAssets = [
     ['Equity', /\b(?:equity|equities)\b/],
