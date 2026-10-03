@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=ee09fedbeb53';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=ee09fedbeb53';
-import { reserveMonths } from './reserve.mjs?v=ee09fedbeb53';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=4166e33e7191';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=4166e33e7191';
+import { reserveMonths } from './reserve.mjs?v=4166e33e7191';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=ee09fedbeb53';
-import { asksForAdvice } from './question-scope.mjs?v=ee09fedbeb53';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ee09fedbeb53';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ee09fedbeb53';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=ee09fedbeb53';
-import { parseAmount } from './assistant-clarify.mjs?v=ee09fedbeb53';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=ee09fedbeb53';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=4166e33e7191';
+import { asksForAdvice } from './question-scope.mjs?v=4166e33e7191';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=4166e33e7191';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=4166e33e7191';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=4166e33e7191';
+import { parseAmount } from './assistant-clarify.mjs?v=4166e33e7191';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=4166e33e7191';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=ee09fedbeb53';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=4166e33e7191';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -195,6 +195,15 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     !result.goalTotal ? answer('No entered holdings are assigned to this goal yet. Link holdings before comparing its mix or largest position.',
       `Selected goal ${goal.name}; assigned value ₹0.`,
       'The whole portfolio and the selected goal may contain different amounts.', '#holdings', 'Link a holding') : null;
+  const namesFunds = /\b(?:mutual funds?|funds?)\b/.test(input);
+  const namesStocks = /\b(?:stocks?|direct shares?)\b/.test(input);
+  const namedGroup = namesFunds !== namesStocks ? namesFunds ?
+    { kind: 'Mutual fund', label: 'mutual funds', positionLabel: 'mutual-fund' } :
+    { kind: 'Stock', label: 'direct stocks', positionLabel: 'direct-stock' } : null;
+  const rowsForNamedGroup = () => valid.filter(row => row.type === namedGroup.kind).flatMap(row => {
+    const share = goalScopeRequested ? goalShare(goal, row.id) : 100;
+    return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+  });
 
   if (otherNamedGoal && /\b(?:goal|toward|towards|for|assigned|linked|funding|counted|track)\b/.test(input) &&
       !asksForAdvice(input))
@@ -1337,6 +1346,26 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       const unavailable = unavailableGoalScope();
       if (unavailable) return unavailable;
     }
+    if (namedGroup) {
+      const rows = rowsForNamedGroup();
+      if (!rows.length) return answer(`No ${namedGroup.label} are ${goalScopeRequested ? `assigned to ${goal.name}` : 'entered in this review'} yet. Add or assign a current holding before comparing this group.`,
+        `0 positive ${namedGroup.kind} rows in ${goalScopeRequested ? `the selected goal ${goal.name}` : 'the entered snapshot'}.`,
+        `This does not establish what you own outside the review. ${coverageNote}`, goalScopeRequested ? '#goals' : '#holdings', 'Check this group');
+      const total = rows.reduce((sum, row) => sum + row.value, 0);
+      const assets = Object.fromEntries(['Equity', 'Debt', 'Gold', 'Other'].map(asset =>
+        [asset, rows.filter(row => row.asset === asset).reduce((sum, row) => sum + row.value, 0)]));
+      const top = positionsByIsin(rows).slice(0, 3);
+      const largest = top[0];
+      const topValue = top.reduce((sum, position) => sum + position.value, 0);
+      const dateChecks = rows.filter(row => valuationDateIssue(row.asOf, today)).length;
+      const scope = goalScopeRequested ? `For ${goal.name}, the assigned ${namedGroup.label}` :
+        `The entered ${namedGroup.label}`;
+      return answer(`${scope} are Equity ${percent(assets.Equity, total)}, Debt ${percent(assets.Debt, total)}, Gold ${percent(assets.Gold, total)}, and Other ${percent(assets.Other, total)}. The largest ${largest.granularity === 'fund_house' ? 'fund-house summary' : 'position'} is ${largest.name} at ${percent(largest.value, total)} of this group.` +
+        (top.length > 1 ? ` The largest ${top.length} positions together are ${percent(topValue, total)}.` : ''),
+        `${money(largest.value)} ÷ ${money(total)} ${goalScopeRequested ? 'assigned' : 'entered'} ${namedGroup.label} value; ${rows.length} positive ${namedGroup.kind} rows. ${top.length > 1 ? `The largest ${top.length} positions sum to ${money(topValue)}. ` : ''}Exact matching supplied ISINs and fund-house summaries are grouped. ${dateChecks} ${dateChecks === 1 ? 'row needs' : 'rows need'} a value-date check.`,
+        `${assets.Other ? `${money(assets.Other)} is labelled Other within this group. ` : ''}Fund constituents and holdings outside this review are not verified. These shares do not establish whether the mix suits your age, risk capacity or goal. ${coverageNote}`,
+        goalScopeRequested ? '#goals' : '#holdings', 'Inspect this group');
+    }
     const selectedGoal = Boolean(goalScopeRequested);
     const total = selectedGoal ? result.goalTotal : result.total;
     const assets = selectedGoal ? result.goalAssets : result.assets;
@@ -1412,6 +1441,21 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     if (selectedGoal) {
       const unavailable = unavailableGoalScope();
       if (unavailable) return unavailable;
+    }
+    if (namedGroup) {
+      const rows = rowsForNamedGroup();
+      if (!rows.length) return answer(`No ${namedGroup.label} are ${selectedGoal ? `assigned to ${goal.name}` : 'entered in this review'} yet. Add or assign a current holding before comparing this group.`,
+        `0 positive ${namedGroup.kind} rows in ${selectedGoal ? `the selected goal ${goal.name}` : 'the entered snapshot'}.`,
+        `This does not establish what you own outside the review. ${coverageNote}`, selectedGoal ? '#goals' : '#holdings', 'Check this group');
+      const top = positionsByIsin(rows).slice(0, 3);
+      const total = rows.reduce((sum, row) => sum + row.value, 0);
+      const largest = top[0];
+      const topValue = top.reduce((sum, position) => sum + position.value, 0);
+      const scope = `${selectedGoal ? 'assigned' : 'entered'} ${namedGroup.positionLabel} value`;
+      const additional = top.length > 1 ? ` The largest ${top.length} entered positions together are ${money(topValue)}, or ${percent(topValue, total)}. They are ${top.map(position => `${position.name} ${percent(position.value, total)}`).join('; ')}.` : '';
+      return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}${largest.name} is the largest entered ${largest.granularity === 'fund_house' ? 'fund-house summary' : `${namedGroup.positionLabel} position`} at ${money(largest.value)}, or ${percent(largest.value, total)} of ${scope}.${additional}`,
+        `${money(largest.value)} ÷ ${money(total)} ${scope}; ${rows.length} positive ${namedGroup.kind} rows. Exact matching supplied ISINs and fund-house summary names are grouped; unidentified rows stay separate.`,
+        `One fund can contain many securities. These shares do not measure verified company concentration or tell you what to trade. ${coverageNote}`, selectedGoal ? '#goals' : '#holdings', 'Inspect this group');
     }
     const top = selectedGoal ? result.topGoalPositions : result.topPositions;
     const total = selectedGoal ? result.goalTotal : result.total;
