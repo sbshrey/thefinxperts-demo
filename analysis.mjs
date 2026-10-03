@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=6e67026a2f01';
-import { compareMixPlan } from './mix-plan.mjs?v=6e67026a2f01';
-import { goalShare } from './goals.mjs?v=6e67026a2f01';
-import { reserveMonths } from './reserve.mjs?v=6e67026a2f01';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=6e67026a2f01';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=5c6678584f85';
+import { compareMixPlan } from './mix-plan.mjs?v=5c6678584f85';
+import { goalShare } from './goals.mjs?v=5c6678584f85';
+import { reserveMonths } from './reserve.mjs?v=5c6678584f85';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=5c6678584f85';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -219,6 +219,9 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     goalIsinClassifications.set(holding.isin, labels);
   }
   const goalIdentityConflict = [...goalIsinClassifications.values()].some(labels => labels.size > 1);
+  const goalExposureReady = validGoal && goalTotal > 0 && !goalDateCheck.count &&
+    !goalAccessCheck.count && goalAssets.Other === 0 && !goalIdentityConflict &&
+    !goalHoldings.some(holding => holding.granularity === 'fund_house');
   if (conflictingIsins) {
     findings.push({ key: 'identity', tone: 'amber', label: 'Data quality', title: 'Check conflicting labels',
       detail: `${conflictingIsins} ISIN ${conflictingIsins === 1 ? 'appears' : 'appear'} with different holding types or asset categories. Recheck those rows before interpreting concentration or goal mix.`,
@@ -314,14 +317,14 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       limitation: 'This compares entered asset labels with your own mix. The 10-point trigger is a review prompt, not an allocation rule or a trade recommendation. Fund constituents, taxes and transaction costs are not assessed.' });
   }
 
-  if (validGoal && goalTotal > 0 && years <= 5 && goalEquityPct >= 60) {
+  if (goalExposureReady && years <= 5 && goalEquityPct >= 60) {
     findings.push({ key: 'horizon', tone: 'amber', label: 'Goal timing', title: 'The linked goal is relatively near',
       detail: `${goalEquityPct.toFixed(0)}% of the holdings assigned to this goal is equity, while the goal is ${years} ${years === 1 ? 'year' : 'years'} away. Consider how much loss the goal can absorb.`,
       question: 'If equity falls before this goal date, how much of the goal cost can you still meet?',
       basis: `${rupees(goalEquityValue)} labelled Equity ÷ ${rupees(goalTotal)} linked to this goal = ${goalEquityPct.toFixed(1)}%; entered horizon ${years} ${years === 1 ? 'year' : 'years'}.`,
       limitation: 'Asset labels and values are as entered; this does not assess your cash reserve, liabilities or capacity for loss.' });
   }
-  if (validGoal && largestGoalPosition && largestGoalPosition.granularity !== 'fund_house' && goalTotal > 0 &&
+  if (goalExposureReady && largestGoalPosition && largestGoalPosition.granularity !== 'fund_house' &&
       largestGoalPosition.value / goalTotal >= 0.5) {
     const share = largestGoalPosition.value / goalTotal * 100;
     findings.push({ key: 'position', tone: 'blue', label: 'Goal concentration', title: 'One position carries much of this goal',
