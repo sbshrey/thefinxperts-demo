@@ -111,7 +111,8 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable, maxDrafts =
   const metadataNote = metadata.type !== null || metadata.asset !== null || metadata.asOf !== null ?
     `Used explicit report fields for ${typed} type${typed === 1 ? '' : 's'} and ${dated} valuation date${dated === 1 ? '' : 's'}; check every row. Missing fields remain unknown.` :
     'Please confirm each row is a fund or directly held stock; its valuation date remains unknown until you provide one.';
-  return { drafts, errors: [], message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the broker report. ${importAudit(drafts, result.reportedTotal)} The file stayed in this browser. ${metadataNote}${counted ? ` ${counted} stock share count${counted === 1 ? ' was' : 's were'} staged; check the current settled shares after trades, splits or bonuses before confirming.` : ''} ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
+  const audit = importAudit(drafts, result.reportedTotal);
+  return { drafts, errors: [], audit, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the broker report. ${audit} The file stayed in this browser. ${metadataNote}${counted ? ` ${counted} stock share count${counted === 1 ? ' was' : 's were'} staged; check the current settled shares after trades, splits or bonuses before confirming.` : ''} ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
 }
 
 /** Prepare unconfirmed chat rows from supported CSV or XLSX exports without an upload. */
@@ -128,8 +129,9 @@ export async function previewAssistantImport(file, { aiAvailable = true, browser
       if (simple.holdings.length) {
         if (simple.holdings.length > maxDrafts)
           return { drafts: [], handoffSource: 'csv', errors: [`This chat can confirm up to ${maxDrafts} rows at once. The detailed review can preview this CSV (up to 200 holdings).`] };
+        const audit = importAudit(simple.holdings);
         return { drafts: simple.holdings.map(row => ({ ...row, entryOrigin: 'simple_csv' })),
-          errors: [], message: `Found ${simple.holdings.length} possible holding${simple.holdings.length === 1 ? '' : 's'} in the simple CSV. ${importAudit(simple.holdings)} The file stayed in this browser. Check the rows before confirming them. ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
+          errors: [], audit, message: `Found ${simple.holdings.length} possible holding${simple.holdings.length === 1 ? '' : 's'} in the simple CSV. ${audit} The file stayed in this browser. Check the rows before confirming them. ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
       }
       const rows = parseBrokerCsvRows(text);
       const broker = brokerDrafts(rows, 'broker_csv', true, aiAvailable, maxDrafts);

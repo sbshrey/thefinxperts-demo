@@ -275,10 +275,10 @@ function say(role, text, question = null, remember = true) {
   return item;
 }
 
-function sayImportNote(message, visibleWarning = '') {
+function sayImportNote(message, visibleWarning = '', visibleAudit = '') {
   const sentenceEnd = message.indexOf('. ');
   if (sentenceEnd < 0) return say('note', message);
-  const item = say('note', `${message.slice(0, sentenceEnd + 1)} Check the rows against your source before using them.${visibleWarning ? ` ${visibleWarning}` : ''}`);
+  const item = say('note', `${message.slice(0, sentenceEnd + 1)}${visibleAudit ? ` ${visibleAudit}` : ''} Check the rows against your source before using them.${visibleWarning ? ` ${visibleWarning}` : ''}`);
   const details = document.createElement('details');
   details.className = 'import-details';
   const summary = document.createElement('summary');
@@ -963,12 +963,14 @@ function stageActiveStatement(parsed) {
   state.drafts = drafts;
   renderDrafts();
   const summaries = state.drafts.filter(row => row.granularity === 'fund_house').length;
+  const importSummary = importValueAndDates(state.drafts);
   const detail = parsed.schemeDetailStatus === 'reconciled' ?
     'Scheme rows reconciled to the fund-house totals.' : parsed.schemeDetailStatus === 'unreconciled_fallback' ?
       'Scheme rows did not fully reconcile; only fund-house summaries were staged. Scheme-level holdings are missing.' :
       'This statement supplied fund-house summaries without scheme rows.';
-  sayImportNote(`Found ${state.drafts.length} possible fund ${state.drafts.length === 1 ? 'holding' : 'holdings'} in the CAMS Active Statement. ${importValueAndDates(state.drafts)} Fund-house source total ${rupees(parsed.summaryTotal)}. ${detail} ${summaries ? `${summaries} ${summaries === 1 ? 'is a fund-house summary' : 'are fund-house summaries'} without scheme detail. ` : ''}The PDF stayed in this browser. Check the rows before using them.`,
-    summaries ? `${summaries} fund-house ${summaries === 1 ? 'summary lacks' : 'summaries lack'} scheme detail.` : '');
+  sayImportNote(`Found ${state.drafts.length} possible fund ${state.drafts.length === 1 ? 'holding' : 'holdings'} in the CAMS Active Statement. ${importSummary} Fund-house source total ${rupees(parsed.summaryTotal)}. ${detail} ${summaries ? `${summaries} ${summaries === 1 ? 'is a fund-house summary' : 'are fund-house summaries'} without scheme detail. ` : ''}The PDF stayed in this browser. Check the rows before using them.`,
+    summaries ? `${summaries} fund-house ${summaries === 1 ? 'summary lacks' : 'summaries lack'} scheme detail.` : '',
+    `${importSummary} Fund-house source total ${rupees(parsed.summaryTotal)}.`);
   clearFile();
   return true;
 }
@@ -1028,7 +1030,13 @@ function stageCasResult(result) {
     }
   }
   state.drafts = drafts;
-  renderDrafts(); sayImportNote(prepared.message, 'Compare the parsed value with your statement total.'); clearFile();
+  const ownershipWarning = result.ownershipUnverified === true ?
+    result.source === 'Demat CAS' ?
+      'The parsed CAS does not establish every demat owner PAN; check account ownership in the original statement.' :
+      'The parsed CAS does not establish every folio owner PAN; check ownership in the original statement.' : '';
+  renderDrafts(); sayImportNote(prepared.message,
+    `Compare the parsed value with your statement total.${ownershipWarning ? ` ${ownershipWarning}` : ''}`,
+    importValueAndDates(drafts)); clearFile();
   return true;
 }
 
@@ -1051,7 +1059,7 @@ function stageEpfoResult(result) {
   state.drafts = [draft];
   renderDrafts();
   sayImportNote(`I found one EPF member passbook balance of ${money(draft.value)}. Its report was printed on ${draft.asOf}; this is a dated passbook snapshot, not proof that later contributions or transfers are included. The employee and employer balances match the final Grand Total; the separate pension contribution is not counted. The account is labelled with a short one-way code so a later upload of the same member account is caught as an overlap. Check the passbook and confirm the draft before it changes your review. EPF withdrawal and access conditions still need checking for your goal. The PDF stayed in this browser.`,
-    'Check the report balance, date and member account before confirming.');
+    'Check the report balance, date and member account before confirming.', `Report printed on ${draft.asOf}.`);
   clearFile();
   return true;
 }
@@ -1130,7 +1138,7 @@ $('#upload').addEventListener('change', async event => {
             state.refresh = { ...prepared, revision: state.account.revision };
             renderRefresh();
             say('assistant', 'I found newer values for saved positions with exact ISIN matches. Review the changes before applying them. The dashboard has not changed yet.');
-          } else { state.drafts = drafts; renderDrafts(); sayImportNote(result.message); }
+          } else { state.drafts = drafts; renderDrafts(); sayImportNote(result.message, '', result.audit); }
         }
       }
     } finally { state.busy = false; clearFile(); renderCredits(); renderDrafts(); }
