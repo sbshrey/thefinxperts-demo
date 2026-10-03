@@ -696,7 +696,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       const unavailable = unavailableGoalScope();
       if (unavailable) return unavailable;
     }
-    const selectedGoal = goal?.confirmed === true && result.goalTotal > 0;
+    const selectedGoal = Boolean(goalScopeRequested);
     const total = selectedGoal ? result.goalTotal : result.total;
     const assets = selectedGoal ? result.goalAssets : result.assets;
     const top = selectedGoal ? result.topGoalPositions : result.topPositions;
