@@ -10,16 +10,24 @@ const finite = value => typeof value === 'number' && Number.isFinite(value) ? va
 const failed = message => ({ disclosure: null, errors: [message] });
 
 function statementDate(value, todayIso) {
-  const match = /\b(?:monthly\s+)?portfolio\s+statement\s+as\s+on\s*:?[\s]*(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}),?\s+(\d{4})\b/i.exec(cell(value));
-  if (!match) return null;
-  const iso = `${match[3]}-${String(MONTHS.get(match[1].toLowerCase())).padStart(2, '0')}-${match[2].padStart(2, '0')}`;
+  const printed = cell(value);
+  const monthFirst = /\b(?:monthly\s+)?portfolio\s+statement\s+as\s+on\s*:?[\s]*(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}),?\s+(\d{4})\b/i.exec(printed);
+  const dayFirst = /\bportfolio\s+as\s+on\s*:?[\s]*(\d{1,2})[-\s](jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-\s](\d{4})\b/i.exec(printed);
+  if (!monthFirst && !dayFirst) return null;
+  const month = monthFirst ? MONTHS.get(monthFirst[1].toLowerCase()) :
+    [...MONTHS.entries()].find(([name]) => name.startsWith(dayFirst[2].toLowerCase()))?.[1];
+  const day = monthFirst ? monthFirst[2] : dayFirst[1];
+  const year = monthFirst ? monthFirst[3] : dayFirst[3];
+  const iso = `${year}-${String(month).padStart(2, '0')}-${day.padStart(2, '0')}`;
   const date = new Date(`${iso}T00:00:00Z`);
   return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === iso && iso <= todayIso ? iso : false;
 }
 
 function schemeTitle(value) {
-  const title = cell(value).split(/\s*\(/, 1)[0].trim();
-  return /^(?:Motilal Oswal|Parag Parikh)\s+[A-Za-z0-9 &.'/-]{3,100}\s+(?:Fund|ETF)$/i.test(title) ? title : null;
+  const raw = cell(value);
+  if (/^Groww\b/i.test(raw) || (/^IB\d{2}-/i.test(raw) && !/^IB\d{2}-Groww\b/i.test(raw))) return null;
+  const title = raw.replace(/^IB\d{2}-/i, '').split(/\s*\(/, 1)[0].trim();
+  return /^(?:Motilal Oswal|Parag Parikh|Groww)\s+[A-Za-z0-9 &.'/-]{3,100}\s+(?:Fund|ETF)$/i.test(title) ? title : null;
 }
 
 /** Read one user-supplied AMC sheet as dated, listed equity weights only. No investor holding changes. */
@@ -30,7 +38,7 @@ export function parseFundDisclosureRows(rows,
     return failed('Choose one supported scheme portfolio spreadsheet.');
   const headerCandidates = rows.slice(0, 25).flatMap((row, index) => {
     const headings = row.map(label);
-    const name = headings.indexOf('name of the instrument');
+    const name = headings.findIndex(text => /^(?:name of the instrument|name of instrument)$/.test(text));
     const isin = headings.indexOf('isin');
     const weight = headings.findIndex(text => /^%\s*to\s*net\s*assets$/.test(text));
     return name >= 0 && isin >= 0 && weight >= 0 && new Set([name, isin, weight]).size === 3 ?
@@ -44,7 +52,8 @@ export function parseFundDisclosureRows(rows,
   const titles = rows.slice(0, header.index).flatMap(row => row.map(schemeTitle).filter(Boolean));
   if (titles.length !== 1) return failed('The sheet needs one identifiable scheme title before its holdings table.');
   const scheme = titles[0];
-  const amc = scheme.startsWith('Motilal Oswal ') ? 'Motilal Oswal' : 'PPFAS';
+  const amc = scheme.startsWith('Motilal Oswal ') ? 'Motilal Oswal' :
+    scheme.startsWith('Groww ') ? 'Groww' : 'PPFAS';
   if (amc === 'Motilal Oswal' && !rows.slice(0, header.index).some(row =>
     row.some(value => /Motilal Oswal Asset Management Company Limited/i.test(cell(value)))))
     return failed('The printed fund-house identity does not match the scheme.');
@@ -53,7 +62,7 @@ export function parseFundDisclosureRows(rows,
   if (equityIndex < 0) return failed('A listed equity section was not found under this scheme.');
   const sectionStart = header.index + 1 + equityIndex;
   const listedIndex = rows.slice(sectionStart + 1, sectionStart + 5)
-    .findIndex(row => row.some(value => /listed\s*\/\s*awaiting listing on stock exchanges/i.test(cell(value))));
+    .findIndex(row => row.some(value => /listed\s*\/\s*awaiting listing on (?:the\s+)?stock exchanges/i.test(cell(value))));
   if (listedIndex < 0) return failed('The listed equity subsection was not found.');
   const first = sectionStart + 2 + listedIndex;
   const subtotal = rows.findIndex((row, index) => index >= first && index < first + 500 &&
@@ -64,6 +73,8 @@ export function parseFundDisclosureRows(rows,
   if (grandTotals.length !== 1 || grandTotals[0] <= subtotal)
     return failed('The sheet needs one grand total after the listed equity section.');
   const grand = finite(rows[grandTotals[0]][header.weight]);
+  if (amc === 'Groww' && (grand === null || Math.abs(grand - 1) > 0.0001))
+    return failed('The Groww sheet’s printed grand total must use the fractional scale.');
   const scale = grand !== null && Math.abs(grand - 100) <= 0.01 ? 1 :
     grand !== null && Math.abs(grand - 1) <= 0.0001 ? 100 : null;
   if (!scale) return failed('The sheet’s % to Net Assets scale cannot be reconciled to 100%.');
@@ -129,7 +140,8 @@ export function matchFundDisclosure(disclosure, holdings) {
   const matches = holdings.filter(row => row?.type === 'Mutual fund' &&
     row.granularity !== 'fund_house' && baseScheme(row.name) === name &&
     (!row.amc || (disclosure.amc === 'Motilal Oswal' ?
-      /motilal\s+oswal/i.test(row.amc) : /ppfas|parag\s+parikh/i.test(row.amc))));
+      /motilal\s+oswal/i.test(row.amc) : disclosure.amc === 'Groww' ?
+        /groww/i.test(row.amc) : /ppfas|parag\s+parikh/i.test(row.amc))));
   return matches.length ? { matches, count: matches.length,
     value: matches.reduce((sum, row) => sum + Number(row.value || 0), 0) } : null;
 }

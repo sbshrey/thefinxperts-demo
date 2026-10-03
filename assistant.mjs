@@ -1,41 +1,41 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=96f6d3581dd0';
-import { previewBrowserCas } from './cas-browser.mjs?v=96f6d3581dd0';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=96f6d3581dd0';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=96f6d3581dd0';
-import { goalShare } from './goals.mjs?v=96f6d3581dd0';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=6ce2e8ef3652';
+import { previewBrowserCas } from './cas-browser.mjs?v=6ce2e8ef3652';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=6ce2e8ef3652';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=6ce2e8ef3652';
+import { goalShare } from './goals.mjs?v=6ce2e8ef3652';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=96f6d3581dd0';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=96f6d3581dd0';
-import { previewAssistantImport } from './assistant-import.mjs?v=96f6d3581dd0';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=96f6d3581dd0';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=96f6d3581dd0';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=6ce2e8ef3652';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=6ce2e8ef3652';
+import { previewAssistantImport } from './assistant-import.mjs?v=6ce2e8ef3652';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=6ce2e8ef3652';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=6ce2e8ef3652';
 import { analyzePortfolio, sampleHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=96f6d3581dd0';
-import { buildReadableReport } from './readable-report.mjs?v=96f6d3581dd0';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=96f6d3581dd0';
-import { parseReviewBackup } from './review-backup.mjs?v=96f6d3581dd0';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=96f6d3581dd0';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=96f6d3581dd0';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=96f6d3581dd0';
-import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=96f6d3581dd0';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=6ce2e8ef3652';
+import { buildReadableReport } from './readable-report.mjs?v=6ce2e8ef3652';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=6ce2e8ef3652';
+import { parseReviewBackup } from './review-backup.mjs?v=6ce2e8ef3652';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=6ce2e8ef3652';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=6ce2e8ef3652';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=6ce2e8ef3652';
+import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=6ce2e8ef3652';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=96f6d3581dd0';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=6ce2e8ef3652';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=96f6d3581dd0';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=96f6d3581dd0';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=6ce2e8ef3652';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=6ce2e8ef3652';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=96f6d3581dd0';
-import { validReserve, reserveMonths } from './reserve.mjs?v=96f6d3581dd0';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=6ce2e8ef3652';
+import { validReserve, reserveMonths } from './reserve.mjs?v=6ce2e8ef3652';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=96f6d3581dd0';
-import { validShares } from './stock-estimate.mjs?v=96f6d3581dd0';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=96f6d3581dd0';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=96f6d3581dd0';
-import { inflationContext } from './market-context.mjs?v=96f6d3581dd0';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=6ce2e8ef3652';
+import { validShares } from './stock-estimate.mjs?v=6ce2e8ef3652';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=6ce2e8ef3652';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=6ce2e8ef3652';
+import { inflationContext } from './market-context.mjs?v=6ce2e8ef3652';
 import { compareFundDisclosures, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=96f6d3581dd0';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=6ce2e8ef3652';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -93,7 +93,7 @@ const state = { confirmed: [], drafts: [], history: [], lastReviewQuestion: null
   goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
   correction: null, refresh: null, casAvailable: false, casLocal: false,
   capacityReached: false, coveragePrompted: false, coverageQueue: null, pendingGoalName: false,
-  awaitingHoldingName: false, disclosureDraft: null, disclosures: [] };
+  awaitingHoldingName: false, disclosureDraft: null, disclosureQueue: [], disclosures: [] };
 const isEmptyGoalPlaceholder = goal => goal?.name === 'My goal' && goal.confirmed === false &&
   goal.age == null && goal.years == null && goal.target == null;
 const starterActions = $('#starter-actions');
@@ -738,11 +738,17 @@ function renderDisclosureReview() {
 function stageFundDisclosure(disclosure) {
   if (!matchFundDisclosure(disclosure, state.confirmed)) {
     say('note', `The dated scheme file for ${disclosure.scheme} was read, but no exact scheme is in the confirmed review. Upload or confirm your own fund holding first. No values changed.`);
+    stageNextFundDisclosure();
     return;
   }
   state.disclosureDraft = disclosure;
   renderDisclosureDraft();
   say('assistant', 'I found a dated AMC scheme disclosure. Check that its scheme and date match the fund you own, then confirm the preview. The file describes the fund’s assets, not your account balance.');
+}
+
+function stageNextFundDisclosure() {
+  const next = state.disclosureQueue.shift();
+  if (next) stageFundDisclosure(next);
 }
 
 function renderReview() {
@@ -1540,7 +1546,7 @@ $('#cas-preview').addEventListener('click', async () => {
     if (browserOnly) {
       const active = await previewActiveStatementFile(state.file, password);
       if (stageActiveStatement(active)) return;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=96f6d3581dd0');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=6ce2e8ef3652');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1572,11 +1578,18 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosure } = await import('./fund-disclosure-browser.mjs?v=96f6d3581dd0');
-      const disclosure = await previewFundDisclosure(file);
-      stageFundDisclosure(disclosure);
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=6ce2e8ef3652');
+      const disclosures = await previewFundDisclosures(file, state.confirmed);
+      state.disclosureQueue = disclosures.slice(1);
+      stageFundDisclosure(disclosures[0]);
       return;
-    } catch { /* A broker holdings XLSX may use a different, supported layout. */ }
+    } catch (error) {
+      if (error.disclosureWorkbook) {
+        say('note', `${error.message} No holding values changed.`);
+        return;
+      }
+      /* A broker holdings XLSX may use a different, supported layout. */
+    }
     finally { state.busy = false; clearFile(); renderCredits(); renderDisclosureDraft(); }
   }
   if (state.drafts.length && !window.confirm('Replace the unconfirmed holdings already in this chat with this report?')) {
@@ -1628,7 +1641,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=96f6d3581dd0');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=6ce2e8ef3652');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1636,7 +1649,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=96f6d3581dd0');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=6ce2e8ef3652');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1657,17 +1670,19 @@ $('#discard-disclosure')?.addEventListener('click', () => {
   state.disclosureDraft = null;
   renderDisclosureDraft();
   say('note', 'The scheme disclosure preview was discarded. No holding values changed.');
+  stageNextFundDisclosure();
 });
 $('#confirm-disclosure')?.addEventListener('click', () => {
   const draft = state.disclosureDraft;
   if (!browserOnly || !draft || state.busy || !$('#disclosure-match-checked').checked) return;
   if (!matchFundDisclosure(draft, state.confirmed)) {
     say('note', 'The matching fund holding changed. Check the scheme and upload its disclosure again.');
-    state.disclosureDraft = null; renderDisclosureDraft(); return;
+    state.disclosureDraft = null; renderDisclosureDraft(); stageNextFundDisclosure(); return;
   }
   const existing = state.disclosures.findIndex(item => disclosureSchemeKey(item) === disclosureSchemeKey(draft));
   if (existing >= 0 && state.disclosures[existing].asOf >= draft.asOf) {
     say('note', 'This scheme already has an equally recent or newer disclosure in this tab. No change was made.');
+    state.disclosureDraft = null; renderDisclosureDraft(); stageNextFundDisclosure();
     return;
   }
   if (existing < 0 && state.disclosures.length >= 5) {
@@ -1682,6 +1697,7 @@ $('#confirm-disclosure')?.addEventListener('click', () => {
   renderDeviceActions();
   if (devicePassphrase) void saveDeviceReview(state.account?.portfolio);
   say('assistant', `Added the ${draft.asOf} listed equity disclosure for ${draft.scheme} to this tab’s review. Your confirmed holdings and saved values did not change.`);
+  stageNextFundDisclosure();
 });
 
 const chatDropZone = document.querySelector('.chat-panel');
@@ -2245,7 +2261,7 @@ $('#delete-saved').addEventListener('click', async () => {
     if (!response.ok) throw new Error('The saved review could not be deleted. Try again later.');
     state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
     state.reserveFacts = null; state.reserveDraftRevision = null;
-    state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosures = []; state.history = []; state.coverageQueue = null; state.pendingGoalName = false; clearFile();
+    state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosureQueue = []; state.disclosures = []; state.history = []; state.coverageQueue = null; state.pendingGoalName = false; clearFile();
     acceptAccount({ portfolio: null, revision: 0 });
     renderDrafts(); renderGoalDraft(); renderReserveDraft();
     $('#messages').replaceChildren();
@@ -2260,7 +2276,7 @@ $('#new-chat').addEventListener('click', () => {
       !window.confirm('Start a new chat and discard the unconfirmed holdings, goal or reserve details, report change and selected file? Confirmed holdings and goals stay in your review.')) return;
   state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.disclosureDraft = null; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
+  state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosureQueue = []; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
   $('#messages').replaceChildren();
   if (state.demo) sayFictionalIntro();
   else {
@@ -2290,7 +2306,7 @@ $('#clear-review').addEventListener('click', () => {
   }
   state.confirmed = []; state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosures = []; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.coveragePrompted = false; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
+  state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosureQueue = []; state.disclosures = []; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.coveragePrompted = false; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Choose Upload for a CAMS statement, supported CAS or broker report. I’ll show possible holdings to confirm before answering questions. You can also describe one holding.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
@@ -2388,7 +2404,7 @@ $('#restore-tab-file')?.addEventListener('change', async event => {
   catch { say('note', 'The selected review file could not be read. Try another copy.'); return; }
   if (parsed.errors.length) { say('note', parsed.errors[0]); return; }
   if (state.account?.portfolio && !window.confirm('Replace the review in this tab with the selected file?')) return;
-  state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosures = []; state.pendingGoalName = false;
+  state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosureQueue = []; state.disclosures = []; state.pendingGoalName = false;
   acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
   fileSavedSerial = reviewChangeSerial;
   await saveDeviceReview(parsed.portfolio);
@@ -2437,7 +2453,7 @@ $('#device-review-form')?.addEventListener('submit', async event => {
       if (parsed.errors.length) throw new Error('The saved review is damaged or uses an unsupported format.');
       if (state.account?.portfolio && !window.confirm('Replace the current tab review with the saved device review?')) return;
       devicePassphrase = passphrase;
-      state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosures = []; state.pendingGoalName = false;
+      state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null; state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosureQueue = []; state.disclosures = []; state.pendingGoalName = false;
       acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
       state.disclosures = parsed.disclosures;
       renderDisclosureReview();
@@ -2494,7 +2510,7 @@ if (browserOnly) receiveReviewHandoff({
   onStart: () => say('note', 'Opening your confirmed holdings from Detailed review…'),
   onPortfolio: portfolio => {
     state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
-    state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosures = []; state.pendingGoalName = false;
+    state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosureQueue = []; state.disclosures = []; state.pendingGoalName = false;
     acceptAccount({ portfolio, revision: state.account.revision + 1 });
     say('note', 'Your Detailed review is open in chat. The two tabs do not sync; save a private review file to keep later changes.');
     resumeCoverageQuestions(portfolio);

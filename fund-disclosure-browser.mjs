@@ -1,15 +1,15 @@
-import { checkXlsxArchive } from './broker-xlsx.mjs?v=96f6d3581dd0';
-import { parseFundDisclosureRows } from './fund-disclosure.mjs?v=96f6d3581dd0';
+import { checkXlsxArchive } from './broker-xlsx.mjs?v=6ce2e8ef3652';
+import { parseFundDisclosureRows } from './fund-disclosure.mjs?v=6ce2e8ef3652';
 
 /** Read a selected scheme disclosure locally. The worker never sends workbook bytes to the host. */
-export async function previewFundDisclosure(file) {
-  if (!file || !/\.xlsx$/i.test(file.name) || file.size > 2_000_000)
-    throw new Error('Choose one XLSX scheme portfolio smaller than 2 MB.');
-  checkXlsxArchive(await file.arrayBuffer());
-  const rows = await new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./fund-disclosure-worker.js?v=96f6d3581dd0', import.meta.url));
+export async function previewFundDisclosures(file, confirmed = []) {
+  if (!file || !/\.xlsx$/i.test(file.name) || file.size > 5_000_000)
+    throw new Error('Choose an XLSX scheme portfolio smaller than 5 MB.');
+  checkXlsxArchive(await file.arrayBuffer(), 'disclosure');
+  const workbook = await new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./fund-disclosure-worker.js?v=6ce2e8ef3652', import.meta.url));
     let finished = false;
-    const timer = setTimeout(() => finish(new Error('The scheme disclosure preview timed out.')), 15_000);
+    const timer = setTimeout(() => finish(new Error('The scheme disclosure preview timed out.')), 25_000);
     function finish(error, value) {
       if (finished) return;
       finished = true;
@@ -17,12 +17,33 @@ export async function previewFundDisclosure(file) {
       worker.terminate();
       if (error) reject(error); else resolve(value);
     }
-    worker.onmessage = event => event.data?.error ? finish(new Error(event.data.error)) :
-      finish(null, event.data?.rows);
+    worker.onmessage = event => {
+      if (event.data?.error) {
+        const error = new Error(event.data.error);
+        error.disclosureWorkbook = event.data.disclosureWorkbook === true;
+        finish(error);
+      } else finish(null, event.data);
+    };
     worker.onerror = () => finish(new Error('The scheme disclosure preview failed in this browser.'));
-    worker.postMessage(file);
+    worker.postMessage({ file, targetNames: confirmed.filter(row => row?.type === 'Mutual fund' &&
+      row.granularity !== 'fund_house').map(row => row.name) });
   });
-  const result = parseFundDisclosureRows(rows);
-  if (result.errors.length) throw new Error(result.errors[0]);
-  return result.disclosure;
+  const sheets = workbook?.sheets;
+  if (!Array.isArray(sheets) || !sheets.length || sheets.length > 5)
+    throw new Error('The scheme disclosure worker returned no supported sheet.');
+  return sheets.map(sheet => {
+    const result = parseFundDisclosureRows(sheet.rows);
+    if (result.errors.length) {
+      const error = new Error(`${sheet.name || 'This sheet'}: ${result.errors[0]}`);
+      error.disclosureWorkbook = workbook.multiSheet === true;
+      throw error;
+    }
+    return result.disclosure;
+  });
+}
+
+export async function previewFundDisclosure(file) {
+  const disclosures = await previewFundDisclosures(file);
+  if (disclosures.length !== 1) throw new Error('Choose one supported scheme sheet.');
+  return disclosures[0];
 }

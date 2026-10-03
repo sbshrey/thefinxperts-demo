@@ -5,9 +5,13 @@ const MAX_ROWS = 200;
 const AMOUNT = /^(?:\d+|\d{1,3}(?:,\d{2})*,\d{3}|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?$/;
 
 /** Reject oversized or unexpected ZIP contents before the workbook reader runs. */
-export function checkXlsxArchive(buffer) {
+export function checkXlsxArchive(buffer, profile = 'holdings') {
+  const disclosure = profile === 'disclosure';
+  const maxFileBytes = disclosure ? 5_000_000 : MAX_FILE_BYTES;
+  const maxUnpackedBytes = disclosure ? 15_000_000 : MAX_UNPACKED_BYTES;
+  const maxEntries = disclosure ? 400 : MAX_ENTRIES;
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  if (bytes.byteLength < 22 || bytes.byteLength > MAX_FILE_BYTES) throw new Error('Choose an XLSX file smaller than 2 MB.');
+  if (bytes.byteLength < 22 || bytes.byteLength > maxFileBytes) throw new Error(`Choose an XLSX file smaller than ${disclosure ? 5 : 2} MB.`);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let eocd = -1;
   for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) {
@@ -18,7 +22,7 @@ export function checkXlsxArchive(buffer) {
   const count = view.getUint16(eocd + 10, true);
   const directorySize = view.getUint32(eocd + 12, true);
   const directoryOffset = view.getUint32(eocd + 16, true);
-  if (!count || count > MAX_ENTRIES || count === 0xffff || directorySize === 0xffffffff ||
+  if (!count || count > maxEntries || count === 0xffff || directorySize === 0xffffffff ||
       directoryOffset === 0xffffffff || directoryOffset + directorySize > eocd)
     throw new Error('This workbook has too many or unsupported archive entries.');
   let position = directoryOffset;
@@ -36,7 +40,7 @@ export function checkXlsxArchive(buffer) {
     const commentLength = view.getUint16(position + 32, true);
     const end = position + 46 + nameLength + extraLength + commentLength;
     if (end > eocd || (flags & 1) || ![0, 8].includes(method) || expanded > 5_000_000 ||
-        compressed > MAX_FILE_BYTES || expanded === 0xffffffff)
+        compressed > maxFileBytes || expanded === 0xffffffff)
       throw new Error('The XLSX archive contains an unsupported or oversized part.');
     const name = new TextDecoder().decode(bytes.subarray(position + 46, position + 46 + nameLength));
     const lower = name.toLowerCase();
@@ -45,7 +49,7 @@ export function checkXlsxArchive(buffer) {
       throw new Error('The XLSX archive contains an unsupported part.');
     names.add(lower);
     unpacked += expanded;
-    if (unpacked > MAX_UNPACKED_BYTES) throw new Error('This XLSX workbook expands beyond the 12 MB preview limit.');
+    if (unpacked > maxUnpackedBytes) throw new Error(`This XLSX workbook expands beyond the ${disclosure ? 15 : 12} MB preview limit.`);
     position = end;
   }
   if (position !== directoryOffset + directorySize || !names.has('[content_types].xml') ||
