@@ -35,6 +35,12 @@ function key(row) {
   return `${row.type}|${row.name.trim().toLocaleLowerCase('en-IN').replace(/\s+/g, ' ')}`;
 }
 
+function fundHouseKey(value) {
+  if (typeof value !== 'string') return '';
+  return value.toLocaleLowerCase('en-IN').replace(/\b(?:asset management company|funds management|mutual fund|amc|mf|limited|ltd|private|pvt|co)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+}
+
 /** A matching name or ISIN may be the same position in another report. Never sum it silently. */
 export function findAssistantOverlap(existing, draft, { allowComplementarySummary = false } = {}) {
   if (!Array.isArray(existing) || !draft || typeof draft.name !== 'string' ||
@@ -50,9 +56,11 @@ export function findAssistantOverlap(existing, draft, { allowComplementarySummar
       // A CAMS fund-house total may be split into disjoint Equity and Other portions.
       if (allowComplementarySummary && row.granularity === 'fund_house' && draft.granularity === 'fund_house' &&
           row.asset !== draft.asset) continue;
-      if (row.granularity === 'fund_house' || (draft.granularity === 'fund_house' &&
-          (!row.amc || !draft.amc || row.amc.trim().toLocaleLowerCase('en-IN') ===
-            draft.amc.trim().toLocaleLowerCase('en-IN'))))
+      const existingHouse = fundHouseKey(row.amc);
+      const draftHouse = fundHouseKey(draft.amc);
+      if ((row.granularity === 'fund_house' || draft.granularity === 'fund_house') &&
+          (!existingHouse || !draftHouse || existingHouse === draftHouse ||
+            existingHouse.split(' ')[0] === draftHouse.split(' ')[0]))
         return { existingName: row.name, reason: 'fund-house summary' };
     }
   }
