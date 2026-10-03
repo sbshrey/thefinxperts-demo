@@ -42,7 +42,9 @@ export function prepareAssistantCasDrafts(result, { local = false, browser = fal
   const combined = Number.isInteger(result.combinedRows) && result.combinedRows > 0 &&
     result.combinedRows <= 500 ? ` ${result.combinedRows} matching folio ${result.combinedRows === 1 ? 'row was' : 'rows were'} combined by exact ISIN and valuation details; check the total against your CAS.` : '';
   const ownership = result.ownershipUnverified === true ?
-    ' One or more folios do not print an owner PAN. Check ownership in the original statement before confirming these rows.' : '';
+    origin === 'demat_cas' ?
+      ' The parsed CAS does not establish an owner PAN for one or more demat accounts. Check account ownership in the original statement before confirming these rows.' :
+      ' One or more folios do not print an owner PAN. Check ownership in the original statement before confirming these rows.' : '';
   const performance = [];
   if (result.source !== 'Demat CAS' && Array.isArray(result.performance)) {
     const positions = new Map();

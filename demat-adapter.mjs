@@ -2,7 +2,9 @@
 export function normalizeDematHoldings(document) {
   const errors = [];
   const notices = [];
-  const empty = () => ({ holdings: [], errors, notices, performance: [], source: 'Demat CAS' });
+  let ownershipUnverified = false;
+  const empty = () => ({ holdings: [], errors, notices, performance: [],
+    ownershipUnverified, source: 'Demat CAS' });
   if (!['NSDL', 'CDSL'].includes(document?.file_type) || !Array.isArray(document.accounts)) {
     errors.push('This is not a supported NSDL or CDSL demat CAS result.');
     return empty();
@@ -25,6 +27,28 @@ export function normalizeDematHoldings(document) {
     errors.push('The demat CAS contains no accounts.');
     return empty();
   }
+  const printedOwners = new Set();
+  for (const account of document.accounts) {
+    const owners = Array.isArray(account?.owners) ? account.owners : [];
+    if (!owners.length) ownershipUnverified = true;
+    if (owners.length > 1 && owners.some(owner =>
+      !/^[A-Z]{5}\d{4}[A-Z]$/.test(typeof owner?.PAN === 'string' ? owner.PAN.trim().toUpperCase() : ''))) {
+      errors.push('This demat CAS has joint holders whose owner PANs could not all be established. A single-investor review cannot assign their full account value to one person; no holdings were imported.');
+      return empty();
+    }
+    for (const owner of owners) {
+      const pan = typeof owner?.PAN === 'string' ? owner.PAN.trim().toUpperCase() : '';
+      if (!pan) { ownershipUnverified = true; continue; }
+      if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(pan)) ownershipUnverified = true;
+      printedOwners.add(pan);
+      if (printedOwners.size > 1) {
+        errors.push('This demat CAS lists different owner PANs across its accounts or joint holders. A single-investor review cannot assign their full values to one person; no holdings were imported.');
+        return empty();
+      }
+    }
+  }
+  if (ownershipUnverified)
+    notices.push('The parsed CAS does not establish an owner PAN for one or more demat accounts. Check account ownership in the original statement before adding these holdings.');
   const holdings = [];
   for (const [accountIndex, account] of document.accounts.entries()) {
     if (!Array.isArray(account?.equities) || !Array.isArray(account.mutual_funds) || !Array.isArray(account.bonds)) {
@@ -80,7 +104,8 @@ export function normalizeDematHoldings(document) {
   }
   if (!holdings.length && !errors.length) errors.push('The demat CAS contains no nonzero supported holdings.');
   if (holdings.length) notices.push('Demat values are as of the statement period end, not live prices. Confirm each security type and compare with the original statement. Transactions and personal account identifiers are not imported.');
-  return { holdings: errors.length ? [] : holdings, errors: errors.slice(0, 5), notices, performance: [], source: 'Demat CAS' };
+  return { holdings: errors.length ? [] : holdings, errors: errors.slice(0, 5), notices,
+    performance: [], ownershipUnverified, source: 'Demat CAS' };
 }
 
 function money(value) {
