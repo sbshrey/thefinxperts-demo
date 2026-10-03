@@ -1,12 +1,12 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=7774f5b16bc3';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=7774f5b16bc3';
-import { reserveMonths } from './reserve.mjs?v=7774f5b16bc3';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=7774f5b16bc3';
-import { asksForAdvice } from './question-scope.mjs?v=7774f5b16bc3';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=7774f5b16bc3';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7774f5b16bc3';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=7774f5b16bc3';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=73d0fcf44fb0';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=73d0fcf44fb0';
+import { reserveMonths } from './reserve.mjs?v=73d0fcf44fb0';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=73d0fcf44fb0';
+import { asksForAdvice } from './question-scope.mjs?v=73d0fcf44fb0';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=73d0fcf44fb0';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=73d0fcf44fb0';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=73d0fcf44fb0';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -727,9 +727,9 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const list = ranked.slice(0, 5).map(item => `#${item.number} ${item.row.name}: ${rupeesWithPaise(Math.abs(item.difference))} as of ${item.row.asOf}`).join('; ');
     const dateChecks = covered.filter(item => valuationDateIssue(item.row.asOf, today)).length;
     return answer(ranked.length ?
-      `${lead}${ranked.length} of ${covered.length} covered ${scope} ${covered.length === 1 ? 'row' : 'rows'} show an entered unrealized ${direction}, totaling ${rupeesWithPaise(total)}: ${list}${ranked.length > 5 ? `; and ${ranked.length - 5} more` : ''}.` :
+      `${lead}${ranked.length} of ${covered.length} covered ${scope} ${covered.length === 1 ? 'row shows' : 'rows show'} an entered unrealized ${direction}, totaling ${rupeesWithPaise(total)}: ${list}${ranked.length > 5 ? `; and ${ranked.length - 5} more` : ''}.` :
       `${lead}none of the ${covered.length} covered ${scope} ${covered.length === 1 ? 'row shows' : 'rows show'} an entered unrealized ${direction}.`,
-      `Compared each of ${covered.length} covered current-position values with its checked cost; ${rows.length - covered.length} ${scope} ${rows.length - covered.length === 1 ? 'row lacks' : 'rows lack'} a usable pair.${dateChecks ? ` ${dateChecks} covered ${dateChecks === 1 ? 'value date needs' : 'value dates need'} a freshness check.` : ''}`,
+      `Compared ${covered.length} covered current-position ${covered.length === 1 ? 'value with its' : 'values with each row’s'} checked cost; ${rows.length - covered.length} ${scope} ${rows.length - covered.length === 1 ? 'row lacks' : 'rows lack'} a usable pair.${dateChecks ? ` ${dateChecks} covered ${dateChecks === 1 ? 'value date needs' : 'value dates need'} a freshness check.` : ''}`,
       `These are per-row, dated differences, not annual returns, benchmark performance, lifetime profit or a reason to trade. They exclude sold positions, distributions, taxes, exit loads and unchecked costs. ${coverageNote}`, '#holdings', 'Inspect covered holdings');
   }
   if (/\b(xirr|cagr|annual(?:ized)? return|performance)\b/.test(input))
