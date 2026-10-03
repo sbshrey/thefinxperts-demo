@@ -1,13 +1,14 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=4e7c99c734ee';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=4e7c99c734ee';
-import { reserveMonths } from './reserve.mjs?v=4e7c99c734ee';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=ff0e542bbcde';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=ff0e542bbcde';
+import { reserveMonths } from './reserve.mjs?v=ff0e542bbcde';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=4e7c99c734ee';
-import { asksForAdvice } from './question-scope.mjs?v=4e7c99c734ee';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=4e7c99c734ee';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=4e7c99c734ee';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=4e7c99c734ee';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=ff0e542bbcde';
+import { asksForAdvice } from './question-scope.mjs?v=ff0e542bbcde';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ff0e542bbcde';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ff0e542bbcde';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=ff0e542bbcde';
+import { parseAmount } from './assistant-clarify.mjs?v=ff0e542bbcde';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -812,7 +813,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This is age arithmetic, not a suitability assessment or an asset-allocation suggestion. Your birthday and exact goal date were not entered.', '#goals', 'Review selected goal');
   }
   if (!valid.length) {
-    if (/^(?:what if|test|compare)\s+(?:the\s+)?(?:annual\s+)?(?:inflation|growth)(?:\s+rate)?\b/.test(input) ||
+    if (/^(?:what if|test|compare)\s+(?:i\s+(?:(?:can|could)\s+)?(?:contribute|save|add|put in)\b|(?:my|the)\s+monthly\s+contribution\b)/.test(input) ||
+        /^(?:what if|test|compare)\s+(?:the\s+)?(?:annual\s+)?(?:inflation|growth)(?:\s+rate)?\b/.test(input) ||
         /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in\b|i\s+(?:reach|hit|delay|postpone|bring|move)\s+(?:my|the)\s+goal\b)/.test(input))
       return goal?.confirmed === true ? answer(`Assign at least one confirmed holding to ${goal.name} before comparing its future illustrations.`,
         `Selected goal ${goal.name}; 0 positive holding rows are entered.`,
@@ -980,6 +982,50 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer(`${lead}${missing} ${missing === 1 ? 'holding lacks' : 'holdings lack'} a date, ${stale} ${stale === 1 ? 'is' : 'are'} dated over 90 days ago, and ${future} ${future === 1 ? 'has a' : 'have'} future ${future === 1 ? 'date' : 'dates'}. ${money(affectedValue)} of entered value needs a date check.${list} ${String(result.asOfSummary).replace(/\.$/, '')}.`,
       `Compared the dates on ${valid.length} entered ${valid.length === 1 ? 'holding' : 'holdings'} with today's date in India and added ${money(affectedValue)} across ${issues.length} flagged rows. Rows are listed by entered value, with original row numbers retained. The 90-day threshold is a review prompt.`,
       'A dated entry is not a verified live quote. Refresh values from the original source.', '#holdings', 'Check dated values');
+  }
+  const alternateMonthlyQuestion = /^(?:what if|test|compare)\s+(?:i\s+(?:(?:can|could)\s+)?(?:contribute|save|add|put in)\b|(?:my|the)\s+monthly\s+contribution\b)/.test(input);
+  if (alternateMonthlyQuestion) {
+    const verb = /^(?:what if|test|compare)\s+i\s+(?:(?:can|could)\s+)?(?:contribute|save|add|put in)\s+(.+?)\s+(?:per month|monthly)(?:\s+instead of\s+(.+?)(?:\s+per month)?)?(?:\s+for\s+(?:my|the)\s+goal)?[?.!]*$/.exec(input);
+    const plan = /^(?:what if|test|compare)\s+(?:my|the)\s+monthly\s+contribution\s+(?:is|were|was|at)\s+(.+?)(?:\s+instead of\s+(.+?))?(?:\s+for\s+(?:my|the)\s+goal)?[?.!]*$/.exec(input);
+    const supplied = verb || plan;
+    const monthlyAmount = raw => /^(?:₹\s*)?0(?:\.0{1,2})?(?:\s+rupees)?$/i.test(raw?.trim() || '') ?
+      0 : parseAmount(raw || '');
+    const alternative = monthlyAmount(supplied?.[1]);
+    if (alternative === null || alternative > 100_000_000)
+      return answer('Choose one alternative monthly amount from ₹0 to ₹10 crore, such as “What if I save ₹10,000 per month?”',
+        'No single valid alternative monthly amount was supplied.',
+        'The amount must be your own hypothetical input; this review does not decide what you should save.', '#goals', 'Choose an amount');
+    if (goal?.confirmed !== true) return answer('Confirm the selected goal’s age, target and horizon before comparing monthly amounts.',
+      `Selected goal ${goal?.name || 'unnamed'} is unfinished.`,
+      'A monthly amount without a confirmed goal has no defined target or period.', '#goals', 'Confirm goal details');
+    if (supplied[2] !== undefined && monthlyAmount(supplied[2]) !== Number(goal.monthlyContribution))
+      return answer(`You said “instead of ${supplied[2]}”, but ${goal.name} has ${money(goal.monthlyContribution)} saved per month. Check that starting amount before comparing.`,
+        `Entered starting amount ${supplied[2]}; saved monthly amount ${money(goal.monthlyContribution)}.`,
+        'The comparison must start from the amount you actually confirmed.', '#goals', 'Check saved amount');
+    if (!result.goalTotal) return answer(`Assign at least one confirmed holding to ${goal.name} before comparing its future illustrations.`,
+      `Selected goal ${goal.name}; assigned holding value ₹0.`,
+      'A portfolio total cannot be substituted for the value assigned to this goal.', '#holdings', 'Link holdings');
+    if (!confirmedGoalAssumptions(goal)) return answer(`Confirm your monthly contribution, growth and inflation assumptions for ${goal.name} before changing one amount in a what-if. You may deliberately choose zero.`,
+      'At least one saved goal assumption is not confirmed.',
+      'No default rate or contribution is treated as your plan.', '#goals', 'Confirm assumptions');
+    if (result.goalDateCheck.count) return answer(`Check ${result.goalDateCheck.count} assigned missing, future or over-90-day value ${result.goalDateCheck.count === 1 ? 'date' : 'dates'} before comparing monthly amounts for ${goal.name}.`,
+      `${result.goalDateCheck.count} linked holding ${result.goalDateCheck.count === 1 ? 'row needs' : 'rows need'} a valuation-date check.`,
+      'A stale starting value can distort both illustrations.', '#holdings', 'Check goal values');
+    if (result.goalAccessCheck.count) return answer(`Check when linked other investments can be used for ${goal.name} before comparing monthly amounts.`,
+      `${money(result.goalAccessCheck.value)} in linked other investments has unverified access for this goal.`,
+      'A gross balance may not be available when the goal arrives.', '#holdings', 'Check access terms');
+    const base = result.scenario;
+    const changed = calculateGoalScenario(result.goalTotal, { ...goal, monthlyContribution: alternative });
+    if (!base || !changed) return answer('I cannot calculate both illustrations from these goal inputs. Check the selected goal and assumptions.',
+      `Selected goal ${goal.name}; one or both scenario calculations are unavailable.`,
+      'An invalid input must not produce an inferred future value.', '#goals', 'Check goal inputs');
+    const gapChange = changed.futureGap - base.futureGap;
+    const gapDifference = Math.abs(gapChange) < 0.5 ? 'unchanged' :
+      `${money(Math.abs(gapChange))} ${gapChange > 0 ? 'higher' : 'lower'}`;
+    return answer(`At your saved ${money(base.monthlyContribution)} per month, ${goal.name} illustrates ${money(base.projectedValue)} at the goal date and a ${money(base.futureGap)} gap. At your alternative ${money(alternative)} per month, the illustrated value is ${money(changed.projectedValue)} and the gap is ${money(changed.futureGap)} (${gapDifference}). The total mathematical monthly amount is ${money(Math.ceil(base.monthlyTotalNeeded))} under both assumptions; the amount above your entered plan changes from ${money(Math.ceil(base.monthlyAdditionalNeeded))} to ${money(Math.ceil(changed.monthlyAdditionalNeeded))}. This temporary comparison has not changed your saved goal.`,
+      `${money(result.goalTotal)} assigned now; ${goal.years} years; goal-date cost ${money(base.futureCost)} from a ${money(goal.target)} target in today's rupees. Only the monthly contribution changed from ${money(goal.monthlyContribution)} to ${money(alternative)}; annual growth stayed ${goal.returnPct}% and inflation stayed ${goal.inflationPct}%. Contributions are added at each month’s end.`,
+      `Both results are fixed-assumption illustrations, not forecasts or monthly savings instructions. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
+      '#goals', 'Review monthly plan');
   }
   const monthlyGoalQuestion = /\b(?:per month|monthly)\b/.test(input) &&
     /\b(?:goal|target|gap)\b/.test(input);
