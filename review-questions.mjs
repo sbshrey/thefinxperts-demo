@@ -35,7 +35,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Selected goal ${goal.name}; assigned value ₹0.`,
       'The whole portfolio and the selected goal may contain different amounts.', '#holdings', 'Link a holding') : null;
 
-  if (otherNamedGoal && /\b(?:goal|toward|towards|for|assigned|linked|funding|counted)\b/.test(input) &&
+  if (otherNamedGoal && /\b(?:goal|toward|towards|for|assigned|linked|funding|counted|track)\b/.test(input) &&
       !asksForAdvice(input))
     return answer(`You named ${otherNamedGoal.name}, but ${goal?.name || 'another goal'} is selected. Say “select goal ${otherNamedGoal.name}”, then ask again so I use that goal’s assignments.`,
       `The current calculation belongs to the selected goal ${goal?.name || 'unnamed'}; no value for ${otherNamedGoal.name} was used.`,
@@ -82,6 +82,31 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  if (/\b(?:on track|can i retire|ready to retire|enough to retire|afford to retire)\b/.test(input)) {
+    if (/\bretir\w*\b/.test(input) && !/\bretir\w*\b/i.test(goal?.name || ''))
+      return answer(`The selected goal is ${goal?.name || 'unfinished'}, not Retirement. Select or create your retirement goal so this question uses its own target and assigned holdings.`,
+        'Only the selected goal can supply a target, horizon and assigned value.',
+        'Another goal’s balance cannot establish retirement readiness.', '#goals', 'Select retirement goal');
+    if (goal?.confirmed !== true)
+      return answer('Confirm the selected goal’s age, target in today’s rupees and time horizon before checking its entered value.',
+        `The selected goal ${goal?.name || 'unnamed'} is unfinished.`,
+        'A holdings snapshot alone cannot show whether you are on track.', '#goals', 'Confirm goal details');
+    if (!result.goalTotal)
+      return answer(`No entered holdings are assigned to ${goal.name} yet. Link and check the holdings you intend to count toward it.`,
+        `Selected goal ${goal.name}; assigned value ₹0 against a ${money(goal.target)} target in today’s rupees.`,
+        'An empty or unassigned review does not mean you have no savings.', '#holdings', 'Link a holding');
+    if (result.goalDateCheck.count || result.goalAccessCheck.count)
+      return answer(`I cannot judge whether ${goal.name} is on track from this snapshot. First check ${result.goalDateCheck.count ? `${result.goalDateCheck.count} assigned value date${result.goalDateCheck.count === 1 ? '' : 's'}` : 'the assigned value dates'}${result.goalAccessCheck.count ? `${result.goalDateCheck.count ? ' and ' : ''}access to ${money(result.goalAccessCheck.value)} of linked other investments` : ''}.`,
+        `${money(result.goalTotal)} entered value is assigned against a ${money(goal.target)} target in today’s rupees; ${result.asOfSummary}.`,
+        'Old or missing dates and withdrawal terms can change what is available at the goal date. This is not a retirement or suitability assessment.', '#holdings', 'Check linked holdings');
+    const gap = calculateStraightLineGap(result.goalTotal, goal);
+    if (!gap) return answer('Check the selected goal amount and horizon before comparing its entered value with the target.',
+      `Selected goal ${goal.name}; current-gap arithmetic is unavailable.`,
+      'No on-track conclusion is inferred from invalid goal inputs.', '#goals', 'Check goal details');
+    return answer(`I cannot tell whether ${goal.name} is on track from a holdings snapshot. You entered ${money(result.goalTotal)} assigned toward a ${money(goal.target)} target in today’s rupees, leaving a current gap of ${money(gap.gapToday)} across ${goal.years} years.`,
+      `${money(goal.target)} target today minus ${money(result.goalTotal)} assigned value = ${money(gap.gapToday)} current gap; ${result.asOfSummary}.`,
+      `This is a current comparison, not a forecast or a retirement-readiness verdict. Future contributions, inflation, returns, taxes and unentered holdings are not established. ${coverageNote}`, '#goals', 'Review goal inputs');
+  }
   if (/\b(?:goal readiness|goal checks|check my goal|check this goal|what needs checking for (?:my|this) goal)\b/.test(input)) {
     if (goal?.confirmed !== true) {
       const missing = [['age', 'your current age'], ['years', 'years until the goal'],

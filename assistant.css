@@ -202,5 +202,5 @@ body[data-mode="browser-only"] .mobile-data-link{display:inline-block;margin-top
 .tools-items>.quiet:hover{background:#edf5ee}
 .tools-items>.quiet:disabled{opacity:.5}
 }
-@media(max-width:360px){.suggested-questions button[data-guided-question="Which of my funds say Regular or Direct Plan?"]{display:none}}
+@media(max-width:360px){.suggested-questions button[data-guided-question="Which of my funds say Regular or Direct Plan?"],.suggested-questions button[data-guided-question="Goal readiness"]{display:none}}
 @media(max-height:600px){.starter-actions{display:none}}
