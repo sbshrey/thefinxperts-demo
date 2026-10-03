@@ -82,7 +82,7 @@ const state = { confirmed: [], drafts: [], history: [], file: null, busy: false,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
   goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
   correction: null, refresh: null, casAvailable: false, casLocal: false,
-  capacityReached: false, coveragePrompted: false };
+  capacityReached: false, coveragePrompted: false, coverageQueue: null };
 const starterActions = $('#starter-actions');
 function addPublicInflationContext() {
   if (!browserOnly) return;
@@ -234,6 +234,15 @@ function nextFundCategoryQuestion(portfolio) {
   const index = portfolio?.holdings?.findIndex(row => row.type === 'Mutual fund' &&
     row.granularity !== 'fund_house' && row.asset === 'Other') ?? -1;
   return index < 0 ? null : `Holding #${index + 1} is labelled Other. Can you check its individual scheme source for a clear Equity, Debt or Gold category? If so, say “classify holding ${index + 1} as Equity” with the category you found, then confirm it. Otherwise keep it as Other.`;
+}
+
+function askCoverageGroup() {
+  const field = state.coverageQueue?.[0];
+  if (!field) return false;
+  const group = { mutualFunds: 'mutual funds', directStocks: 'directly held stocks',
+    otherInvestments: 'other investments such as NPS, EPF, PPF, deposits or gold' }[field];
+  say('assistant', `Have you included all your ${group} in this review? Reply “all”, “some”, “none” if you own none, or “unsure”. I’ll show your answer for confirmation before saving it.`);
+  return true;
 }
 
 function nextGoalSetupQuestion(portfolio) {
@@ -1231,6 +1240,8 @@ $('#composer').addEventListener('submit', async event => {
   if (state.busy) return;
   const message = $('#message').value.trim();
   if (!message && !state.file) return;
+  if (state.coverageQueue && message && !state.file &&
+      !parseCoverageAnswer(message, state.coverageQueue[0])) state.coverageQueue = null;
   if (message && !state.file && /^count all (?:unassigned )?holdings toward (?:this|selected) goal[.!]?$/i.test(message)) {
     say('user', message); $('#message').value = '';
     await assignGoalHoldings();
@@ -1332,16 +1343,17 @@ $('#composer').addEventListener('submit', async event => {
     say('assistant', 'I prepared this change to your confirmed review. Check the holding and supplied facts in the preview, then choose “Apply correction” or discard it.');
     return;
   }
-  const coverageAnswer = message && !state.file ? parseCoverageAnswer(message) : null;
+  const coverageAnswer = message && !state.file ? parseCoverageAnswer(message, state.coverageQueue?.[0]) : null;
   if (coverageAnswer) {
     say('user', message); $('#message').value = '';
+    if (coverageAnswer.error) { say('note', coverageAnswer.error); return; }
     if (state.correction) { say('note', 'Apply or discard the change already shown before preparing another.'); return; }
     if (state.drafts.length || state.goalFacts || state.reserveFacts) {
       say('note', 'Confirm or discard the current holding, goal or reserve draft before changing review coverage.'); return;
     }
     const prepared = prepareCoverageAnswer(state.account?.portfolio, coverageAnswer);
     if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
-    state.correction = { ...prepared, kind: 'coverage',
+    state.correction = { ...prepared, kind: 'coverage', coverageField: coverageAnswer.field,
       firstCoverageAnswer: !state.account?.portfolio?.coverage, revision: state.account.revision };
     renderCorrection();
     say('assistant', 'I staged your coverage answer. Check it against current statements, then apply or discard it.');
@@ -1496,11 +1508,14 @@ $('#confirm-drafts').addEventListener('click', async () => {
       say('note', `${prepared.addedCount} checked holding${prepared.addedCount === 1 ? '' : 's'} ${browserOnly ? 'added to this tab' : 'saved to your account'}. Ask a question when you are ready.`);
       if (!state.coveragePrompted && !state.account?.portfolio?.coverage) {
         state.coveragePrompted = true;
-        say('assistant', 'Before treating this as your full portfolio, have you included all your mutual funds, directly held stocks and other investments such as NPS, EPF, PPF, deposits or gold? Reply about one group at a time, for example “I included all my mutual funds”, “I included some of my direct stocks”, or “I have no other investments”. I will ask you to confirm each answer.');
+        state.coverageQueue = ['mutualFunds', 'directStocks', 'otherInvestments'];
+        askCoverageGroup();
       } else {
-        const next = nextFundCategoryQuestion(state.account?.portfolio) ||
-          nextGoalSetupQuestion(state.account?.portfolio);
-        if (next) say('assistant', next);
+        if (!askCoverageGroup()) {
+          const next = nextFundCategoryQuestion(state.account?.portfolio) ||
+            nextGoalSetupQuestion(state.account?.portfolio);
+          if (next) say('assistant', next);
+        }
       }
     } catch (error) { say('note', error.message || 'The account save failed. Your drafts are still here.'); }
     finally { state.busy = false; renderDrafts(); renderCredits(); renderGoalReview(); renderGoalDraft(); }
@@ -1619,10 +1634,14 @@ $('#confirm-correction')?.addEventListener('click', async () => {
       'The saved review changed in another tab. Check the latest holdings, discard this correction and describe it again.');
     state.correction = null;
     say('note', correction.result);
-    if (correction.kind === 'classify' || correction.firstCoverageAnswer) {
-      const question = nextFundCategoryQuestion(state.account?.portfolio) ||
-        nextGoalSetupQuestion(state.account?.portfolio);
-      if (question) say('assistant', question);
+    if (correction.kind === 'coverage' && state.coverageQueue)
+      state.coverageQueue = state.coverageQueue.filter(field => field !== correction.coverageField);
+    if (correction.kind === 'classify' || correction.firstCoverageAnswer || correction.kind === 'coverage' && state.coverageQueue) {
+      if (!askCoverageGroup()) {
+        const question = nextFundCategoryQuestion(state.account?.portfolio) ||
+          nextGoalSetupQuestion(state.account?.portfolio);
+        if (question) say('assistant', question);
+      }
     }
   } catch (error) { say('note', error.message || 'The correction could not be saved. Check the preview and try again.'); }
   finally { state.busy = false; renderAccountActions(); }
@@ -1685,7 +1704,7 @@ $('#delete-saved').addEventListener('click', async () => {
     if (!response.ok) throw new Error('The saved review could not be deleted. Try again later.');
     state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
     state.reserveFacts = null; state.reserveDraftRevision = null;
-    state.correction = null; state.refresh = null; state.history = []; clearFile();
+    state.correction = null; state.refresh = null; state.history = []; state.coverageQueue = null; clearFile();
     acceptAccount({ portfolio: null, revision: 0 });
     renderDrafts(); renderGoalDraft(); renderReserveDraft();
     $('#messages').replaceChildren();
@@ -1700,7 +1719,7 @@ $('#new-chat').addEventListener('click', () => {
       !window.confirm('Start a new chat and discard the unconfirmed holdings, goal or reserve details, report change and selected file? Confirmed holdings and goals stay in your review.')) return;
   state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.history = []; clearFile();
+  state.correction = null; state.refresh = null; state.history = []; state.coverageQueue = null; clearFile();
   $('#messages').replaceChildren();
   say('assistant', state.confirmed.length ?
     `I still have ${state.confirmed.length} confirmed holding${state.confirmed.length === 1 ? '' : 's'} in this tab. What would you like to understand next?` :
@@ -1725,7 +1744,7 @@ $('#clear-review').addEventListener('click', () => {
   }
   state.confirmed = []; state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; clearFile();
+  state.correction = null; state.refresh = null; state.history = []; state.coveragePrompted = false; state.coverageQueue = null; clearFile();
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Choose Upload for a CAMS statement, supported CAS or broker report. I’ll show possible holdings to confirm before answering questions. You can also describe one holding.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');

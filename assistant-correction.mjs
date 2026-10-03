@@ -53,13 +53,22 @@ export function parseHoldingCorrection(message, today = new Date()) {
 }
 
 /** One self-reported completeness answer; an import never proves coverage. */
-export function parseCoverageAnswer(message) {
+export function parseCoverageAnswer(message, pendingField = null) {
   if (typeof message !== 'string' || message.length > 1500) return null;
   const input = message.trim();
   const included = /^i (?:have )?included (all|some) (?:of )?my (mutual funds|direct stocks|other investments)[.!]?$/i.exec(input);
   const none = /^i have no (mutual funds|direct stocks|other investments)[.!]?$/i.exec(input);
   const unsure = /^i(?: am|'m) (?:unsure|not sure) (?:whether i included (?:all of )?)?my (mutual funds|direct stocks|other investments)[.!]?$/i.exec(input);
-  if (!included && !none && !unsure) return null;
+  if (!included && !none && !unsure) {
+    if (!['mutualFunds', 'directStocks', 'otherInvestments'].includes(pendingField)) return null;
+    const short = input.toLowerCase().replace(/[.!]$/, '');
+    const answer = ({ yes: 'all', all: 'all', 'all included': 'all', some: 'some',
+      'some missing': 'some', none: 'none', unsure: 'unsure', 'not sure': 'unsure',
+      "i don't know": 'unsure' })[short];
+    if (answer) return { field: pendingField, answer };
+    if (short === 'no') return { error: 'If not all are included, reply “some” if you own more, “none” if you own none, or “unsure” if you cannot tell.' };
+    return null;
+  }
   const type = (included?.[2] || none?.[1] || unsure?.[1]).toLowerCase();
   return { field: type === 'mutual funds' ? 'mutualFunds' : type === 'direct stocks' ? 'directStocks' : 'otherInvestments',
     answer: included?.[1].toLowerCase() || (none ? 'none' : 'unsure') };
@@ -80,8 +89,7 @@ export function prepareCoverageAnswer(saved, parsed) {
   if (saved.coverage?.[parsed.field] === parsed.answer)
     return { portfolio: null, errors: [`Your ${label} coverage answer already says ${parsed.answer}.`] };
   const portfolio = structuredClone(saved);
-  portfolio.coverage = { mutualFunds: 'unsure', directStocks: 'unsure', otherInvestments: 'unsure', ...portfolio.coverage,
-    [parsed.field]: parsed.answer };
+  portfolio.coverage = { ...portfolio.coverage, [parsed.field]: parsed.answer };
   const words = { all: 'all included', some: 'some included; others missing',
     none: 'none owned', unsure: 'unsure' };
   return { portfolio, errors: [],

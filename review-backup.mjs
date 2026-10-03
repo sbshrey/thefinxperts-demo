@@ -13,10 +13,9 @@ const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const TOP_KEYS = ['version', 'holdings', 'goals', 'activeGoalId', 'reserve', 'coverage'];
 const COVERAGE = new Set(['all', 'some', 'none', 'unsure']);
 function validCoverage(value) {
-  return record(value) && [2, 3].includes(Object.keys(value).length) &&
+  return record(value) && [1, 2, 3].includes(Object.keys(value).length) &&
     Object.keys(value).every(key => ['mutualFunds', 'directStocks', 'otherInvestments'].includes(key)) &&
-    COVERAGE.has(value.mutualFunds) && COVERAGE.has(value.directStocks) &&
-    (value.otherInvestments === undefined || COVERAGE.has(value.otherInvestments));
+    Object.values(value).every(answer => COVERAGE.has(answer));
 }
 const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin', 'valuationOrigin', 'navEstimate', 'shares', 'stockEstimate', 'costBasis', 'costBasisAsOf'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'assumptionsChecked', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
@@ -44,9 +43,7 @@ export function buildReviewBackup(state) {
       ...(goal.allocationPct ? { allocationPct: { ...goal.allocationPct } } : {}) })),
     activeGoalId: state.activeGoalId,
     ...(state.reserve ? { reserve: { ...state.reserve } } : {}),
-    ...(state.coverage ? { coverage: { mutualFunds: state.coverage.mutualFunds,
-      directStocks: state.coverage.directStocks,
-      ...(state.coverage.otherInvestments ? { otherInvestments: state.coverage.otherInvestments } : {}) } } : {}),
+    ...(state.coverage ? { coverage: { ...state.coverage } } : {}),
   };
 }
 
