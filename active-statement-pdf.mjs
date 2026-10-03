@@ -1,5 +1,5 @@
-import { parseActiveStatementHtml } from './active-statement.mjs?v=7c0f7987ef9e';
-import { unsupportedPdfHint } from './document-hint.mjs?v=7c0f7987ef9e';
+import { parseActiveStatementHtml } from './active-statement.mjs?v=e001308747dc';
+import { unsupportedPdfHint } from './document-hint.mjs?v=e001308747dc';
 
 /** Accept the extracted HTML attachment or its enclosing PDF without sending either to a server. */
 export async function previewActiveStatementFile(file, password = '') {
@@ -21,8 +21,8 @@ export async function previewActiveStatementFile(file, password = '') {
 export async function previewActiveStatementPdf(file, password) {
   if (!file || file.size > 15_000_000 || !file.name.toLowerCase().endsWith('.pdf'))
     return { holdings: [], errors: ['Choose a CAMS Active Statement PDF smaller than 15 MB.'], notices: [] };
-  const pdfjs = await import('./vendor/pdfjs/pdf.mjs?v=7c0f7987ef9e');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=7c0f7987ef9e', import.meta.url).href;
+  const pdfjs = await import('./vendor/pdfjs/pdf.mjs?v=e001308747dc');
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=e001308747dc', import.meta.url).href;
   let document;
   try {
     const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), password,

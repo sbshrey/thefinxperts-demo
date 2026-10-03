@@ -8,14 +8,14 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
   <title>Guided browser review · TheFinxperts</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./assistant.css?v=7c0f7987ef9e">
-  <script type="module" src="./assistant.mjs?v=7c0f7987ef9e"></script>
+  <link rel="stylesheet" href="./assistant.css?v=e001308747dc">
+  <script type="module" src="./assistant.mjs?v=e001308747dc"></script>
 </head>
 <body data-mode="browser-only">
   <div class="shell">
     <header class="topbar">
       <div class="brand"><a href="./index.html" aria-label="TheFinxperts home" class="mark">f.</a><span>thefinxperts</span><span class="beta">BROWSER REVIEW</span></div>
-      <div class="top-actions"><button id="new-chat" type="button" class="quiet">New chat</button><button id="tools-toggle" type="button" class="tools-toggle" aria-controls="tools-items" aria-expanded="false">Options</button><div id="tools-items" class="tools-items"><button id="device-review-action" type="button" class="quiet">Save here</button><button id="forget-device-review" type="button" class="quiet" hidden>Forget here</button><button id="download-readable-review" type="button" class="quiet" aria-label="Download private readable report" disabled>Readable report</button><button id="download-tab-review" type="button" class="quiet" aria-label="Download private review file" disabled>Save file</button><button id="restore-tab-review" type="button" class="quiet" aria-label="Open private review file">Open file</button><input id="restore-tab-file" type="file" accept=".json,application/json" hidden><a class="quiet detailed-link" href="./detailed-review.html" target="_blank" rel="noopener noreferrer">Detailed review</a><button id="clear-review" type="button" class="quiet">Clear tab</button><details id="account-menu" class="account-menu" hidden><summary>Account</summary><div><button id="export-saved" type="button" hidden>Download saved review</button><button id="delete-saved" type="button" hidden>Delete saved review</button><a href="/logout">Sign out</a></div></details></div></div>
+      <div class="top-actions"><button id="new-chat" type="button" class="quiet">New chat</button><button id="tools-toggle" type="button" class="tools-toggle" aria-controls="tools-items" aria-expanded="false">Options</button><div id="tools-items" class="tools-items"><button id="device-review-action" type="button" class="quiet">Save here</button><button id="forget-device-review" type="button" class="quiet" hidden>Forget here</button><button id="download-readable-review" type="button" class="quiet" aria-label="Download private readable report" disabled>Readable report</button><button id="download-encrypted-review" type="button" class="quiet" disabled>Save secure file</button><button id="download-tab-review" type="button" class="quiet" aria-label="Download unencrypted private review file" disabled>Save plain JSON</button><button id="restore-tab-review" type="button" class="quiet" aria-label="Open private review file">Open file</button><input id="restore-tab-file" type="file" accept=".json,application/json" hidden><a class="quiet detailed-link" href="./detailed-review.html" target="_blank" rel="noopener noreferrer">Detailed review</a><button id="clear-review" type="button" class="quiet">Clear tab</button><details id="account-menu" class="account-menu" hidden><summary>Account</summary><div><button id="export-saved" type="button" hidden>Download saved review</button><button id="delete-saved" type="button" hidden>Delete saved review</button><a href="/logout">Sign out</a></div></details></div></div>
     </header>
     <main class="workspace">
       <section class="chat-panel" aria-labelledby="chat-title">
@@ -71,11 +71,23 @@
   <dialog id="device-review-dialog" class="device-dialog" aria-labelledby="device-dialog-title">
     <form id="device-review-form">
       <h2 id="device-dialog-title">Save this review on this device</h2>
-      <p id="device-dialog-copy">Choose a passphrase of at least 12 characters. This saves confirmed holdings, goals and checked fund disclosure weights on this device. You will need the passphrase after a refresh. A private review file backs up holdings and goals only.</p>
+      <p id="device-dialog-copy">Choose a passphrase of at least 12 characters. This saves confirmed holdings, goals and checked fund disclosure weights on this device. You will need the passphrase after a refresh. Save a separate secure file as a backup.</p>
       <label for="device-passphrase">Passphrase</label>
       <input id="device-passphrase" type="password" minlength="12" maxlength="200" autocomplete="off" required>
       <p id="device-dialog-error" class="device-error" role="alert" hidden></p>
       <div class="device-dialog-actions"><button id="device-dialog-cancel" type="button" class="quiet">Cancel</button><button id="device-dialog-submit" type="submit">Save encrypted review</button></div>
+    </form>
+  </dialog>
+  <dialog id="portable-review-dialog" class="device-dialog" aria-labelledby="portable-review-title">
+    <form id="portable-review-form">
+      <h2 id="portable-review-title">Save encrypted review file</h2>
+      <p id="portable-review-copy"></p>
+      <label for="portable-passphrase">Passphrase</label>
+      <input id="portable-passphrase" type="password" minlength="12" maxlength="200" autocomplete="off" required>
+      <label id="portable-confirm-label" for="portable-confirm">Confirm passphrase</label>
+      <input id="portable-confirm" type="password" minlength="12" maxlength="200" autocomplete="off" required>
+      <p id="portable-review-error" class="device-error" role="alert" hidden></p>
+      <div class="device-dialog-actions"><button id="portable-review-cancel" type="button" class="quiet">Cancel</button><button id="portable-review-submit" type="submit">Save encrypted file</button></div>
     </form>
   </dialog>
   <dialog id="report-help-dialog" class="device-dialog report-help-dialog" aria-labelledby="report-help-title">

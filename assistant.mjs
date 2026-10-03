@@ -1,42 +1,42 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=7c0f7987ef9e';
-import { previewBrowserCas } from './cas-browser.mjs?v=7c0f7987ef9e';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=7c0f7987ef9e';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=7c0f7987ef9e';
-import { goalShare } from './goals.mjs?v=7c0f7987ef9e';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=e001308747dc';
+import { previewBrowserCas } from './cas-browser.mjs?v=e001308747dc';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=e001308747dc';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=e001308747dc';
+import { goalShare } from './goals.mjs?v=e001308747dc';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=7c0f7987ef9e';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=7c0f7987ef9e';
-import { previewAssistantImport } from './assistant-import.mjs?v=7c0f7987ef9e';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=7c0f7987ef9e';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=7c0f7987ef9e';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=e001308747dc';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=e001308747dc';
+import { previewAssistantImport } from './assistant-import.mjs?v=e001308747dc';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=e001308747dc';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=e001308747dc';
 import { analyzePortfolio, sampleHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=7c0f7987ef9e';
-import { buildReadableReport } from './readable-report.mjs?v=7c0f7987ef9e';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=7c0f7987ef9e';
-import { parseReviewBackup } from './review-backup.mjs?v=7c0f7987ef9e';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=7c0f7987ef9e';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7c0f7987ef9e';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=7c0f7987ef9e';
-import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=7c0f7987ef9e';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=e001308747dc';
+import { buildReadableReport } from './readable-report.mjs?v=e001308747dc';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=e001308747dc';
+import { parseReviewBackup } from './review-backup.mjs?v=e001308747dc';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=e001308747dc';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=e001308747dc';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=e001308747dc';
+import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=e001308747dc';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalSetup, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=7c0f7987ef9e';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=e001308747dc';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=7c0f7987ef9e';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=7c0f7987ef9e';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=e001308747dc';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=e001308747dc';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=7c0f7987ef9e';
-import { validReserve, reserveMonths } from './reserve.mjs?v=7c0f7987ef9e';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=e001308747dc';
+import { validReserve, reserveMonths } from './reserve.mjs?v=e001308747dc';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=7c0f7987ef9e';
-import { validShares } from './stock-estimate.mjs?v=7c0f7987ef9e';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=7c0f7987ef9e';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=7c0f7987ef9e';
-import { inflationContext } from './market-context.mjs?v=7c0f7987ef9e';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=7c0f7987ef9e';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=e001308747dc';
+import { validShares } from './stock-estimate.mjs?v=e001308747dc';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=e001308747dc';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=e001308747dc';
+import { inflationContext } from './market-context.mjs?v=e001308747dc';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=e001308747dc';
 import { compareFundDisclosures, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=7c0f7987ef9e';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=e001308747dc';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -51,6 +51,9 @@ let assistantStatusRevision = 0;
 let reviewChangeSerial = 0;
 let fileSavedSerial = -1;
 let deviceSavedSerial = -1;
+let portableMode = null;
+let pendingPortableText = null;
+let portableBusy = false;
 function deviceRecord() {
   try { return localStorage.getItem(DEVICE_KEY); }
   catch { return null; }
@@ -160,7 +163,7 @@ function sayFictionalIntro() {
 const creditChannel = !browserOnly && typeof BroadcastChannel !== 'undefined' ?
   new BroadcastChannel('thefinxperts-assistant-credits') : null;
 const toolsToggle = $('#tools-toggle');
-const mobileTools = window.matchMedia('(max-width: 600px)');
+const mobileTools = window.matchMedia('(max-width: 1400px)');
 function setToolsOpen(open) {
   $('.top-actions').classList.toggle('tools-open', open);
   toolsToggle.setAttribute('aria-expanded', String(open));
@@ -328,6 +331,8 @@ function renderAccountActions() {
   $('#delete-saved').disabled = state.busy;
   const localDownload = $('#download-tab-review');
   if (localDownload) localDownload.disabled = state.busy || !saved;
+  const encryptedDownload = $('#download-encrypted-review');
+  if (encryptedDownload) encryptedDownload.disabled = state.busy || !saved;
   const readableDownload = $('#download-readable-review');
   if (readableDownload) readableDownload.disabled = state.busy || !saved;
   renderDeviceActions();
@@ -1640,7 +1645,7 @@ $('#cas-preview').addEventListener('click', async () => {
       }
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=7c0f7987ef9e');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=e001308747dc');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1675,7 +1680,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=7c0f7987ef9e');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=e001308747dc');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -1738,7 +1743,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=7c0f7987ef9e');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=e001308747dc');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1746,7 +1751,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=7c0f7987ef9e');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=e001308747dc');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2498,7 +2503,87 @@ $('#download-tab-review')?.addEventListener('click', () => {
   if (!browserOnly || !portfolio) return;
   downloadPrivateFile(JSON.stringify(portfolio, null, 2), 'application/json', 'thefinxperts-review.json');
   fileSavedSerial = state.disclosures.length ? -1 : reviewChangeSerial;
-  say('note', `Your review file was downloaded. Keep it private; it contains your holdings and goal details.${state.disclosures.length ? ' It does not include the checked AMC disclosure weights; use encrypted “Save here” to retain those on this device.' : ''}`);
+  say('note', `Plain JSON downloaded. Keep it private; it contains your holdings and goal details.${state.disclosures.length ? ' It does not include the checked AMC disclosure weights; use Save secure file to back those up.' : ''}`);
+});
+
+function closePortableDialog() {
+  $('#portable-review-dialog').close();
+  $('#portable-review-form').reset();
+  $('#portable-review-error').hidden = true;
+  portableMode = null;
+  pendingPortableText = null;
+}
+function openPortableDialog(mode, encryptedText = null) {
+  portableMode = mode;
+  pendingPortableText = encryptedText;
+  const restore = mode === 'restore';
+  $('#portable-review-title').textContent = restore ? 'Open encrypted review file' : 'Save encrypted review file';
+  $('#portable-review-copy').textContent = restore ?
+    'Enter the passphrase used when this file was saved. Its holdings, goals and checked fund disclosure weights will replace this tab after you confirm.' :
+    'Choose a passphrase of at least 12 characters. This file includes confirmed holdings, goals and checked fund disclosure weights. Keep both the file and passphrase safe; there is no recovery.';
+  $('#portable-confirm-label').hidden = restore;
+  $('#portable-confirm').hidden = restore;
+  $('#portable-confirm').required = !restore;
+  $('#portable-review-submit').textContent = restore ? 'Open encrypted file' : 'Save encrypted file';
+  $('#portable-review-error').hidden = true;
+  $('#portable-review-form').reset();
+  $('#portable-review-dialog').showModal();
+  $('#portable-passphrase').focus();
+}
+$('#download-encrypted-review')?.addEventListener('click', () => {
+  if (browserOnly && state.account?.portfolio && !state.demo) openPortableDialog('save');
+});
+$('#portable-review-cancel')?.addEventListener('click', closePortableDialog);
+$('#portable-review-dialog')?.addEventListener('cancel', event => { event.preventDefault(); if (!portableBusy) closePortableDialog(); });
+$('#portable-review-form')?.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!browserOnly || portableBusy || !portableMode) return;
+  const passphrase = $('#portable-passphrase').value;
+  if (portableMode === 'save' && passphrase !== $('#portable-confirm').value) {
+    $('#portable-review-error').textContent = 'The two passphrases do not match.';
+    $('#portable-review-error').hidden = false;
+    return;
+  }
+  portableBusy = true;
+  $('#portable-review-submit').disabled = true;
+  $('#portable-review-cancel').disabled = true;
+  try {
+    if (portableMode === 'save') {
+      const savedSerial = reviewChangeSerial;
+      const plain = buildGuidedDeviceBundle(state.account.portfolio, state.disclosures);
+      const prepared = parseGuidedDeviceBundle(plain);
+      if (prepared.errors.length || prepared.disclosures.length !== state.disclosures.length)
+        throw new Error('This review could not be prepared for backup. Check the holdings and fund disclosures, then try again.');
+      const encrypted = await encryptDeviceReview(plain, passphrase);
+      downloadPrivateFile(encrypted, 'application/json', 'thefinxperts-review-encrypted.json');
+      fileSavedSerial = savedSerial;
+      say('note', 'Encrypted review file downloaded with holdings, goals and checked fund disclosure weights. Keep its passphrase safe; it cannot be recovered.');
+    } else {
+      const plain = await decryptDeviceReview(pendingPortableText, passphrase);
+      const parsed = parseGuidedDeviceBundle(plain);
+      if (parsed.errors.length) throw new Error('The encrypted review is damaged or uses an unsupported format.');
+      if (state.account?.portfolio && !window.confirm('Replace the review in this tab with the encrypted file?')) return;
+      state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
+      state.correction = null; state.refresh = null; state.disclosureDraft = null;
+      state.disclosureQueue = []; state.disclosures = []; state.pendingGoalName = false;
+      acceptAccount({ portfolio: parsed.portfolio, revision: state.account.revision + 1 });
+      state.disclosures = parsed.disclosures;
+      renderDisclosureReview();
+      fileSavedSerial = reviewChangeSerial;
+      await saveDeviceReview(parsed.portfolio);
+      renderDrafts(); renderGoalDraft();
+      say('note', `Restored ${state.confirmed.length} holding${state.confirmed.length === 1 ? '' : 's'} from your encrypted file. Check the dates before using this review.`);
+      resumeCoverageQuestions(parsed.portfolio);
+    }
+    closePortableDialog();
+  } catch (error) {
+    $('#portable-review-error').textContent = error.message || 'Could not process this encrypted review.';
+    $('#portable-review-error').hidden = false;
+  } finally {
+    portableBusy = false;
+    $('#portable-review-submit').disabled = false;
+    $('#portable-review-cancel').disabled = false;
+  }
 });
 
 $('#restore-tab-review')?.addEventListener('click', () => $('#restore-tab-file').click());
@@ -2506,9 +2591,18 @@ $('#restore-tab-file')?.addEventListener('change', async event => {
   const file = event.target.files?.[0];
   event.target.value = '';
   if (!browserOnly || !file) return;
-  if (file.size > 2_000_000) { say('note', 'Choose a review JSON file smaller than 2 MB.'); return; }
+  if (file.size > 3_000_000) { say('note', 'Choose a review JSON file smaller than 3 MB.'); return; }
   let parsed;
-  try { parsed = parseReviewBackup(await file.text()); }
+  try {
+    const contents = await file.text();
+    const document = JSON.parse(contents);
+    if (document && typeof document === 'object' &&
+        (Object.hasOwn(document, 'ciphertext') || Object.hasOwn(document, 'kdf'))) {
+      openPortableDialog('restore', contents);
+      return;
+    }
+    parsed = parseReviewBackup(contents);
+  }
   catch { say('note', 'The selected review file could not be read. Try another copy.'); return; }
   if (parsed.errors.length) { say('note', parsed.errors[0]); return; }
   if (state.account?.portfolio && !window.confirm('Replace the review in this tab with the selected file?')) return;
@@ -2537,8 +2631,8 @@ $('#device-review-action')?.addEventListener('click', async () => {
   if (!unlock && !state.account?.portfolio) return;
   $('#device-dialog-title').textContent = unlock ? 'Unlock review on this device' : 'Save this review on this device';
   $('#device-dialog-copy').textContent = unlock ?
-    'Enter your passphrase to load the encrypted review, including checked fund disclosure weights. A private review file can restore holdings and goals if you forgot the passphrase, but not these weights.' :
-    'Choose a passphrase of at least 12 characters. This saves confirmed holdings, goals and checked fund disclosure weights on this device. You will need the passphrase after a refresh. There is no recovery if you forget it; a private review file backs up holdings and goals only.';
+    'Enter your passphrase to load the encrypted review, including checked fund disclosure weights. A separately downloaded secure file can restore those details with its own passphrase.' :
+    'Choose a passphrase of at least 12 characters. This saves confirmed holdings, goals and checked fund disclosure weights on this device. You will need the passphrase after a refresh. There is no recovery if you forget it; save a separate secure file as a backup.';
   $('#device-dialog-submit').textContent = unlock ? 'Unlock review' : 'Save encrypted review';
   $('#device-dialog-error').hidden = true;
   $('#device-passphrase').value = '';
