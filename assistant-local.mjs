@@ -1,4 +1,5 @@
-import { parseAmount } from './assistant-clarify.mjs?v=0b4c00b40d26';
+import { parseAmount } from './assistant-clarify.mjs?v=3e3243bcadb9';
+import { validShares } from './stock-estimate.mjs?v=3e3243bcadb9';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -10,8 +11,6 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
   if (/\b(?:should|buy|sell|switch|recommend|advice)\b/i.test(description)) return null;
   if (hasHolding && /\b(?:invested|bought|paid|cost basis)\b/i.test(description))
     return { error: 'An invested or purchase amount is not a current holding value. Name the investment and give its total current value in rupees.' };
-  if (/^\d[\d,.]*\s+(?:shares?|units?)\b/i.test(description))
-    return { error: 'A share or unit count alone is not a current holding value. Name one fund or stock and share its total value in rupees.' };
 
   let asOf = null;
   const dated = /\s+as of\s+(.+)$/i.exec(description);
@@ -32,8 +31,20 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
     description = description.slice(0, valued.index).trim();
   }
 
-  let type = 'Other';
-  let asset = 'Other';
+  let shares = null;
+  const shareClaim = /^([\d,]+)\s+shares?\s+(?:of|in)\s+(.+)$/i.exec(description);
+  if (shareClaim) {
+    shares = shareClaim[1].replaceAll(',', '');
+    if (!/^(?:[1-9]\d*|[1-9]\d{0,2}(?:,\d{2})*,\d{3})$/.test(shareClaim[1]) ||
+        !validShares(shares))
+      return { error: 'Use a positive whole share count below 100 crore and name one directly held stock.' };
+    description = shareClaim[2].trim();
+  } else if (/^\d[\d,.]*\s+(?:shares?|units?)\b/i.test(description)) {
+    return { error: 'Name one directly held stock after its share count, or name one fund and give its total current value in rupees.' };
+  }
+
+  let type = shares ? 'Stock' : 'Other';
+  let asset = shares ? 'Equity' : 'Other';
   const categorizedFund = /^(?:(?:a|an)\s+)?(equity|debt|gold)\s+(?:mutual fund|fund)(?:\s+(?:called|named))?\s+(.+)$/i.exec(description);
   let match = /^(?:(?:a|an)\s+)?(mutual fund|fund|stock|share)(?:\s+(?:called|named))?\s+(.+)$/i.exec(description);
   if (categorizedFund) {
@@ -58,14 +69,17 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
       description = `${other[1]}${other[2] || ''}`.trim();
     }
   }
+  if (shares && type !== 'Stock')
+    return { error: 'A directly held share count cannot be used as mutual-fund units. Check the investment type and name it again.' };
   if (hasHolding && type === 'Other') return null;
   const name = description.replace(/^(?:a|an)\s+/i, '').trim();
   if (name.length < 2 || name.length > 80 || !/[a-z]/i.test(name) ||
+      /^(?:stock|share|shares|mutual fund|fund|equity|debt|gold)$/i.test(name) ||
       /[<>@\r\n]/.test(name) || /\b[A-Z]{5}\d{4}[A-Z]\b/i.test(name) || /\d{8,}/.test(name) ||
       /\b(?:account|folio|password|pan number)\b/i.test(name))
     return { error: 'Name one fund or stock without an account number, PAN, password or other private identifier.' };
   return { draft: { name, type, asset: type === 'Stock' ? 'Equity' : asset, value, asOf,
-    entryOrigin: 'manual' } };
+    entryOrigin: 'manual', ...(shares ? { shares } : {}) } };
 }
 
 /** Accept a short holding name only after the visitor explicitly starts the guided entry. */
