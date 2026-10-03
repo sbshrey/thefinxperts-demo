@@ -11,13 +11,13 @@
  * debt schemes could not fire. Here it does. Nothing else in the port diverges.
  */
 
-import { FundType, GainType, TransactionType } from '../enums.js?v=da73a34f0752';
-import { Decimal, ROUND_HALF_UP, ZERO } from '../decimal.js?v=da73a34f0752';
-import { CasDate, asDate } from '../dates.js?v=da73a34f0752';
-import { GainsError, IncompleteCASError } from '../exceptions.js?v=da73a34f0752';
-import { navSearch } from '../isin.js?v=da73a34f0752';
-import { CII, getFinYear } from './utils.js?v=da73a34f0752';
-import { writeCsv } from '../parsers/utils.js?v=da73a34f0752';
+import { FundType, GainType, TransactionType } from '../enums.js?v=08d96a3caf31';
+import { Decimal, ROUND_HALF_UP, ZERO } from '../decimal.js?v=08d96a3caf31';
+import { CasDate, asDate } from '../dates.js?v=08d96a3caf31';
+import { GainsError, IncompleteCASError } from '../exceptions.js?v=08d96a3caf31';
+import { navSearch } from '../isin.js?v=08d96a3caf31';
+import { CII, getFinYear } from './utils.js?v=08d96a3caf31';
+import { writeCsv } from '../parsers/utils.js?v=08d96a3caf31';
 
 const PURCHASE_TXNS = new Set([
   TransactionType.DIVIDEND_REINVEST,
