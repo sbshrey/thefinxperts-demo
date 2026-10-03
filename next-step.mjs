@@ -21,9 +21,10 @@ export function chooseNextReviewStep({ source, holdings, goal, coverage }, today
     text: 'Confirm whether these rows include all your mutual funds and direct stocks before reading portfolio percentages.',
   };
   if (['some', 'unsure'].includes(coverage.mutualFunds) ||
-      ['some', 'unsure'].includes(coverage.directStocks)) return {
+      ['some', 'unsure'].includes(coverage.directStocks) ||
+      !coverage.otherInvestments || ['some', 'unsure'].includes(coverage.otherInvestments)) return {
     kind: 'scope', href: '#input-choice', label: 'Add or check a source →',
-    text: 'Your coverage answer says this snapshot may be incomplete. Compare another current fund or broker report.',
+    text: 'Your coverage answer says this snapshot may be incomplete. Compare another current fund, broker or other investment statement.',
   };
   const dated = linkedIndices.find(index => valuationDateIssue(holdings[index].asOf, today)) ?? -1;
   if (dated >= 0) return {

@@ -155,16 +155,17 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const incompleteTypes = [
     ['mutual funds', coverage?.mutualFunds],
     ['direct stocks', coverage?.directStocks],
-  ].filter(([, answer]) => answer === 'some' || answer === 'unsure');
-  if (total > 0 && incompleteTypes.length) {
+    ['other investments', coverage?.otherInvestments],
+  ].filter(([, answer]) => answer === 'some' || answer === 'unsure' || answer == null);
+  if (coverage && total > 0 && incompleteTypes.length) {
     const answers = incompleteTypes.map(([type, answer]) =>
       `${type} ${answer === 'some' ? 'still have missing holdings' : 'have unconfirmed coverage'}`).join('; ');
     findings.push({ key: 'scope', tone: 'amber', label: 'Complete your snapshot',
       title: 'Check what this review leaves out',
-      detail: `Your coverage answer says ${answers}. Compare current fund and broker statements with the entered rows before treating these figures as your full portfolio.`,
-      question: 'Which current fund or broker statement would help you complete or confirm the missing holdings?',
-      basis: `Used your self reported coverage answer: mutual funds ${coverage.mutualFunds}; direct stocks ${coverage.directStocks}. Calculations use only ${rupees(total)} of entered value.`,
-      limitation: 'Your coverage answer and entered values have not been independently verified. Other assets count only if you entered them, and their coverage is not checked.' });
+      detail: `Your coverage answer says ${answers}. Compare current fund, broker and other investment statements with the entered rows before treating these figures as your full portfolio.`,
+      question: 'Which current statement would help you complete or confirm the missing holdings?',
+      basis: `Used your self reported coverage answer: mutual funds ${coverage.mutualFunds}; direct stocks ${coverage.directStocks}; other investments ${coverage.otherInvestments || 'not answered'}. Calculations use only ${rupees(total)} of entered value.`,
+      limitation: 'Your coverage answer and entered values have not been independently verified. Other investments count only if you entered them.' });
   }
   const fundHouseSummaries = new Set(valid.filter(holding => holding.granularity === 'fund_house')
     .map(holding => holding.amc?.toLocaleLowerCase('en-IN')).filter(Boolean));

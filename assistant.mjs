@@ -383,7 +383,7 @@ function renderReview() {
     const label = value => ({ all: 'all included', some: 'some missing', none: 'none owned',
       unsure: 'unsure' })[value] || 'not answered';
     const coverage = state.account?.portfolio?.coverage;
-    scope.textContent = `Self-reported coverage: mutual funds ${label(coverage?.mutualFunds)}; direct stocks ${label(coverage?.directStocks)}. Only confirmed rows count here. To update this, say “I included all my mutual funds” or “I included some of my direct stocks”.`;
+    scope.textContent = `Self-reported coverage: mutual funds ${label(coverage?.mutualFunds)}; direct stocks ${label(coverage?.directStocks)}; other investments ${label(coverage?.otherInvestments)}. Only confirmed rows count here. To update this, say “I included all my mutual funds”, “I included some of my direct stocks”, or “I have no other investments”.`;
     bars.append(scope);
   }
   const checks = buildAssistantReviewChecks(rows, state.account?.portfolio);
@@ -484,7 +484,7 @@ function renderGoalReview() {
     `You entered your age as ${review.age} today. This should be your age, even if the goal is for someone else; it does not set an asset mix.`));
   const coverageLabel = value => ({ all: 'all included', some: 'some missing',
     none: 'none owned', unsure: 'unsure' })[value] || 'not answered';
-  root.append(paragraph(`Snapshot scope: mutual funds ${coverageLabel(review.coverage?.mutualFunds)}; direct stocks ${coverageLabel(review.coverage?.directStocks)}. These are your answers, not verified account coverage. Goal figures use only confirmed holdings assigned here; missing investments are outside the calculation.`));
+  root.append(paragraph(`Snapshot scope: mutual funds ${coverageLabel(review.coverage?.mutualFunds)}; direct stocks ${coverageLabel(review.coverage?.directStocks)}; other investments ${coverageLabel(review.coverage?.otherInvestments)}. These are your answers, not verified account coverage. Goal figures use only confirmed holdings assigned here; missing investments are outside the calculation.`));
   root.append(paragraph(`${review.linkedCount} confirmed holding${review.linkedCount === 1 ? '' : 's'} assigned to this goal; ${review.dateCheckCount} need a valuation-date check. Other confirmed holdings are excluded from these goal figures.`));
   if (review.accessCheck.count) root.append(paragraph(
     `${money(review.accessCheck.value)} in manually entered other investments is linked to this goal. The gap today includes that gross value; access at the goal date has not been checked.`));
@@ -1155,7 +1155,7 @@ $('#confirm-drafts').addEventListener('click', async () => {
       say('note', `${prepared.addedCount} checked holding${prepared.addedCount === 1 ? '' : 's'} ${browserOnly ? 'added to this tab' : 'saved to your account'}. Ask a question when you are ready.`);
       if (!state.coveragePrompted && !state.account?.portfolio?.coverage) {
         state.coveragePrompted = true;
-        say('assistant', 'Before treating this as your full portfolio, have you included all your mutual funds and directly held stocks? You can reply “I included all my mutual funds”, “I included some of my direct stocks”, or “I have no mutual funds”. I will ask you to confirm the answer.');
+        say('assistant', 'Before treating this as your full portfolio, have you included all your mutual funds, directly held stocks and other investments such as NPS, EPF, PPF, deposits or gold? Reply about one group at a time, for example “I included all my mutual funds”, “I included some of my direct stocks”, or “I have no other investments”. I will ask you to confirm each answer.');
       } else {
         const next = nextFundCategoryQuestion(state.account?.portfolio) ||
           nextGoalSetupQuestion(state.account?.portfolio);

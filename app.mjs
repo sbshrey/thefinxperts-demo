@@ -342,11 +342,12 @@ function render() {
   $('#coverage-quick-check').hidden = state.source !== 'user' || !state.holdings.length;
   $('#coverage-details').hidden = state.source !== 'user' || !state.holdings.length;
   $('#coverage-summary').textContent = state.coverage
-    ? `Your answer: mutual funds ${coverageLabel(state.coverage.mutualFunds)}; direct stocks ${coverageLabel(state.coverage.directStocks)}. This is self reported and has not been verified.`
+    ? `Your answer: mutual funds ${coverageLabel(state.coverage.mutualFunds)}; direct stocks ${coverageLabel(state.coverage.directStocks)}; other investments ${coverageLabel(state.coverage.otherInvestments) || 'not answered'}. This is self reported and has not been verified.`
     : 'Coverage not checked yet. This snapshot may be partial.';
   $('#coverage-quick-check').textContent = state.coverage ? 'Update what is included →' : 'Check what is included →';
   $('#coverage-mutual-funds').value = state.coverage?.mutualFunds || '';
   $('#coverage-direct-stocks').value = state.coverage?.directStocks || '';
+  $('#coverage-other-investments').value = state.coverage?.otherInvestments || '';
   $('#holding-count').textContent = `${state.holdings.length} ${state.holdings.length === 1 ? 'holding' : 'holdings'}`;
   $('#goal-years-value').textContent = needsGoalConfirmation ? 'Goal details needed' : `${state.goal.years} years`;
   $('#age-at-goal').textContent = pauseGoalFigures ? 'Goal figures paused' : `Age ${Number(state.goal.age) + Number(state.goal.years)} at the goal date`;
@@ -1127,15 +1128,18 @@ $('#coverage-form').addEventListener('submit', event => {
   event.preventDefault();
   const mutualFunds = $('#coverage-mutual-funds').value;
   const directStocks = $('#coverage-direct-stocks').value;
+  const otherInvestments = $('#coverage-other-investments').value;
   if (!['all', 'some', 'none', 'unsure'].includes(mutualFunds) ||
       !['all', 'some', 'none', 'unsure'].includes(directStocks) ||
+      !['all', 'some', 'none', 'unsure'].includes(otherInvestments) ||
       mutualFunds === 'none' && state.holdings.some(holding => holding.type === 'Mutual fund') ||
-      directStocks === 'none' && state.holdings.some(holding => holding.type === 'Stock')) {
-    $('#coverage-error').textContent = 'Answer both questions and check “I own none” against the holdings above.';
+      directStocks === 'none' && state.holdings.some(holding => holding.type === 'Stock') ||
+      otherInvestments === 'none' && state.holdings.some(holding => holding.type === 'Other investment')) {
+    $('#coverage-error').textContent = 'Answer all three questions and check “I own none” against the holdings above.';
     return;
   }
   $('#coverage-error').textContent = '';
-  state.coverage = { mutualFunds, directStocks };
+  state.coverage = { mutualFunds, directStocks, otherInvestments };
   render();
 });
 

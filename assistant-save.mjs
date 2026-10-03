@@ -99,7 +99,8 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
     return { portfolio: null, errors: ['This account has reached its holding count or value limit.'] };
   }
   if (portfolio.coverage?.mutualFunds === 'none' && added.some(row => row.type === 'Mutual fund') ||
-      portfolio.coverage?.directStocks === 'none' && added.some(row => row.type === 'Stock')) {
+      portfolio.coverage?.directStocks === 'none' && added.some(row => row.type === 'Stock') ||
+      portfolio.coverage?.otherInvestments === 'none' && added.some(row => row.type === 'Other investment')) {
     return { portfolio: null, errors: ['The saved coverage answer says this asset type is absent. Check that answer before saving new holdings.'] };
   }
   portfolio.holdings.push(...added);
@@ -107,5 +108,7 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
     portfolio.coverage.mutualFunds = 'unsure';
   if (portfolio.coverage?.directStocks === 'all' && added.some(row => row.type === 'Stock'))
     portfolio.coverage.directStocks = 'unsure';
+  if (portfolio.coverage?.otherInvestments === 'all' && added.some(row => row.type === 'Other investment'))
+    portfolio.coverage.otherInvestments = 'unsure';
   return { portfolio, addedCount: added.length, errors: [] };
 }

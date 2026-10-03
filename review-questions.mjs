@@ -13,9 +13,10 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
   const valid = holdings.filter(row => Number.isFinite(Number(row.value)) && Number(row.value) > 0);
   const lead = source === 'demo' ? 'In the fictional example, ' : 'From your entered holdings, ';
   const coverageNote = source === 'demo' ? 'This is fictional sample data.' :
-    coverage?.mutualFunds === 'all' && coverage?.directStocks === 'all' ?
-      'Fund and direct-stock coverage is self reported; other asset types may still be outside this review.' :
-      'This snapshot may omit funds or stocks you own. Check it against current statements.';
+    coverage?.mutualFunds === 'all' && coverage?.directStocks === 'all' &&
+    ['all', 'none'].includes(coverage?.otherInvestments) ?
+      'Coverage of all three investment groups is self reported and has not been verified.' :
+      'This snapshot may omit investments you own. Check it against current statements.';
   const answer = (text, basis, limitation, href = '#holdings', action = 'Check my holdings') =>
     ({ text, basis, limitation, href, action });
   const goalName = typeof goal?.name === 'string' ? goal.name.trim().toLocaleLowerCase('en-IN') : '';
@@ -182,9 +183,9 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
   }
   if (/\b(coverage|complete|missing holdings|all my investments|what.{0,20}missed)\b/.test(input)) {
     const label = value => ({ all: 'all included', some: 'some included', none: 'none included', unsure: 'unsure' })[value] || 'not answered';
-    return answer(`${lead}mutual-fund coverage is ${label(coverage?.mutualFunds)} and direct-stock coverage is ${label(coverage?.directStocks)}.`,
-      `Used your self-reported coverage answers and ${valid.length} entered holding rows; no broker or fund account was independently checked.`,
-      'Manually entered EPF, NPS, deposits or gold may be included, but their coverage is not checked. Compare current source statements before treating the total as complete.', '#holdings', 'Check review coverage');
+    return answer(`${lead}mutual-fund coverage is ${label(coverage?.mutualFunds)}, direct-stock coverage is ${label(coverage?.directStocks)}, and other-investment coverage is ${label(coverage?.otherInvestments)}.`,
+      `Used your self-reported coverage answers and ${valid.length} entered holding rows; no account or statement was independently checked.`,
+      'Other investments include manually entered EPF, NPS, PPF, deposits or gold. Compare current source statements before treating the total as complete.', '#holdings', 'Check review coverage');
   }
   if (/\b(next|priority|start|check first|review first)\b/.test(input)) {
     const first = result.findings?.[0];
