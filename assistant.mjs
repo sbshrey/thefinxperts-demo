@@ -218,7 +218,7 @@ function nextGoalSetupQuestion(portfolio) {
   return 'Ask “What should I check first?” to see the highest-priority factual review item for these holdings and this goal.';
 }
 
-function say(role, text, question = null) {
+function say(role, text, question = null, remember = true) {
   if (role === 'user') hideStarterActions();
   const item = document.createElement('div');
   item.className = `message ${role}`;
@@ -231,7 +231,7 @@ function say(role, text, question = null) {
   }
   $('#messages').append(item);
   $('#messages').scrollTop = $('#messages').scrollHeight;
-  if (role === 'user' || role === 'assistant') {
+  if (remember && (role === 'user' || role === 'assistant')) {
     state.history.push({ role, content: `${text}${question ? ` ${question}` : ''}`.slice(0, 1000) });
     state.history = state.history.slice(-8);
   }
@@ -462,11 +462,45 @@ function renderReview() {
       badge.textContent = dateIssue === 'stale' ? 'Value over 90 days old · check a newer source' :
         dateIssue === 'future' ? 'Future value date · check the source' : 'Value date missing · check the source';
       item.append(badge);
+      if (state.account?.portfolio?.holdings?.length === rows.length) {
+        const action = document.createElement('button');
+        action.className = 'value-check-action';
+        action.type = 'button';
+        action.textContent = 'Check or update this value';
+        action.addEventListener('click', () => guideValueRefresh(index, row, dateIssue));
+        item.append(action);
+      }
     }
     holdings.append(item);
   }
   renderGoalReview();
   renderAccountActions();
+}
+
+function guideValueRefresh(index, row, dateIssue) {
+  if (state.busy) return;
+  if (mobileReview.matches && reviewToggle?.getAttribute('aria-expanded') === 'true')
+    setReviewExpanded(false);
+  const number = index + 1;
+  let message;
+  if (dateIssue !== 'future' && row.type === 'Mutual fund' && row.granularity !== 'fund_house' && row.units && row.asOf) {
+    message = `For holding #${number}, check the exact scheme, Direct/Regular plan, Growth/IDCW option and published NAV date. Then check whether the statement's ${row.units} units are still your current balance. If they are, say “set NAV of holding ${number} to ₹125.4321 as of YYYY-MM-DD” using the NAV you found. I will show the dated estimate before you confirm it. If the units changed, import a newer CAS instead. You can start at AMFI’s home page or your AMC’s site.`;
+  } else if (dateIssue !== 'future' && row.type === 'Stock' && row.shares && row.asOf) {
+    message = `For holding #${number}, check the exact listed security, exchange, current settled shares after trades or corporate actions, and the date of a newer price. If the ${row.shares} reported shares are still current, say “set price of holding ${number} to ₹125.43 as of YYYY-MM-DD” using the price you found. I will show the dated estimate before you confirm it. A newer broker holdings report can check both quantity and value.`;
+  } else {
+    message = `For holding #${number}, check a newer statement or holdings report for its current total value and valuation date. Then say “update value of holding ${number} to ₹50,000 as of YYYY-MM-DD” using your checked amount and date. I will show the change before you confirm it. A missing or future date cannot be treated as current.`;
+  }
+  const note = say('assistant', message, null, false);
+  if (dateIssue !== 'future' && row.type === 'Mutual fund' && row.units && row.asOf && row.granularity !== 'fund_house') {
+    const source = document.createElement('a');
+    source.className = 'value-source-link';
+    source.href = 'https://www.amfiindia.com/';
+    source.target = '_blank';
+    source.rel = 'noopener noreferrer';
+    source.textContent = 'Open AMFI home page ↗';
+    note.append(document.createTextNode('\n'), source);
+  }
+  $('#message').focus();
 }
 
 function renderGoalReview() {
