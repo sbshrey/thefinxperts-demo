@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=f234c17f6728';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=f234c17f6728';
-import { reserveMonths } from './reserve.mjs?v=f234c17f6728';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=91629911783d';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=91629911783d';
+import { reserveMonths } from './reserve.mjs?v=91629911783d';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=f234c17f6728';
-import { asksForAdvice } from './question-scope.mjs?v=f234c17f6728';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=f234c17f6728';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f234c17f6728';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=f234c17f6728';
-import { parseAmount } from './assistant-clarify.mjs?v=f234c17f6728';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=f234c17f6728';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=91629911783d';
+import { asksForAdvice } from './question-scope.mjs?v=91629911783d';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=91629911783d';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=91629911783d';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=91629911783d';
+import { parseAmount } from './assistant-clarify.mjs?v=91629911783d';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=91629911783d';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=f234c17f6728';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=91629911783d';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -236,8 +236,18 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'No confirmed holding value is available for a factual review.',
       'I cannot choose investments or trades; an import remains a draft until you confirm it.', '#holdings', 'Add a holding');
     const first = result.findings?.[0];
-    const reviewCheck = () => answer(`Start with this factual check: ${first.title}. ${first.detail} ${first.question}`,
-      first.basis, `${first.limitation} This check does not select a trade or personal allocation.`,
+    const goalSnapshotReady = goal?.confirmed === true && result.goalTotal > 0 &&
+      result.goalDateCheck?.count === 0 && result.goalAccessCheck?.count === 0 &&
+      result.goalAssets?.Other === 0 && Number.isFinite(Number(goal.target)) &&
+      Number(goal.target) > 0 && Number.isFinite(Number(goal.years)) && Number(goal.years) > 0 &&
+      !valid.some(row => row.granularity === 'fund_house' && goalShare(goal, row.id) > 0) &&
+      !['scope', 'identity', 'summary', 'classification', 'valuation'].includes(first?.key);
+    const goalSnapshot = goalSnapshotReady ?
+      `For ${goal.name}, ${money(result.goalTotal)} of entered value is assigned across a ${goal.years}-year horizon; ${result.goalEquityPct.toFixed(1)}% is labelled Equity. Against your ${money(goal.target)} target in today's rupees, the simple current gap is ${money(result.goalGap)}. ` : '';
+    const goalBasis = goalSnapshotReady ?
+      `Assigned ${money(result.goalTotal)} from your goal links; labelled Equity ${money(result.goalAssets.Equity)} ÷ assigned value = ${result.goalEquityPct.toFixed(1)}%; target ${money(goal.target)} less assigned value gives the nonnegative current gap ${money(result.goalGap)}. ` : '';
+    const reviewCheck = () => answer(`${goalSnapshot}Start with this factual check: ${first.title}. ${first.detail} ${first.question}`,
+      `${goalBasis}${first.basis}`, `${first.limitation} This check does not select a trade or personal allocation. Age and horizon alone do not establish a suitable mix.`,
       '#review', 'See this review check');
     if (first && ['scope', 'identity', 'summary', 'classification', 'valuation'].includes(first.key))
       return reviewCheck();
