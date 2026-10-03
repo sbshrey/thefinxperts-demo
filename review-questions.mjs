@@ -149,6 +149,24 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
         `${money(reserve.accessibleMoney)} ÷ ${money(reserve.monthlyEssentials)} = ${months.toFixed(1)} months. These amounts are outside the portfolio total.`,
         'Both amounts are self reported. This is not a recommendation or proof that the money is accessible or enough for your circumstances.', '#goals', 'Check separate reserve');
   }
+  const asksAgeAtGoal = /\b(?:how old (?:will|would) i be|what (?:will|would) my age be|what age (?:am|will|would) i|my age (?:at|when)|age (?:at|when))\b/.test(input) &&
+    /\b(?:goal|retir\w*|when)\b/.test(input);
+  const asksGoalHorizon = /\bhow (?:many|long)\s+years?\s+(?:until|till|to|before)\b/.test(input) &&
+    /\b(?:goal|retir\w*)\b/.test(input);
+  if (asksAgeAtGoal || asksGoalHorizon) {
+    const age = Number(goal?.age);
+    const years = Number(goal?.years);
+    if (goal?.confirmed !== true || !Number.isInteger(age) || age < 18 || age > 100 ||
+        !Number.isInteger(years) || years < 1 || years > 50)
+      return answer('Confirm your current age and the years until the selected goal to answer that question.',
+        `The selected goal ${goal?.name || 'unnamed'} has no confirmed age and horizon pair.`,
+        'This review cannot infer a goal date or age from a holding statement.', '#goals', 'Confirm goal details');
+    return answer(asksAgeAtGoal ?
+      `You entered age ${age} and ${years} years until ${goal.name}, so you would be approximately age ${age + years} at that horizon.` :
+      `You entered ${years} years until ${goal.name}. Your current age is ${age}, so you would be approximately age ${age + years} then.`,
+      `Entered age ${age} + entered horizon ${years} years = approximate age ${age + years}.`,
+      'This is age arithmetic, not a suitability assessment or an asset-allocation suggestion. Your birthday and exact goal date were not entered.', '#goals', 'Review selected goal');
+  }
   if (!valid.length)
     return answer('Add a fund, stock or other investment, or import a supported statement, and I can answer from that review.',
       'There are no positive holding values in this tab.',
