@@ -6,8 +6,8 @@
  * normalises a raw scheme name.
  */
 
-import { TransactionType } from '../enums.js?v=7e12f6ca6e48';
-import { Decimal } from '../decimal.js?v=7e12f6ca6e48';
+import { TransactionType } from '../enums.js?v=7c573a59f999';
+import { Decimal } from '../decimal.js?v=7c573a59f999';
 
 /**
  * An income-distribution line and the per-unit rupee value in it.
@@ -38,7 +38,7 @@ const GIFT_FOLIO_RE = /Folio\s+No\s*[:.]\s*(\d+)/i;
 
 const INSTALMENT_RE = /instal+ment/i;
 const SYSTEMATIC_INVEST_RE = /\bsys(?:\.|\b)[\w\s.-]{0,20}\binvest/i;
-const REVERSAL_RE = /reversal|rejection|dishonoured|mismatch|insufficient\s+balance|payment\s+not\s+received/i;
+const REVERSAL_RE = /\b(?:revers(?:al|ed)?|reject(?:ed|ion)?|dishonou?red|mismatch|fail(?:ed|ure)|cancel(?:l?ed|l?ation)|insufficient\s+balance|payment\s+not\s+received)\b/i;
 
 /** The counterparty folio named in a gift description, or null. */
 export function extractGiftFolio(description) {
@@ -74,6 +74,9 @@ export function getTransactionType(description, units) {
   }
 
   if (unitsValue.gt(0)) {
+    // A credited correction can carry a positive unit count and still mention SIP.
+    // It is not evidence of a new paid instalment.
+    if (REVERSAL_RE.test(text)) return [TransactionType.REVERSAL, null];
     if (text.includes('gift')) return [TransactionType.GIFT_IN, null];
     if (text.includes('switch') || STP_RE.test(text)) {
       return [

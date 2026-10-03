@@ -74,6 +74,8 @@ export function statementXirr(scheme) {
 }
 
 /** Only purchases explicitly marked SIP within a detailed CAS period; no mandate inference. */
+const SIP_REVERSAL_RE = /\b(?:revers(?:al|ed)?|reject(?:ed|ion)?|dishonou?red|mismatch|fail(?:ed|ure)|cancel(?:l?ed|l?ation)|insufficient\s+balance|payment\s+not\s+received)\b/i;
+const SIP_HINT_RE = /\bsip\b|systematic\s+invest|instal+ment/i;
 export function statementSipPurchases(document, today = new Date()) {
   if (document?.cas_type !== 'DETAILED' ||
       !['CAMS', 'KFINTECH'].includes(document.file_type) ||
@@ -95,6 +97,10 @@ export function statementSipPurchases(document, today = new Date()) {
       inspected += scheme.transactions.length;
       if (inspected > 2000) return null;
       for (const transaction of scheme.transactions) {
+        if (typeof transaction?.description === 'string' &&
+            SIP_REVERSAL_RE.test(transaction.description) &&
+            (transaction.type === 'PURCHASE_SIP' ||
+              transaction.type === 'REVERSAL' && SIP_HINT_RE.test(transaction.description))) return null;
         if (transaction?.type !== 'PURCHASE_SIP') continue;
         const date = day(transaction.date);
         const amount = positivePaise(transaction.amount);
