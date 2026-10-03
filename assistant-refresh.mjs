@@ -1,8 +1,8 @@
 import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh,
-  planDematCasRefresh } from './import-review.mjs?v=6c5aa7e6549b';
-import { removeHoldingAllocation } from './goals.mjs?v=6c5aa7e6549b';
-import { rupees } from './assistant-import-audit.mjs?v=6c5aa7e6549b';
-import { npsTier } from './account-label.mjs?v=6c5aa7e6549b';
+  planDematCasRefresh } from './import-review.mjs?v=629713e0319d';
+import { removeHoldingAllocation } from './goals.mjs?v=629713e0319d';
+import { rupees } from './assistant-import-audit.mjs?v=629713e0319d';
+import { npsTier } from './account-label.mjs?v=629713e0319d';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const paise = rows => rows.reduce((total, row) => total + Math.round(row.value * 100), 0);

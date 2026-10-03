@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=6c5aa7e6549b';
-import { compareMixPlan } from './mix-plan.mjs?v=6c5aa7e6549b';
-import { goalShare } from './goals.mjs?v=6c5aa7e6549b';
-import { reserveMonths } from './reserve.mjs?v=6c5aa7e6549b';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=6c5aa7e6549b';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=629713e0319d';
+import { compareMixPlan } from './mix-plan.mjs?v=629713e0319d';
+import { goalShare } from './goals.mjs?v=629713e0319d';
+import { reserveMonths } from './reserve.mjs?v=629713e0319d';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=629713e0319d';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -13,6 +13,19 @@ export const sampleHoldings = [
   { id: 'gold', name: 'Sample Gold Fund', type: 'Mutual fund', asset: 'Gold', value: 80000, amc: 'Sample Bond House', exposure: null, asOf: '2026-09-30' },
   { id: 'bank-stock', name: 'Example Bank', type: 'Stock', asset: 'Equity', value: 70000, exposure: { 'Example Bank': 1 }, asOf: '2026-09-30' },
 ];
+
+/** Keep only the fictional tour's entered dates recent as calendar time advances. */
+export function freshFictionalHoldings(today = new Date()) {
+  const indiaDay = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  const dated = daysAgo => {
+    const day = new Date(`${indiaDay}T00:00:00Z`);
+    day.setUTCDate(day.getUTCDate() - daysAgo);
+    return day.toISOString().slice(0, 10);
+  };
+  return structuredClone(sampleHoldings).map(holding => ({
+    ...holding, asOf: dated(holding.asset === 'Equity' ? 30 : 1),
+  }));
+}
 
 /** Group only supplied mutual-fund house labels; no issuer or scheme look-through. */
 export function summarizeFundHouses(holdings) {
