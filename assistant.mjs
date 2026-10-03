@@ -1284,6 +1284,7 @@ $('#message').addEventListener('keydown', event => {
 $('#report-help-open')?.addEventListener('click', () => $('#report-help-dialog').showModal());
 $('#report-help-close')?.addEventListener('click', () => $('#report-help-dialog').close());
 $('#starter-upload')?.addEventListener('click', () => $('#upload').click());
+$('#upload-trigger').addEventListener('click', () => $('#upload').click());
 $('#starter-open')?.addEventListener('click', () => {
   if (deviceRecord()) $('#device-review-action').click();
   else $('#restore-tab-file').click();
