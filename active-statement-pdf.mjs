@@ -1,4 +1,4 @@
-import { parseActiveStatementHtml } from './active-statement.mjs?v=6ce2e8ef3652';
+import { parseActiveStatementHtml } from './active-statement.mjs?v=190403efa180';
 
 /** Accept the extracted HTML attachment or its enclosing PDF without sending either to a server. */
 export async function previewActiveStatementFile(file, password = '') {
@@ -20,8 +20,8 @@ export async function previewActiveStatementFile(file, password = '') {
 export async function previewActiveStatementPdf(file, password) {
   if (!file || file.size > 15_000_000 || !file.name.toLowerCase().endsWith('.pdf'))
     return { holdings: [], errors: ['Choose a CAMS Active Statement PDF smaller than 15 MB.'], notices: [] };
-  const pdfjs = await import('./vendor/pdfjs/pdf.mjs?v=6ce2e8ef3652');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=6ce2e8ef3652', import.meta.url).href;
+  const pdfjs = await import('./vendor/pdfjs/pdf.mjs?v=190403efa180');
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=190403efa180', import.meta.url).href;
   let document;
   try {
     const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), password,
