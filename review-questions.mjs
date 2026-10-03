@@ -1,11 +1,11 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=58db9dbf6e8c';
-import { rupeesWithPaise } from './cost-basis.mjs?v=58db9dbf6e8c';
-import { reserveMonths } from './reserve.mjs?v=58db9dbf6e8c';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=58db9dbf6e8c';
-import { asksForAdvice } from './question-scope.mjs?v=58db9dbf6e8c';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=58db9dbf6e8c';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=58db9dbf6e8c';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=ffe9a8568282';
+import { rupeesWithPaise } from './cost-basis.mjs?v=ffe9a8568282';
+import { reserveMonths } from './reserve.mjs?v=ffe9a8568282';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=ffe9a8568282';
+import { asksForAdvice } from './question-scope.mjs?v=ffe9a8568282';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ffe9a8568282';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ffe9a8568282';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';

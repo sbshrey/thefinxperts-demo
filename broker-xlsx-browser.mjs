@@ -1,4 +1,4 @@
-import { checkXlsxArchive } from './broker-xlsx.mjs?v=58db9dbf6e8c';
+import { checkXlsxArchive } from './broker-xlsx.mjs?v=ffe9a8568282';
 
 /** Parse an investor-selected workbook in a short-lived worker, without uploading it. */
 export async function readBrokerWorkbook(file) {
@@ -6,7 +6,7 @@ export async function readBrokerWorkbook(file) {
     throw new Error('Choose an XLSX holdings report smaller than 2 MB.');
   checkXlsxArchive(await file.arrayBuffer());
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./broker-xlsx-worker.js?v=58db9dbf6e8c', import.meta.url));
+    const worker = new Worker(new URL('./broker-xlsx-worker.js?v=ffe9a8568282', import.meta.url));
     const timer = setTimeout(() => finish(new Error('The workbook preview timed out.')), 15_000);
     let complete = false;
     function finish(error, rows) {
