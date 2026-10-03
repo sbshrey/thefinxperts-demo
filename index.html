@@ -8,8 +8,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
   <title>TheFinxperts · Understand your investments</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./assistant.css?v=b856aa360e53">
-  <script type="module" src="./assistant.mjs?v=b856aa360e53"></script>
+  <link rel="stylesheet" href="./assistant.css?v=df3041a0499d">
+  <script type="module" src="./assistant.mjs?v=df3041a0499d"></script>
 </head>
 <body data-mode="browser-only">
   <div class="shell">
@@ -22,7 +22,7 @@
         <div class="panel-heading"><span class="eyebrow">YOUR INVESTMENTS, IN CONVERSATION</span><h1 id="chat-title">Understand your investments</h1><p>Upload a supported mutual fund statement or broker holdings file, or describe one investment. I’ll ask about missing details and show each holding for you to confirm. Files are read in this browser; saving an encrypted copy on this device is optional. <a href="./data-handling.html">How your data is handled</a>.</p><a class="mobile-data-link" href="./data-handling.html">How your data is handled</a><div id="credit-meter" class="credit-meter" hidden><strong id="credit-meter-title">5 free AI answers</strong><span id="credit-pips" class="credit-pips" aria-hidden="true"></span><span id="credit-meter-detail"></span></div><p id="credit-policy" class="credit-policy" hidden>One credit is used only when an AI answer completes. Report preview, holding confirmation, simple clarifications and explicit goal commands use no credit. Credits do not reset when you start a new chat.</p></div>
         <div id="messages" class="messages" role="log" aria-live="polite" aria-label="Review conversation">
           <div class="message assistant">Upload a statement or describe a holding. I’ll ask what’s missing before you confirm it.</div>
-          <div id="starter-actions" class="starter-actions"><strong>Start with what you have</strong><button id="starter-upload" type="button">Upload a statement or holdings file</button><button id="starter-describe" type="button">Describe one investment in chat</button><button id="starter-open" type="button">Open a saved review</button><small>On a computer, you can also drop one file onto this chat.</small></div>
+          <div id="starter-actions" class="starter-actions"><strong>Start with what you have</strong><button id="starter-upload" type="button">Upload a statement or holdings file</button><button id="starter-describe" type="button">Describe one investment in chat</button><button id="starter-demo" type="button">Try a fictional example</button><button id="starter-open" type="button">Open a saved review</button><small>On a computer, you can also drop one file onto this chat.</small></div>
         </div>
         <div id="drafts" class="drafts" hidden><div><strong id="draft-title">Possible holdings</strong><small id="draft-help">Check these against your source before using them in the dashboard.</small></div><div id="draft-list"></div><div class="draft-actions"><button id="confirm-drafts" type="button">Use these holdings</button><button id="demat-drafts-stock" type="button" class="quiet" hidden>Mark checked demat rows as direct stocks</button><button id="broker-drafts-stock" type="button" class="quiet" hidden>Mark checked broker rows as direct stocks</button><button id="omit-matching-drafts" type="button" class="quiet" hidden></button><button id="discard-drafts" type="button" class="quiet">Discard</button></div></div>
         <div id="goal-draft" class="drafts" hidden><div><strong>Possible goal details</strong><small id="goal-draft-target">Check these facts before saving. Only the listed fields will change.</small></div><div id="goal-draft-list"></div><div class="draft-actions"><button id="confirm-goal" type="button">Save goal facts</button><button id="discard-goal" type="button" class="quiet">Discard</button></div></div>
@@ -52,7 +52,7 @@
       <aside class="review-panel" aria-labelledby="review-title">
         <div class="review-head"><div><span class="eyebrow">LIVE REVIEW</span><h2 id="review-title">Your picture</h2></div><span id="review-badge">No holdings yet</span><button id="review-toggle" class="review-toggle" type="button" aria-controls="review-body" aria-expanded="false">Open review</button></div>
         <div id="review-body" class="review-body">
-          <div class="hero-card"><span>CONFIRMED HOLDINGS VALUE</span><strong id="total">₹0</strong><small id="date-note">Add a holding to begin. Values are dated, not live quotes.</small></div>
+          <div class="hero-card"><span id="total-label">CONFIRMED HOLDINGS VALUE</span><strong id="total">₹0</strong><small id="date-note">Add a holding to begin. Values are dated, not live quotes.</small></div>
           <div class="stat-grid"><div><span>Holdings</span><strong id="count">0</strong></div><div><span>Need a date check</span><strong id="stale-count">0</strong></div></div>
           <div class="section-card" id="goal-card"><h3>Selected goal</h3><div id="goal-review"><p>Add a goal to see how its assigned holdings compare with its target.</p></div></div>
           <div class="section-card"><h3>Asset picture</h3><div id="asset-bars" class="asset-bars"><p>Nothing to compare yet.</p></div></div>
