@@ -46,13 +46,14 @@ export function parseActiveStatementHtml(html) {
   if (!matched) errors.push('No fund-house summary rows were found in the statement.');
   if (errors.length) return { holdings: [], errors: errors.slice(0, 5), notices: [] };
 
+  const summaryTotal = [...rows.values()].reduce((paise, values) => paise + values.equity + values.other, 0) / 100;
   const schemes = parseSchemeRows(html, rows, asOf);
   if (schemes.holdings) {
     return { holdings: schemes.holdings, errors: [], notices: [
       'Individual scheme rows reconcile to the fund-house summary in this statement. Scheme names, units and values are still unverified statement data; ISINs and underlying fund constituents remain unknown.',
       'Equity and non-equity labels are inferred only from the statement summary where the arithmetic gives one unique answer. Non-equity stays Other until its debt, gold or other category is checked.',
       ...(schemes.combinedRows ? [`${schemes.combinedRows} repeated scheme ${schemes.combinedRows === 1 ? 'row was' : 'rows were'} combined where name, statement category and NAV matched. Check the combined units and value in the preview.`] : []),
-    ] };
+    ], summaryTotal, schemeDetailStatus: 'reconciled' };
   }
   if (schemes.detected) notices.unshift('Scheme rows could not be fully reconciled, so only fund-house totals are shown.');
 
@@ -68,7 +69,8 @@ export function parseActiveStatementHtml(html) {
   if (!holdings.length) errors.push('The statement contains no current fund-house value.');
   if (holdings.reduce((sum, holding) => sum + holding.value, 0) > 1_000_000_000_000)
     errors.push('The combined statement value is too large.');
-  return { holdings: errors.length ? [] : holdings, errors, notices };
+  return { holdings: errors.length ? [] : holdings, errors, notices,
+    ...(errors.length ? {} : { summaryTotal, schemeDetailStatus: schemes.detected ? 'unreconciled_fallback' : 'summary_only' }) };
 }
 
 /** Parse a narrow, observed CAMS scheme-row template as text, never as JavaScript. */

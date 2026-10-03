@@ -2,10 +2,9 @@ import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
 import { readBrokerWorkbook } from './broker-xlsx-browser.mjs';
 import { validShares } from './stock-estimate.mjs';
+import { rupees } from './assistant-import-audit.mjs';
 
 const MAX_CHAT_DRAFTS = 30;
-const rupees = value => `₹${(Math.round(value * 100) / 100).toLocaleString('en-IN',
-  { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function importAudit(drafts, reportedTotal = null) {
   const parsedTotal = drafts.reduce((paise, row) => paise + Math.round(row.value * 100), 0) / 100;

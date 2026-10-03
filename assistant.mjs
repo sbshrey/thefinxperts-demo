@@ -8,6 +8,7 @@ import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs';
 import { clarifyDrafts, classifyDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs';
 import { previewAssistantImport } from './assistant-import.mjs';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs';
 import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
 import { analyzePortfolio, valuationDateIssue } from './analysis.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
@@ -740,7 +741,11 @@ function stageActiveStatement(parsed) {
   state.drafts = drafts;
   renderDrafts();
   const summaries = state.drafts.filter(row => row.granularity === 'fund_house').length;
-  say('note', `Found ${state.drafts.length} possible fund ${state.drafts.length === 1 ? 'holding' : 'holdings'} in the CAMS Active Statement. ${summaries ? `${summaries} ${summaries === 1 ? 'is a fund-house summary' : 'are fund-house summaries'} without scheme detail. ` : ''}The PDF stayed in this browser. Check the rows before using them.`);
+  const detail = parsed.schemeDetailStatus === 'reconciled' ?
+    'Scheme rows reconciled to the fund-house totals.' : parsed.schemeDetailStatus === 'unreconciled_fallback' ?
+      'Scheme rows did not fully reconcile; only fund-house summaries were staged. Scheme-level holdings are missing.' :
+      'This statement supplied fund-house summaries without scheme rows.';
+  say('note', `Found ${state.drafts.length} possible fund ${state.drafts.length === 1 ? 'holding' : 'holdings'} in the CAMS Active Statement. ${importValueAndDates(state.drafts)} Fund-house source total ${rupees(parsed.summaryTotal)}. ${detail} ${summaries ? `${summaries} ${summaries === 1 ? 'is a fund-house summary' : 'are fund-house summaries'} without scheme detail. ` : ''}The PDF stayed in this browser. Check the rows before using them.`);
   clearFile();
   return true;
 }
