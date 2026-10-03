@@ -1,17 +1,17 @@
-import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=0fb98de82454';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=0fb98de82454';
-import { reserveMonths } from './reserve.mjs?v=0fb98de82454';
+import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
+  valuationRowsNeedingCheck } from './analysis.mjs?v=a2287436b17d';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=a2287436b17d';
+import { reserveMonths } from './reserve.mjs?v=a2287436b17d';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=0fb98de82454';
-import { asksForAdvice } from './question-scope.mjs?v=0fb98de82454';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=0fb98de82454';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=0fb98de82454';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=0fb98de82454';
-import { parseAmount } from './assistant-clarify.mjs?v=0fb98de82454';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=0fb98de82454';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=a2287436b17d';
+import { asksForAdvice } from './question-scope.mjs?v=a2287436b17d';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=a2287436b17d';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=a2287436b17d';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=a2287436b17d';
+import { parseAmount } from './assistant-clarify.mjs?v=a2287436b17d';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=a2287436b17d';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=0fb98de82454';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=a2287436b17d';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -1072,20 +1072,25 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       !/^[A-Z]{2}[A-Z0-9]{10}$/.test(row.isin)).length;
     const fundRows = valid.filter(row => row.type === 'Mutual fund');
     const fundHouseRows = fundRows.filter(row => row.granularity === 'fund_house');
+    const fundGroups = summarizeFundGroups(fundRows);
     const prefix = repeated.length ?
       `I found ${repeated.length} repeated instrument ${repeated.length === 1 ? 'identifier' : 'identifiers'} across ${repeatedRows} entered rows. Compare their statements and accounts before deciding whether they represent separate positions or a duplicated import.` :
       'I found no repeated instrument identifier among the entered rows with an ISIN.';
     const fundCheck = !fundRows.length ? '' :
       fundHouseRows.length ?
         ` ${fundHouseRows.length} fund-house ${fundHouseRows.length === 1 ? 'summary needs' : 'summaries need'} a scheme-level statement before its underlying holdings can be checked.` :
-        ' To check companies shared by different funds, upload supported dated scheme portfolio XLSX files from their AMCs, confirm the exact schemes, and inspect the listed equity comparison in this tab. Other fund assets remain unknown.';
-    const noFunds = fundRows.length > 1 ?
-      ' I cannot confirm company overlap inside different funds from this holdings snapshot.' :
-      fundRows.length && valid.some(row => row.type === 'Stock') ?
+        fundGroups.total > 1 ?
+          ' To check companies shared by different funds, upload supported dated scheme portfolio XLSX files from their AMCs, confirm the exact schemes, and inspect the listed equity comparison in this tab. Other fund assets remain unknown.' :
+          fundGroups.total === 1 && valid.some(row => row.type === 'Stock') ?
+            ' To check whether your direct stock appears inside that fund, upload its supported dated scheme portfolio XLSX from the AMC and confirm the exact scheme. Other fund assets remain unknown.' : '';
+    const noFunds = fundGroups.total > 1 ?
+      ' I cannot confirm company overlap inside different fund groups from this holdings snapshot.' :
+      fundGroups.total === 1 && valid.some(row => row.type === 'Stock') ?
         ' I cannot confirm whether your direct stocks also appear inside that fund from this holdings snapshot.' :
-        fundRows.length ? ' Only one fund is entered, so there is no fund pair to compare.' : '';
+        fundGroups.total === 1 ? ' Only one identifiable fund group is entered, so there is no fund pair to compare.' :
+          fundRows.length ? ' No individual scheme is identifiable from these fund rows, so there is no fund pair to compare.' : '';
     return answer(`${prefix}${noFunds}${fundCheck}`,
-      `${byInstrument.size} distinct supplied type-and-ISIN pairs compared; ${missingIds} of ${valid.length} rows lack a usable ISIN; ${fundRows.length} mutual-fund rows, including ${fundHouseRows.length} fund-house summaries. ${repeated.length ? `Repeated: ${repeated.slice(0, 3).map(([key, count]) => `${key.split(':')[1]} (${count} rows)`).join(', ')}${repeated.length > 3 ? ', and more' : ''}.` : ''}`,
+      `${byInstrument.size} distinct supplied type-and-ISIN pairs compared; ${missingIds} of ${valid.length} rows lack a usable ISIN; ${fundRows.length} mutual-fund rows, including ${fundHouseRows.length} fund-house summaries and ${fundGroups.total} identifiable fund ${fundGroups.total === 1 ? 'group' : 'groups'}. ${repeated.length ? `Repeated: ${repeated.slice(0, 3).map(([key, count]) => `${key.split(':')[1]} (${count} rows)`).join(', ')}${repeated.length > 3 ? ', and more' : ''}.` : ''}`,
       fundRows.length ?
         'A repeated ISIN is a review flag, not proof of double counting. Different fund ISINs can still own the same underlying securities; AMC disclosures are dated, and constituent look-through is unverified here.' :
         'A repeated stock ISIN is a review flag, not proof of double counting. Check accounts, report dates and whether separate positions were intended.', '#holdings', 'Inspect matching rows');
