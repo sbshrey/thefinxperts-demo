@@ -5,6 +5,9 @@ import { rupees } from './assistant-import-audit.mjs';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const paise = rows => rows.reduce((total, row) => total + Math.round(row.value * 100), 0);
+const realDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+  Number.isFinite(new Date(`${value}T00:00:00Z`).valueOf()) &&
+  new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 
 function refreshValueCoverage(incoming, matched) {
   const report = paise(incoming);
@@ -13,6 +16,36 @@ function refreshValueCoverage(incoming, matched) {
   return `Parsed report value ${rupees(report / 100)}: ${rupees(included / 100)} in exact matched rows; ${excluded ?
     `${rupees(excluded / 100)} in unmatched rows stays outside this refresh` :
     'no unmatched value stays outside this refresh'}.`;
+}
+
+/** A newer passbook may refresh one already confirmed EPF member account. */
+export function prepareAssistantEpfoRefresh(saved, incoming) {
+  if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(saved.goals) ||
+      !incoming || incoming.entryOrigin !== 'epfo_passbook' || incoming.type !== 'Other investment' ||
+      incoming.asset !== 'Other' || !/^EPF account [A-F0-9]{12}$/.test(incoming.name) ||
+      !Number.isFinite(incoming.value) || incoming.value <= 0 || incoming.value > 10_000_000_000 ||
+      !realDate(incoming.asOf)) return null;
+  const matches = saved.holdings.filter(row => row.name === incoming.name);
+  if (!matches.length) return null;
+  const current = matches[0];
+  if (matches.length !== 1 || current.entryOrigin !== 'epfo_passbook' ||
+      current.type !== 'Other investment' || current.asset !== 'Other' ||
+      typeof current.id !== 'string' || !current.id || !realDate(current.asOf) ||
+      !Number.isFinite(current.value) || current.value <= 0)
+    return { errors: ['This EPF account matches an ambiguous saved row. Check the earlier report before changing it.'] };
+  const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  if (incoming.asOf > today || incoming.asOf < current.asOf)
+    return { errors: ['This EPF passbook is not newer than the saved report. The balance was not changed.'] };
+  if (incoming.asOf === current.asOf) return incoming.value === current.value ?
+    { errors: [], repeated: true, description: 'This EPF account already has the same report date and balance. No holding or goal link changed.' } :
+    { errors: ['This EPF passbook has the saved report date but a different balance. Check the source before changing it.'] };
+  const portfolio = structuredClone(saved);
+  portfolio.holdings = portfolio.holdings.map(row => row.id === current.id ?
+    { ...row, value: incoming.value, asOf: incoming.asOf } : row);
+  return { portfolio, errors: [], kind: 'epfo', repeated: false,
+    changes: [`${current.name}: ${money(current.value)} (${current.asOf}) → ${money(incoming.value)} (${incoming.asOf})`],
+    description: `Newer EPF member passbook for the same account code. Confirm this is the same member account. The reported employee and employer balance will change from ${money(current.value)} (${current.asOf}) to ${money(incoming.value)} (${incoming.asOf}). Other holdings and goal links stay. The date is when the report was printed; later activity may be missing. Pension contribution is excluded. No trade is placed.`,
+    result: `EPF balance refreshed from the newer passbook. Check whether later contributions or transfers are missing before relying on the dated value. Goal links stayed.` };
 }
 
 /** Prepare a complete, newer CAMS Active Statement refresh without changing the saved review. */

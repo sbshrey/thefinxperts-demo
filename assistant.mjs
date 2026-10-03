@@ -24,7 +24,7 @@ import { parseAssistantReserveFact, nextAssistantReserveQuestion,
   prepareAssistantReserveSave } from './assistant-reserve.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh } from './assistant-refresh.mjs';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh } from './assistant-refresh.mjs';
 import { validShares } from './stock-estimate.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -373,6 +373,8 @@ function renderRefresh() {
   const stale = state.account?.revision !== state.refresh.revision;
   $('#refresh-help').textContent = state.refresh.kind === 'broker' ?
     'Confirm this newer report covers the same account and positions. Unmatched rows will stay out.' :
+    state.refresh.kind === 'epfo' ?
+      'Confirm this newer passbook covers the same EPF member account. Check the printed date and balance.' :
     ['cas', 'demat'].includes(state.refresh.kind) ?
       'Confirm this newer CAS covers the same investment positions. Unmatched rows will stay out.' :
       'Confirm this is a complete newer statement for the same investments.';
@@ -921,6 +923,18 @@ function stageEpfoResult(result) {
   if (!result?.holding || result.errors?.length) return false;
   const draft = normalizedDraft(result.holding);
   if (!draft || !Number.isFinite(draft.value) || draft.value <= 0 || !draft.asOf) return false;
+  const refresh = prepareAssistantEpfoRefresh(state.account?.portfolio, draft);
+  if (refresh) {
+    if (refresh.repeated) say('note', refresh.description);
+    else if (refresh.errors.length) say('note', refresh.errors.join(' '));
+    else {
+      state.refresh = { ...refresh, revision: state.account.revision };
+      renderRefresh();
+      say('assistant', 'I found a newer EPF passbook for an account already in this review. Check the date and balance change before applying it.');
+    }
+    clearFile();
+    return true;
+  }
   state.drafts = [draft];
   renderDrafts();
   sayImportNote(`I found one EPF member passbook balance of ${money(draft.value)}. Its report was printed on ${draft.asOf}; this is a dated passbook snapshot, not proof that later contributions or transfers are included. The employee and employer balances match the final Grand Total; the separate pension contribution is not counted. The account is labelled with a short one-way code so a later upload of the same member account is caught as an overlap. Check the passbook and confirm the draft before it changes your review. EPF withdrawal and access conditions still need checking for your goal. The PDF stayed in this browser.`,
