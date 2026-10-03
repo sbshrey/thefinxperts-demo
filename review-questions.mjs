@@ -67,7 +67,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'Names and expense ratios are not independently verified. A plan label alone does not establish current TER, tax, exit load, service value or whether to switch.', '#holdings', 'Check fund plan labels');
   }
 
-  if (/^(?:what should i do(?: next)?|how (?:can|do) i improve (?:my )?(?:portfolio|review|investments?)|where should i start)[?.!]*$/.test(input)) {
+  if (/^(?:what should i do(?: next)?|how (?:(?:can|do|should) i|to) (?:improve|optimi[sz]e) (?:my )?(?:portfolio|review|investments?)(?: for (?:my )?(?:age and goal|age|goal))?|where should i start)[?.!]*$/.test(input)) {
     if (!valid.length) return answer('Start by adding and confirming a current holding from a supported statement or broker report. Then I can show what the entered portfolio contains and what needs checking.',
       'No confirmed holding value is available for a factual review.',
       'I cannot choose investments or trades; an import remains a draft until you confirm it.', '#holdings', 'Add a holding');
@@ -95,9 +95,9 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
   }
 
-  const goalRiskQuestion = /\b(?:safe|risky|risk|suitable|appropriate|right)\b/.test(input) &&
-    (/(?:\b(?:goal|retirement)\b.{0,60}\b(?:safe|risky|risk|suitable|appropriate|right)\b)/.test(input) ||
-      /\b(?:safe|risky|risk|suitable|appropriate|right)\b.{0,60}\b(?:goal|retirement|my age|age and goal)\b/.test(input));
+  const goalRiskQuestion = /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned)\b/.test(input) &&
+    (/(?:\b(?:goal|retirement)\b.{0,60}\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned)\b)/.test(input) ||
+      /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned)\b.{0,60}\b(?:goal|retirement|my age|age and goal)\b/.test(input));
   if (goalRiskQuestion && !/\b(?:buy|sell|switch|redeem|rebalance|replace|increase|reduce|move|shift|trade|invest|allocate|recommend|suggest|optimi[sz]e)\b/.test(input)) {
     if (goal?.confirmed !== true)
       return answer('Confirm the selected goal’s age, target and years until it is due before checking the exposure of its assigned holdings.',
@@ -126,7 +126,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         `These gaps can change the apparent mix. I cannot decide whether the goal is safe or the mix suitable. ${coverageNote}`, '#holdings', 'Check goal holdings');
     }
     const equity = result.goalAssets.Equity;
-    return answer(`For ${goal.name}, due in ${goal.years} ${goal.years === 1 ? 'year' : 'years'}, ${money(equity)} (${percent(equity, result.goalTotal)}) of assigned value is labelled Equity. ${equity ? 'To see a one-time fall using a percentage you choose, say “equity fall 20%” with your own figure.' : 'No assigned value is labelled Equity in this snapshot.'}`,
+    return answer(`For ${goal.name}, due in ${goal.years} ${goal.years === 1 ? 'year' : 'years'}, ${money(equity)} (${percent(equity, result.goalTotal)}) of assigned value is labelled Equity. The other entered labels are Debt ${percent(result.goalAssets.Debt, result.goalTotal)}, Gold ${percent(result.goalAssets.Gold, result.goalTotal)} and Other ${percent(result.goalAssets.Other, result.goalTotal)}. ${equity ? 'To see a one-time fall using a percentage you choose, say “equity fall 20%” with your own figure.' : 'No assigned value is labelled Equity in this snapshot.'}`,
       `${money(equity)} labelled Equity ÷ ${money(result.goalTotal)} assigned value; entered age ${goal.age} and ${goal.years}-year horizon; ${result.asOfSummary}.`,
       `This describes entered exposure, not whether it is safe or suitable for your age or goal. It does not choose an allocation or trade, and fund constituents, other risks and unentered holdings are unknown. ${coverageNote}`, '#goals', 'Review goal exposure');
   }
