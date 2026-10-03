@@ -7,6 +7,7 @@ import { prepareAssistantCasRefresh } from './assistant-refresh.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
 import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs';
 import { validReserve, reserveMonths } from './reserve.mjs';
@@ -325,6 +326,13 @@ function syncGoalSelector() {
 
 function render() {
   $('#hero-review-link').textContent = state.source === 'demo' ? 'Explore the fictional example' : 'Explore your entered review';
+  const returnLink = $('#return-guided');
+  returnLink.textContent = state.source === 'demo' ? 'Start guided review' : 'Continue in guided chat';
+  returnLink.href = './guided-review.html';
+  if (state.source === 'demo') {
+    returnLink.removeAttribute('target');
+    returnLink.removeAttribute('rel');
+  }
   $('#holding-date').max = indiaToday();
   syncGoalSelector();
   const needsGoalConfirmation = state.source !== 'demo' && state.goal.confirmed === false;
@@ -2001,6 +2009,11 @@ $('#restore-review').addEventListener('change', async event => {
   }
 });
 
+$('#return-guided').addEventListener('click', event => {
+  if (state.source === 'user') prepareReviewHandoff(event, state, './guided-review.html', () =>
+    showRestoreStatus('This browser cannot hand your review to chat. Download a review file and open it in the guided review.'));
+});
+
 async function readSavedPortfolio(apply) {
   if (apply && state.source !== 'demo' && state.holdings.length &&
       !window.confirm('Replace the holdings and goals in this tab with your saved version? Download a local backup first if you want to keep these entries.')) return;
@@ -2160,34 +2173,15 @@ render();
 showInputMode('manual');
 const requestedImport = new URLSearchParams(window.location.search).get('import');
 if (['active', 'broker', 'csv', 'cas'].includes(requestedImport)) showInputMode(requestedImport);
-const handoffToken = /^#handoff=([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(location.hash)?.[1];
-if (handoffToken) {
-  history.replaceState(null, '', location.pathname + location.search);
-  clearCurrentReview();
-  showRestoreStatus('Opening the confirmed holdings from your guided review…');
-  if (typeof BroadcastChannel === 'undefined') showRestoreStatus('This browser could not transfer the review. Open a saved review file here instead.');
-  else {
-    const channel = new BroadcastChannel(`thefinxperts-review-handoff-${handoffToken}`);
-    const timeout = setTimeout(() => {
-      channel.close();
-      showRestoreStatus('The guided review did not respond. Open a saved review file here instead.');
-    }, 15_000);
-    channel.onmessage = ({ data }) => {
-      if (data?.type !== 'portfolio') return;
-      try {
-        const parsed = parseReviewBackup(JSON.stringify(data.portfolio));
-        if (parsed.errors.length) throw new Error('Invalid review');
-        applyPortfolio(parsed.portfolio);
-        showRestoreStatus('Your confirmed guided review is open here. Changes on this page stay in this tab; download a review file to keep them.');
-        channel.postMessage({ type: 'received' });
-      } catch {
-        showRestoreStatus('The guided review could not be opened. Open a saved review file here instead.');
-      } finally {
-        clearTimeout(timeout);
-        channel.close();
-      }
-    };
-    channel.postMessage({ type: 'ready' });
-  }
-}
+receiveReviewHandoff({
+  onStart: () => {
+    clearCurrentReview();
+    showRestoreStatus('Opening the confirmed holdings from your guided review…');
+  },
+  onPortfolio: portfolio => {
+    applyPortfolio(portfolio);
+    showRestoreStatus('Your confirmed guided review is open here. Changes on this page stay in this tab; download a review file to keep them.');
+  },
+  onError: () => showRestoreStatus('The guided review could not be opened. Open a saved review file here instead.'),
+});
 initAccount();

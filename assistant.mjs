@@ -13,7 +13,8 @@ import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
 import { analyzePortfolio, valuationDateIssue, valuationRowsNeedingCheck } from './analysis.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
-import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
+import { parseReviewBackup } from './review-backup.mjs';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs';
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
@@ -2012,29 +2013,8 @@ $('#download-readable-review')?.addEventListener('click', () => {
 });
 
 $('.detailed-link')?.addEventListener('click', event => {
-  const portfolio = state.account?.portfolio;
-  if (!browserOnly || !portfolio?.holdings?.length) return;
-  if (typeof BroadcastChannel === 'undefined') {
-    event.preventDefault();
-    say('note', 'This browser cannot hand your review to the detailed tab. Save a private review file here and open it there.');
-    return;
-  }
-  const token = crypto.randomUUID();
-  const destination = new URL('./detailed-review.html', location.href);
-  destination.hash = `handoff=${token}`;
-  event.currentTarget.href = destination.href;
-  const channel = new BroadcastChannel(`thefinxperts-review-handoff-${token}`);
-  let sent = false;
-  const timeout = setTimeout(() => channel.close(), 15_000);
-  channel.onmessage = ({ data }) => {
-    if (data?.type === 'ready' && !sent) {
-      sent = true;
-      channel.postMessage({ type: 'portfolio', portfolio: buildReviewBackup(portfolio) });
-    } else if (data?.type === 'received') {
-      clearTimeout(timeout);
-      channel.close();
-    }
-  };
+  if (browserOnly) prepareReviewHandoff(event, state.account?.portfolio, './detailed-review.html', () =>
+    say('note', 'This browser cannot hand your review to the detailed tab. Save a private review file here and open it there.'));
 });
 
 $('#download-tab-review')?.addEventListener('click', () => {
@@ -2156,3 +2136,14 @@ window.addEventListener('beforeunload', event => {
   event.returnValue = '';
 });
 renderReview();
+if (browserOnly) receiveReviewHandoff({
+  onStart: () => say('note', 'Opening your confirmed holdings from Detailed review…'),
+  onPortfolio: portfolio => {
+    state.drafts = []; state.goalFacts = null; state.goalDraftGoalId = null;
+    state.correction = null; state.refresh = null; state.pendingGoalName = false;
+    acceptAccount({ portfolio, revision: state.account.revision + 1 });
+    say('note', 'Your Detailed review is open in chat. The two tabs do not sync; save a private review file to keep later changes.');
+    resumeCoverageQuestions(portfolio);
+  },
+  onError: () => say('note', 'The Detailed review could not be opened in chat. Open a saved review file here instead.'),
+});
