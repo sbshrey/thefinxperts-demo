@@ -26,6 +26,12 @@ export function asksForAdvice(message) {
     /\bcan\s+(?:i|we)\s+(?:switch|move|shift|convert)\s+from\s+regular\s+to\s+direct\b/i.test(message) ||
     /\bwould\s+it\s+be\s+(?:wise|smart|better|good)\s+to\s+(?:buy|sell|redeem|exit|switch|hold|keep|invest|allocate|rebalance|move|shift|replace)\b/i.test(message) ||
     /\b(?:is\s+(?:now|this)\s+(?:a\s+)?good\s+time\s+to|is\s+it\s+(?:a\s+)?good\s+idea\s+to)\s+(?:buy|sell|redeem|exit|switch|invest|rebalance)\b/i.test(message) ||
+    /\b(?:help me decide|advise me)\s+(?:whether|if)\s+(?:to\s+)?(?:buy|sell|redeem|exit|switch|hold|keep|reduce|increase|remove|replace)\b/i.test(message) ||
+    /\bcan\s+(?:i|we)\s+(?:reduce|increase|remove|drop|trim|add)\b.{0,70}\b(?:fund|stock|share|investment|portfolio|sip|position)s?\b/i.test(message) ||
+    /\bwhich\b.{0,35}\b(?:fund|stock|share|investment|sip|position)s?\b.{0,25}\b(?:can|could|should)\s+(?:i|we)\s+(?:remove|drop|trim|sell|redeem|exit|replace|reduce|increase)\b/i.test(message) ||
+    /\btell me\s+(?:what|which)\s+to\s+(?:buy|sell|redeem|switch|hold|keep|invest in)\b/i.test(message) ||
+    /\bhow\s+(?:can|do|should)\s+i\s+optimi[sz]e\s+(?:this|it|my\s+(?:portfolio|investments?|holdings?))\s+for\s+my\s+(?:age|goal|retirement)\b/i.test(message) ||
+    /\bis\s+my\s+(?:asset\s+)?allocation\s+(?:right|suitable|appropriate|ideal)\b/i.test(message) ||
     /\bwhat\s+should\s+i\s+do\s+with\s+my\s+(?:investments?|holdings?|funds?|stocks?|shares?)\b/i.test(message) ||
     /\b(?:is|would)\s+my\s+(?:asset\s+allocation|asset\s+mix|equity.{0,15}debt\s+split)\b.{0,45}\b(?:right|suitable|appropriate|ideal)\s+for\s+(?:my\s+)?(?:retirement|goal|age|me)\b/i.test(message) ||
     /\bhow\s+(?:can|do|should)\s+i\s+(?:improve|optimi[sz]e)\s+my\s+(?:portfolio|investments?|holdings?)\b/i.test(message);

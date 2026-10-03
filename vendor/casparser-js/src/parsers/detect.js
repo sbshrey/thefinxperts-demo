@@ -5,7 +5,7 @@
  * front, and reading a whole statement to identify it is wasted work.
  */
 
-import { CASFileType, FileType } from '../enums.js?v=10feab84c0de';
+import { CASFileType, FileType } from '../enums.js?v=498a5c52867a';
 
 const CAS_TYPE_RE = /consolidated\s+account\s+(statement|summary)/i;
 

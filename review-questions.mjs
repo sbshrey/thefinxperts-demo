@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=10feab84c0de';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=10feab84c0de';
-import { reserveMonths } from './reserve.mjs?v=10feab84c0de';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=498a5c52867a';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=498a5c52867a';
+import { reserveMonths } from './reserve.mjs?v=498a5c52867a';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=10feab84c0de';
-import { asksForAdvice } from './question-scope.mjs?v=10feab84c0de';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=10feab84c0de';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=10feab84c0de';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=10feab84c0de';
-import { parseAmount } from './assistant-clarify.mjs?v=10feab84c0de';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=10feab84c0de';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=498a5c52867a';
+import { asksForAdvice } from './question-scope.mjs?v=498a5c52867a';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=498a5c52867a';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=498a5c52867a';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=498a5c52867a';
+import { parseAmount } from './assistant-clarify.mjs?v=498a5c52867a';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=498a5c52867a';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=10feab84c0de';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=498a5c52867a';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -304,6 +304,26 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       return answer('Confirm the selected goal’s age, target and years until it is due before checking the exposure of its assigned holdings.',
         `The selected goal ${goal?.name || 'unnamed'} is unfinished.`,
         'Age alone cannot establish a suitable allocation or whether a goal is safe.', '#goals', 'Confirm goal details');
+    const namedOther = [
+      { label: 'EPF', question: /\bepf\b/, row: /\bepf\b|employees?'? provident fund/, origin: 'epfo_passbook' },
+      { label: 'NPS', question: /\bnps\b/, row: /\bnps\b|national pension system/, origin: 'nps_statement' },
+      { label: 'PPF', question: /\bppf\b/, row: /\bppf\b|public provident fund/, origin: null },
+    ].find(item => item.question.test(input));
+    if (namedOther) {
+      const rows = valid.filter(row => row.type === 'Other investment' &&
+        (namedOther.origin && row.entryOrigin === namedOther.origin ||
+          namedOther.row.test(String(row.name || '').toLocaleLowerCase('en-IN'))));
+      if (!rows.length) return answer(`No ${namedOther.label} holding is entered in this review. Add a checked dated balance before asking how it affects ${goal.name}.`,
+        `0 positive ${namedOther.label} rows identified from their entered name or supported source label.`,
+        'This does not establish whether you own the account elsewhere or when its money can be used.', '#holdings', `Add ${namedOther.label} balance`);
+      const assigned = rows.reduce((sum, row) => sum + Number(row.value) * goalShare(goal, row.id) / 100, 0);
+      if (!assigned) return answer(`${namedOther.label} is entered, but none of its value is assigned to ${goal.name}. Check whether you intend to count it toward this goal before comparing.`,
+        `${rows.length} identified ${namedOther.label} ${rows.length === 1 ? 'row' : 'rows'}; assigned share toward ${goal.name} is ₹0.`,
+        'A portfolio balance is not automatically available for a particular goal.', '#goals', 'Check goal assignments');
+      return answer(`${money(assigned)} of entered ${namedOther.label} value is assigned to ${goal.name}. I cannot tell whether it will be accessible or adequate when the goal arrives. Check the account’s current balance, date and withdrawal or maturity terms.`,
+        `Added the assigned shares of ${rows.length} identified ${namedOther.label} ${rows.length === 1 ? 'row' : 'rows'}; ${result.asOfSummary}.`,
+        `Entered balances and goal links are unverified. This is gross value, not confirmed spendable money or a safety verdict. ${coverageNote}`, '#holdings', 'Check account terms');
+    }
     const statedHorizon = /\b(?:goal|retirement)\b.{0,20}\b(?:in|due in)\s+(\d{1,2})\s+years?\b/.exec(input);
     if (statedHorizon && Number(statedHorizon[1]) !== Number(goal.years))
       return answer(`You asked about a goal in ${statedHorizon[1]} years, but ${goal.name} is set for ${goal.years} years. Check the selected goal’s horizon before using its exposure for this question.`,
@@ -336,6 +356,14 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser. For a self-directed checklist, ask “How do I choose a target mix?”',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  if (/\b(?:tax|taxes|ltcg|stcg)\b/.test(input) && /\b(?:sell|sale|redeem|redemption|capital gain)\b/.test(input))
+    return answer('I cannot calculate tax on a sale or redemption from this holdings snapshot. Check your purchase and sale records and the applicable tax rules before using any estimate.',
+      'The review stores current entered holdings and only optional checked cost for units or shares still held; it does not have complete dated tax lots or a proposed sale.',
+      'No tax rate, exemption, holding period, or personal tax situation was verified. This answer does not recommend a transaction.', '#holdings', 'Check transaction records');
+  if (/\b(?:connect|link|sync)\b/.test(input) && /\b(?:zerodha|groww|upstox|broker)\b/.test(input))
+    return answer('This browser review does not connect to a broker account. You can upload a supported holdings CSV or XLSX export, inspect the mapped rows and dates, and confirm only the holdings you recognize.',
+      'The public site reads selected holdings files in this browser and has no broker login or account synchronization.',
+      'An export is a dated snapshot; it may omit accounts or assets and does not update itself. Check its value columns and report date before confirmation.', '#input-choice', 'Upload a holdings export');
   const reviewsHoldings = /\b(?:review|analy[sz]e|assess|improv\w*)\b/.test(input);
   const reviewsFunds = /\b(?:mutual funds?|funds?)\b/.test(input);
   const reviewsStocks = /\b(?:stocks?|shares?)\b/.test(input);
@@ -1035,7 +1063,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(houses.largest.value)} ÷ ${money(houses.fundValue)} ${scope}; ${basis}`,
       limitation, destination, 'Inspect fund holdings');
   }
-  const disclosureQuestion = /\b(?:overlap|same stocks?|underlying (?:stocks|shares|companies)|companies? (?:inside|through)|issuer exposure|inside (?:my|the) funds)\b/.test(input);
+  const disclosureQuestion = /\b(?:overlaps?|same stocks?|underlying (?:stocks|shares|companies)|companies? (?:inside|through)|issuer exposure|inside (?:my|the) funds)\b/.test(input);
   const checkedDisclosures = Array.isArray(disclosures) ? disclosures.filter(item =>
     matchFundDisclosure(item, valid)) : [];
   if (!goalScopeRequested && disclosureQuestion && checkedDisclosures.length) {
@@ -1058,7 +1086,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         (visible.directCovered ? `; matching direct stocks ${money(visible.directCovered)} dated ${visible.directDates.join(', ')}` : ''),
       'This is a mixed-date, partial look-through of user-supplied values and AMC sheets. Unmatched securities, other fund assets, later trades and missing investments are unknown. It does not establish current prices, full concentration or a trade to make.', '#holdings', 'Inspect dated sources');
   }
-  if (/\b(overlap|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
+  if (/\b(overlaps?|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
   {
     const byInstrument = new Map();
     for (const row of valid) {
@@ -1073,6 +1101,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const fundRows = valid.filter(row => row.type === 'Mutual fund');
     const fundHouseRows = fundRows.filter(row => row.granularity === 'fund_house');
     const fundGroups = summarizeFundGroups(fundRows);
+    const asksStockFundOverlap = /\b(?:my|our)\s+(?:direct\s+)?(?:stock|share)s?\b/.test(input) &&
+      /\bfunds?\b/.test(input);
     const prefix = repeated.length ?
       `I found ${repeated.length} repeated instrument ${repeated.length === 1 ? 'identifier' : 'identifiers'} across ${repeatedRows} entered rows. Compare their statements and accounts before deciding whether they represent separate positions or a duplicated import.` :
       'I found no repeated instrument identifier among the entered rows with an ISIN.';
@@ -1083,8 +1113,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
           ' To check companies shared by different funds, upload supported dated scheme portfolio XLSX files from their AMCs, confirm the exact schemes, and inspect the listed equity comparison in this tab. Other fund assets remain unknown.' :
           fundGroups.total === 1 && valid.some(row => row.type === 'Stock') ?
             ' To check whether your direct stock appears inside that fund, upload its supported dated scheme portfolio XLSX from the AMC and confirm the exact scheme. Other fund assets remain unknown.' : '';
-    const noFunds = fundGroups.total > 1 ?
-      ' I cannot confirm company overlap inside different fund groups from this holdings snapshot.' :
+    const noFunds = asksStockFundOverlap && !valid.some(row => row.type === 'Stock') ?
+      ' No direct stock is entered to compare with these funds.' :
+      fundGroups.total > 1 ?
+      asksStockFundOverlap ?
+        ' I cannot tell which fund contains your direct stock, or rank that overlap, from this holdings snapshot.' :
+        ' I cannot confirm company overlap inside different fund groups from this holdings snapshot.' :
       fundGroups.total === 1 && valid.some(row => row.type === 'Stock') ?
         ' I cannot confirm whether your direct stocks also appear inside that fund from this holdings snapshot.' :
         fundGroups.total === 1 ? ' Only one identifiable fund group is entered, so there is no fund pair to compare.' :
@@ -1247,11 +1281,18 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Both results are fixed-assumption illustrations, not forecasts, expected returns or a monthly investment instruction. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
       'https://investor.sebi.gov.in/calculators/Visual_Gold_Planner.html', 'Read SEBI’s illustration');
   }
-  const alternateHorizonQuestion = /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in\b|i\s+(?:reach|hit|delay|postpone|bring|move)\s+(?:my|the)\s+goal\b)/.test(input);
+  const retirementTiming = /^(?:what if|test|compare)\s+i\s+retire\s+(?:in\s+\d{1,3}\s+years?|\d{1,3}\s+years?\s+(?:later|earlier))/.test(input);
+  const alternateHorizonQuestion = /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in\b|i\s+(?:reach|hit|delay|postpone|bring|move)\s+(?:my|the)\s+goal\b)/.test(input) || retirementTiming;
   if (alternateHorizonQuestion) {
-    const absolute = /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in|i\s+(?:reach|hit)\s+(?:my|the)\s+goal\s+in)\s+(\d{1,3})\s+years?(?:\s+instead of\s+(\d{1,3})\s+years?)?[?.!]*$/.exec(input);
-    const later = /^(?:what if|test|compare)\s+i\s+(?:delay|postpone)\s+(?:my|the)\s+goal\s+by\s+(\d{1,3})\s+years?[?.!]*$/.exec(input);
-    const earlier = /^(?:what if|test|compare)\s+i\s+(?:bring|move)\s+(?:my|the)\s+goal\s+(?:forward|earlier)\s+by\s+(\d{1,3})\s+years?[?.!]*$/.exec(input);
+    if (retirementTiming && !/\bretire(?:ment)?\b/i.test(goal?.name || ''))
+      return answer('Select or create the retirement goal you mean before comparing retirement dates.',
+        `The selected goal is ${goal?.name || 'unnamed'}, not a confirmed retirement goal.`,
+        'A different goal may use different holdings, target and horizon.', '#goals', 'Select retirement goal');
+    const absolute = /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in|i\s+(?:reach|hit)\s+(?:my|the)\s+goal\s+in|i\s+retire\s+in)\s+(\d{1,3})\s+years?(?:\s+instead of\s+(\d{1,3})\s+years?)?[?.!]*$/.exec(input);
+    const later = /^(?:what if|test|compare)\s+i\s+(?:delay|postpone)\s+(?:my|the)\s+goal\s+by\s+(\d{1,3})\s+years?[?.!]*$/.exec(input) ||
+      /^(?:what if|test|compare)\s+i\s+retire\s+(\d{1,3})\s+years?\s+later[?.!]*$/.exec(input);
+    const earlier = /^(?:what if|test|compare)\s+i\s+(?:bring|move)\s+(?:my|the)\s+goal\s+(?:forward|earlier)\s+by\s+(\d{1,3})\s+years?[?.!]*$/.exec(input) ||
+      /^(?:what if|test|compare)\s+i\s+retire\s+(\d{1,3})\s+years?\s+earlier[?.!]*$/.exec(input);
     const savedYears = Number(goal?.years);
     const alternative = absolute ? Number(absolute[1]) : later ? savedYears + Number(later[1]) :
       earlier ? savedYears - Number(earlier[1]) : NaN;
@@ -1490,7 +1531,25 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(largest.value)} ÷ ${money(total)} ${scope}; ${largest.granularity === 'fund_house' ? 'the largest position is a fund-house summary' : largest.entries > 1 ? `${largest.entries} rows with the same supplied ISIN form the largest position` : 'the largest position is one entered row'}. Exact matching supplied ISINs and fund-house summary names are grouped; unidentified rows stay separate. ${result.asOfSummary}.`,
       `One fund can contain many securities. These shares do not measure verified company concentration or tell you what to trade. ${coverageNote}`, selectedGoal ? '#goals' : '#holdings', 'Inspect this holding');
   }
-  if (/\b(mix|equity|debt|gold|asset|allocation|diversif)\b/.test(input))
+  const askedAssets = [
+    ['Equity', /\b(?:equity|equities)\b/],
+    ['Debt', /\bdebt\b/],
+    ['Gold', /\bgold\b/],
+  ].filter(([, pattern]) => pattern.test(input));
+  if (askedAssets.length === 1 && /^(?:how much|what (?:percentage|percent|share|amount|value))\b/.test(input) &&
+      !/\b(?:tax|expense|cost|return|profit|loss|fee)\b/.test(input)) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const asset = askedAssets[0][0];
+    const value = goalScopeRequested ? result.goalAssets[asset] : result.assets[asset];
+    const total = goalScopeRequested ? result.goalTotal : result.total;
+    return answer(`${goalScopeRequested ? `For ${goal.name}, ` : lead}${money(value)} (${percent(value, total)}) of ${goalScopeRequested ? 'assigned' : 'entered'} value is labelled ${asset}.`,
+      `${money(value)} labelled ${asset} ÷ ${money(total)} ${goalScopeRequested ? 'assigned' : 'entered'} value; ${result.asOfSummary}.`,
+      `Asset labels, values and dates are supplied, not independently verified. Funds may hold other assets beneath their broad labels. ${coverageNote}`, goalScopeRequested ? '#goals' : '#holdings', 'Inspect asset labels');
+  }
+  if (/\b(mix|equity|equities|debt|gold|asset|allocation|diversif)\b/.test(input))
     return answer(`${lead}the entered mix is Equity ${percent(result.assets.Equity, result.total)}, Debt ${percent(result.assets.Debt, result.total)}, Gold ${percent(result.assets.Gold, result.total)}, and Other ${percent(result.assets.Other, result.total)}.`,
       `Equity ${money(result.assets.Equity)}, Debt ${money(result.assets.Debt)}, Gold ${money(result.assets.Gold)}, Other ${money(result.assets.Other)} ÷ ${money(result.total)} entered total.`,
       `Asset labels are as entered. This does not judge whether the mix is suitable for your age or goal. ${coverageNote}`, '#goals', 'Review goal context');
