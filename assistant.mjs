@@ -6,7 +6,7 @@ import { goalShare } from './goals.mjs';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
   parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs';
-import { clarifyDrafts, classifyDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs';
 import { previewAssistantImport } from './assistant-import.mjs';
 import { importValueAndDates, rupees } from './assistant-import-audit.mjs';
 import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
@@ -270,6 +270,7 @@ function sayDetailedHandoff(message, source) {
 function renderDrafts() {
   const box = $('#drafts');
   box.hidden = !state.drafts.length;
+  $('#draft-title').textContent = state.drafts.length ? `Possible holdings (${state.drafts.length})` : 'Possible holdings';
   $('#draft-list').replaceChildren();
   const matches = findSavedDraftOverlaps(state.account?.portfolio?.holdings || state.confirmed, state.drafts);
   const omitButton = $('#omit-matching-drafts');
@@ -844,8 +845,9 @@ $('#remove-file').addEventListener('click', () => {
 
 function stageActiveStatement(parsed) {
   if (!parsed.holdings.length || parsed.errors.length) return false;
-  if (parsed.holdings.length > 30) {
-    sayDetailedHandoff('This guided chat can confirm up to 30 holdings at once. Open the detailed review to inspect this larger Active Statement.', 'active');
+  const maxDrafts = browserOnly ? 200 : 30;
+  if (parsed.holdings.length > maxDrafts) {
+    sayDetailedHandoff(`This guided chat can confirm up to ${maxDrafts} holdings at once. Open the detailed review to inspect this larger Active Statement.`, 'active');
     clearFile();
     return true;
   }
@@ -1021,7 +1023,7 @@ $('#upload').addEventListener('change', async event => {
     state.busy = true; renderCredits();
     setFileLabel('Reading selected report in this browser…');
     try {
-      const result = await previewAssistantImport(file, { aiAvailable: !browserOnly });
+      const result = await previewAssistantImport(file, { aiAvailable: !browserOnly, browserOnly });
       if (result.errors.length) {
         if (result.handoffSource) sayDetailedHandoff(result.errors.join(' '), result.handoffSource);
         else say('note', result.errors.join(' '));
@@ -1128,7 +1130,19 @@ $('#composer').addEventListener('submit', async event => {
       if (batch.error) say('note', batch.error);
       else {
         state.drafts = batch.drafts; renderDrafts();
-        say('assistant', `Drafts ${batch.numbers.map(number => `#${number}`).join(', ')} are labelled ${batch.asset}. Check every row against its individual scheme source before confirming. Saved holdings have not changed.`, batch.nextQuestion);
+        const selected = batch.numbers.length <= 5 ? batch.numbers.map(number => `#${number}`).join(', ') :
+          `${batch.numbers.length} selected rows`;
+        say('assistant', `Drafts ${selected} are labelled ${batch.type || batch.asset}. Check every row against its source before confirming. Saved holdings have not changed.`, batch.nextQuestion);
+      }
+      return;
+    }
+    const datedBatch = dateDraftsByNumbers(state.drafts, message);
+    if (datedBatch) {
+      say('user', message); $('#message').value = '';
+      if (datedBatch.error) say('note', datedBatch.error);
+      else {
+        state.drafts = datedBatch.drafts; renderDrafts();
+        say('assistant', `${datedBatch.numbers.length} selected ${datedBatch.numbers.length === 1 ? 'draft has' : 'drafts have'} the checked report date ${datedBatch.date}. Check every row against its source before confirming. Saved holdings have not changed.`, datedBatch.nextQuestion);
       }
       return;
     }
@@ -1325,7 +1339,8 @@ $('#confirm-drafts').addEventListener('click', async () => {
     say('note', 'The saved account has not loaded. Your drafts remain in this tab; try again after the account is available.'); return;
   }
   if (state.account) {
-    const prepared = prepareAssistantSave(state.account.portfolio, state.drafts);
+    const prepared = prepareAssistantSave(state.account.portfolio, state.drafts,
+      { maxDrafts: browserOnly ? 200 : 30 });
     if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }
     state.busy = true; renderDrafts(); renderCredits();
     try {

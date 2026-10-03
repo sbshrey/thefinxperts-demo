@@ -68,11 +68,11 @@ export function findSavedDraftOverlaps(existing, drafts) {
 }
 
 /** Prepare an append-only account save. Existing goals and holding rows stay unchanged. */
-export function prepareAssistantSave(saved, drafts, { newId = () => crypto.randomUUID() } = {}) {
+export function prepareAssistantSave(saved, drafts, { newId = () => crypto.randomUUID(), maxDrafts = 30 } = {}) {
   const portfolio = asVersionTwo(saved, newId);
   if (!portfolio) return { portfolio: null, errors: ['This saved review format needs an account check.'] };
-  if (!Array.isArray(drafts) || !drafts.length || drafts.length > 30) {
-    return { portfolio: null, errors: ['Confirm one to thirty holdings at a time.'] };
+  if (!Array.isArray(drafts) || !drafts.length || drafts.length > maxDrafts) {
+    return { portfolio: null, errors: [`Confirm one to ${maxDrafts} holdings at a time.`] };
   }
   const added = [];
   for (const row of drafts) {

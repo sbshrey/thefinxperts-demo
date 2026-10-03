@@ -5,6 +5,7 @@ import { validShares } from './stock-estimate.mjs';
 import { rupees } from './assistant-import-audit.mjs';
 
 const MAX_CHAT_DRAFTS = 30;
+const MAX_BROWSER_IMPORT_DRAFTS = 200;
 
 function importAudit(drafts, reportedTotal = null) {
   const parsedTotal = drafts.reduce((paise, row) => paise + Math.round(row.value * 100), 0) / 100;
@@ -62,7 +63,7 @@ function explicitDate(value) {
 }
 
 /** Stage only fields stated in distinct, compatible broker columns. */
-export function brokerDrafts(rows, source, strictWidth, aiAvailable) {
+export function brokerDrafts(rows, source, strictWidth, aiAvailable, maxDrafts = MAX_CHAT_DRAFTS) {
   const suggested = suggestBrokerColumns(rows);
   if (suggested.name === '' || suggested.value === '' || suggested.name === suggested.value) {
     return { drafts: [], errors: ['I could not identify separate security and current market value columns. Use a broker holdings report with those headings.'] };
@@ -72,8 +73,8 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable) {
     isin: suggested.isin === '' ? null : Number(suggested.isin),
   }, null, { strictWidth, allowUnknownDate: true });
   if (result.errors.length) return { drafts: [], errors: result.errors };
-  if (result.holdings.length > MAX_CHAT_DRAFTS) {
-    return { drafts: [], handoffSource: 'broker', errors: [`This chat can confirm up to ${MAX_CHAT_DRAFTS} rows at once. The detailed review can preview this broker report (up to 200 positions).`] };
+  if (result.holdings.length > maxDrafts) {
+    return { drafts: [], handoffSource: 'broker', errors: [`This chat can confirm up to ${maxDrafts} rows at once. The detailed review can preview this broker report (up to 200 positions).`] };
   }
   if (result.holdings.some(row => row.name.length > 80)) {
     return { drafts: [], errors: ['A security name exceeds the saved review limit of 80 characters. Use the guided import to check it.'] };
@@ -114,7 +115,8 @@ export function brokerDrafts(rows, source, strictWidth, aiAvailable) {
 }
 
 /** Prepare unconfirmed chat rows from supported CSV or XLSX exports without an upload. */
-export async function previewAssistantImport(file, { aiAvailable = true } = {}) {
+export async function previewAssistantImport(file, { aiAvailable = true, browserOnly = false } = {}) {
+  const maxDrafts = browserOnly ? MAX_BROWSER_IMPORT_DRAFTS : MAX_CHAT_DRAFTS;
   if (!file || typeof file.name !== 'string') return { drafts: [], errors: ['Choose a CSV or XLSX holdings report.'] };
   const name = file.name.toLowerCase();
   try {
@@ -124,17 +126,17 @@ export async function previewAssistantImport(file, { aiAvailable = true } = {}) 
       if (text.includes('\uFFFD')) return { drafts: [], errors: ['This CSV is not valid UTF-8. Export a UTF-8 holdings report.'] };
       const simple = parseHoldingsCsv(text);
       if (simple.holdings.length) {
-        if (simple.holdings.length > MAX_CHAT_DRAFTS)
-          return { drafts: [], handoffSource: 'csv', errors: [`This chat can confirm up to ${MAX_CHAT_DRAFTS} rows at once. The detailed review can preview this CSV (up to 200 holdings).`] };
+        if (simple.holdings.length > maxDrafts)
+          return { drafts: [], handoffSource: 'csv', errors: [`This chat can confirm up to ${maxDrafts} rows at once. The detailed review can preview this CSV (up to 200 holdings).`] };
         return { drafts: simple.holdings.map(row => ({ ...row, entryOrigin: 'simple_csv' })),
           errors: [], message: `Found ${simple.holdings.length} possible holding${simple.holdings.length === 1 ? '' : 's'} in the simple CSV. ${importAudit(simple.holdings)} The file stayed in this browser. Check the rows before confirming them. ${aiAvailable ? 'Asking AI about these drafts will send their names and values.' : 'Your questions here are answered in this browser without sending the rows.'}` };
       }
       const rows = parseBrokerCsvRows(text);
-      const broker = brokerDrafts(rows, 'broker_csv', true, aiAvailable);
+      const broker = brokerDrafts(rows, 'broker_csv', true, aiAvailable, maxDrafts);
       if (broker.errors.length && !simple.errors[0]?.startsWith('Missing required columns:')) return { drafts: [], errors: simple.errors };
       return broker;
     }
-    if (name.endsWith('.xlsx')) return brokerDrafts(await readBrokerWorkbook(file), 'broker_xlsx', false, aiAvailable);
+    if (name.endsWith('.xlsx')) return brokerDrafts(await readBrokerWorkbook(file), 'broker_xlsx', false, aiAvailable, maxDrafts);
     return { drafts: [], errors: ['Choose a CSV or XLSX holdings report.'] };
   } catch (error) {
     return { drafts: [], errors: [error?.message || 'This report could not be read in the browser.'] };
