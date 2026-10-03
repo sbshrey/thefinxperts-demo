@@ -311,6 +311,32 @@ export function answerReviewQuestion(question, { holdings, goal, source, coverag
       `${dateNote}${categoryNote}Fund constituents and holdings outside this review are not verified. These shares do not establish whether the mix suits your age, risk capacity or goal. ${coverageNote}`,
       selectedGoal ? '#goals' : '#holdings', selectedGoal ? 'Review this goal' : 'Inspect holdings');
   }
+  const topMatch = /\btop\s+(?:(?:three|3)\s+)?(holdings?|positions?|funds?|stocks?)\b/.exec(input);
+  if (topMatch) {
+    const selectedGoal = Boolean(goalScopeRequested);
+    if (selectedGoal) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const requested = topMatch[1];
+    const kind = /^fund/.test(requested) ? 'Mutual fund' : /^stock/.test(requested) ? 'Stock' : null;
+    const scope = kind === 'Mutual fund' ? 'mutual-fund' : kind === 'Stock' ? 'direct-stock' : 'holding';
+    const rows = valid.filter(row => !kind || row.type === kind).flatMap(row => {
+      const share = selectedGoal ? goalShare(goal, row.id) : 100;
+      return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+    });
+    if (!rows.length) return answer(`No ${scope} value is entered for this review scope.`,
+      selectedGoal ? `No ${scope} value is assigned to ${goal.name}.` : `No ${scope} row has a positive entered value.`,
+      'This does not establish what you own outside the entered review.', selectedGoal ? '#goals' : '#holdings', 'Check holdings');
+    const positions = positionsByIsin(rows).slice(0, 3);
+    const total = rows.reduce((sum, row) => sum + Number(row.value), 0);
+    const list = positions.map((position, index) =>
+      `#${index + 1} ${position.name} ${money(position.value)} (${percent(position.value, total)})`).join('; ');
+    const combined = positions.filter(position => position.entries > 1);
+    return answer(`${selectedGoal ? `For ${goal.name}, ` : lead}the largest ${positions.length} entered ${scope} ${positions.length === 1 ? 'position is' : 'positions are'} ${list}.`,
+      `Ranked ${rows.length} entered ${scope} rows by ${selectedGoal ? 'assigned' : 'entered'} value, using ${money(total)} as the denominator. ${combined.length ? `${combined.map(position => `${position.entries} rows sharing one supplied ISIN or fund house were grouped for ${position.name}`).join('; ')}. ` : ''}${result.asOfSummary}.`,
+      'These are supplied values with dates where entered. Fund constituents and investments outside this review are unknown, so the ranking does not establish underlying company concentration or suggest a trade.', selectedGoal ? '#goals' : '#holdings', 'Inspect these holdings');
+  }
   const asksFund = /\b(?:fund|funds|mutual fund|mutual funds)\b/.test(input);
   const asksStock = /\b(?:stock|stocks)\b/.test(input);
   if (/\b(?:biggest|largest|highest\s+(?:entered\s+)?value)\b/.test(input) && asksFund !== asksStock) {
