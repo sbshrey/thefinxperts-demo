@@ -1,6 +1,7 @@
 import { valuationDateIssue } from './analysis.mjs';
 import { goalShare } from './goals.mjs';
 import { confirmedGoalAssumptions } from './goal-scenario.mjs';
+import { unansweredCoverageFields } from './coverage-state.mjs';
 
 /** Choose one concrete next action for the selected goal, without scoring suitability. */
 export function chooseNextReviewStep({ source, holdings, goal, coverage }, today = new Date()) {
@@ -16,13 +17,15 @@ export function chooseNextReviewStep({ source, holdings, goal, coverage }, today
     kind: 'assignment', href: '#holdings', label: 'Link a holding to this goal →',
     text: 'No entered holding is assigned to the selected goal. Choose which holdings count toward it before reading its gap or mix.',
   };
-  if (!coverage) return {
+  const unanswered = unansweredCoverageFields(coverage);
+  if (unanswered.length) return {
     kind: 'coverage', href: '#coverage-details', label: 'Check what is included →',
-    text: 'Confirm whether these rows include all your mutual funds and direct stocks before reading portfolio percentages.',
+    text: `Coverage is not yet answered for ${unanswered.map(field => ({ mutualFunds: 'mutual funds',
+      directStocks: 'direct stocks', otherInvestments: 'other investments' })[field]).join(', ')}. Check these groups against current statements before treating the entered total as complete.`,
   };
   if (['some', 'unsure'].includes(coverage.mutualFunds) ||
       ['some', 'unsure'].includes(coverage.directStocks) ||
-      !coverage.otherInvestments || ['some', 'unsure'].includes(coverage.otherInvestments)) return {
+      ['some', 'unsure'].includes(coverage.otherInvestments)) return {
     kind: 'scope', href: '#input-choice', label: 'Add or check a source →',
     text: 'Your coverage answer says this snapshot may be incomplete. Compare another current fund, broker or other investment statement.',
   };
