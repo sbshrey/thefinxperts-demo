@@ -668,7 +668,7 @@ function renderGoalReview() {
   root.append(paragraph(`Snapshot scope: mutual funds ${coverageLabel(review.coverage?.mutualFunds)}; direct stocks ${coverageLabel(review.coverage?.directStocks)}; other investments ${coverageLabel(review.coverage?.otherInvestments)}. These are your answers, not verified account coverage. Goal figures use only confirmed holdings assigned here; missing investments are outside the calculation.`));
   root.append(paragraph(`${review.linkedCount} confirmed holding${review.linkedCount === 1 ? '' : 's'} assigned to this goal; ${review.dateCheckCount} need a valuation-date check. Other confirmed holdings are excluded from these goal figures.`));
   if (review.accessCheck.count) root.append(paragraph(
-    `${money(review.accessCheck.value)} in manually entered other investments is linked to this goal. The gap today includes that gross value; access at the goal date has not been checked.`));
+    `${money(review.accessCheck.value)} in manually entered other investments is linked to this goal. The gap today includes that gross value. If none of those amounts can be used for this goal, the gap in today's rupees would be ${money(review.gapIfOtherUnavailable)}. This is a what-if bound, not a finding that those amounts are locked; check their withdrawal or maturity terms. Future projections remain paused.`));
   if (review.mixPlan) {
     const heading = document.createElement('h4'); heading.textContent = 'Your chosen mix'; root.append(heading);
     if (review.mixComparison) {

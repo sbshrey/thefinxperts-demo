@@ -56,7 +56,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     ...(straightLineGap ? [`Simple monthly gap: ${rupees(straightLineGap.gapToday)} in today's rupees divided by ${straightLineGap.months} months = about ${rupees(straightLineGap.roundedMonthly)} per month, rounded up. This is division only, not an amount to invest or a forecast; inflation, returns, taxes, future contributions and missing holdings are excluded.`] :
       result.goalTotal && (result.goalDateCheck.count || result.goalAccessCheck.count) ?
         ['Simple monthly gap paused until linked value dates and withdrawal access are checked.'] : []),
-    ...(result.goalAccessCheck.count ? [`Gross gap includes ${rupees(result.goalAccessCheck.value)} in ${result.goalAccessCheck.count} linked other ${result.goalAccessCheck.count === 1 ? 'investment' : 'investments'} with no verified access date. Goal-date projection is paused; check product terms before treating this value as available for the goal.`] : []),
+    ...(result.goalAccessCheck.count ? [`Gross gap includes ${rupees(result.goalAccessCheck.value)} in ${result.goalAccessCheck.count} linked other ${result.goalAccessCheck.count === 1 ? 'investment' : 'investments'} with no verified access date. If none of those amounts can be used for this goal, the gap in today's rupees would be ${rupees(result.goalGapIfOtherUnavailable)}. This is a what-if bound, not proof that they are locked. Goal-date projection is paused; check product terms before treating this value as available for the goal.`] : []),
   ];
   if (monthsOfEssentials !== null) lines.push('', 'SEPARATE RESERVE CONTEXT',
     `Accessible money outside entered holdings: ${rupees(state.reserve.accessibleMoney)}`,

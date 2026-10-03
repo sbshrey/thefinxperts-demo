@@ -19,6 +19,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     ['all', 'none'].includes(coverage?.otherInvestments) ?
       'Coverage of all three investment groups is self reported and has not been verified.' :
       'This snapshot may omit investments you own. Check it against current statements.';
+  const otherAccessBound = result.goalAccessCheck?.count ?
+    ` If none of the ${money(result.goalAccessCheck.value)} in linked other investments can be used for this goal, the gap in today's rupees would be ${money(result.goalGapIfOtherUnavailable)}. Check their terms; this what-if does not establish that the money is locked.` : '';
   const answer = (text, basis, limitation, href = '#holdings', action = 'Check my holdings') =>
     ({ text, basis, limitation, href, action });
   const mentionsGoal = name => typeof name === 'string' && name.trim() &&
@@ -195,10 +197,15 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       return answer(`No entered holdings are assigned to ${goal.name} yet. Link and check the holdings you intend to count toward it.`,
         `Selected goal ${goal.name}; assigned value ₹0 against a ${money(goal.target)} target in today’s rupees.`,
         'An empty or unassigned review does not mean you have no savings.', '#holdings', 'Link a holding');
-    if (result.goalDateCheck.count || result.goalAccessCheck.count)
-      return answer(`I cannot judge whether ${goal.name} is on track from this snapshot. First check ${result.goalDateCheck.count ? `${result.goalDateCheck.count} assigned value date${result.goalDateCheck.count === 1 ? '' : 's'}` : 'the assigned value dates'}${result.goalAccessCheck.count ? `${result.goalDateCheck.count ? ' and ' : ''}access to ${money(result.goalAccessCheck.value)} of linked other investments` : ''}.`,
+    if (result.goalDateCheck.count || result.goalAccessCheck.count) {
+      const checks = [
+        result.goalDateCheck.count ? `${result.goalDateCheck.count} assigned value date${result.goalDateCheck.count === 1 ? '' : 's'}` : null,
+        result.goalAccessCheck.count ? `access to ${money(result.goalAccessCheck.value)} of linked other investments` : null,
+      ].filter(Boolean).join(' and ');
+      return answer(`I cannot judge whether ${goal.name} is on track from this snapshot. First check ${checks}.${otherAccessBound}`,
         `${money(result.goalTotal)} entered value is assigned against a ${money(goal.target)} target in today’s rupees; ${result.asOfSummary}.`,
         'Old or missing dates and withdrawal terms can change what is available at the goal date. This is not a retirement or suitability assessment.', '#holdings', 'Check linked holdings');
+    }
     const gap = calculateStraightLineGap(result.goalTotal, goal);
     if (!gap) return answer('Check the selected goal amount and horizon before comparing its entered value with the target.',
       `Selected goal ${goal.name}; current-gap arithmetic is unavailable.`,
@@ -608,7 +615,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       return answer('No entered holdings are assigned to the selected goal yet. Link holdings to compare their supplied value with the goal amount.',
         `Selected goal: ${goal?.name || 'unnamed'}; assigned value ${money(0)}.`,
         coverageNote, '#holdings', 'Link holdings');
-    return answer(`${lead}${money(result.goalTotal)} is assigned to ${goal.name} against your ${money(goal.target)} target today. The simple gap is ${money(result.goalGap)}.`,
+    return answer(`${lead}${money(result.goalTotal)} is assigned to ${goal.name} against your ${money(goal.target)} target today. The simple gap is ${money(result.goalGap)}.${otherAccessBound}`,
       `${money(goal.target)} target minus ${money(result.goalTotal)} assigned value; ${result.goalHoldingCount} linked holdings. ${result.asOfSummary}.`,
       'This gross comparison excludes future growth, inflation, taxes, and holdings outside the selected goal. Access to linked other investments at the goal date has not been checked. It uses entered values, not live prices.', '#goals', 'Review selected goal');
   }

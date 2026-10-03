@@ -25,6 +25,7 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
     calculateStraightLineGap(result.goalTotal, goal) : null;
   return { kind: 'confirmed', name: goal.name, age: goal.age, years: goal.years, target: goal.target,
     linkedValue: result.goalTotal, linkedCount: result.goalHoldingCount, gapToday: result.goalGap,
+    gapIfOtherUnavailable: result.goalGapIfOtherUnavailable,
     straightLineGap,
     coverage: portfolio.coverage || null, emergencyFunding: goal.emergencyFunding || null,
     dateCheckCount: result.goalDateCheck.count, accessCheck: result.goalAccessCheck,
