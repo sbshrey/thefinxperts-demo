@@ -62,6 +62,13 @@ export function validateImportMerge(existing, incoming) {
   const total = [...existing, ...incoming].reduce((sum, holding) => sum + Number(holding.value), 0);
   if (!Number.isFinite(total) || total > 1_000_000_000_000)
     return ['The combined portfolio value is too large.'];
+  return findImportMergeConflicts(existing, incoming).slice(0, 5).map(item => item.message);
+}
+
+/** Potential overlap with the saved review; never assume two matching rows are the same account position. */
+export function findImportMergeConflicts(existing, incoming) {
+  if (!Array.isArray(existing) || !Array.isArray(incoming)) return [];
+  const conflicts = [];
   for (const [index, added] of incoming.entries()) {
     let conflict = null;
     for (const current of existing) {
@@ -87,10 +94,9 @@ export function validateImportMerge(existing, incoming) {
         break;
       }
     }
-    if (conflict) errors.push(conflict);
-    if (errors.length >= 5) break;
+    if (conflict) conflicts.push({ index, message: conflict, holding: added });
   }
-  return errors;
+  return conflicts;
 }
 
 /** A manual row may be a separate account position, but an exact match needs investor confirmation. */

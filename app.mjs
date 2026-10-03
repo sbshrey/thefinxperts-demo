@@ -1,7 +1,7 @@
 import { analyzePortfolio, sampleHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs';
 import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs';
 import { suggestBrokerColumns, parseBrokerHoldingsRows } from './broker-xlsx.mjs';
-import { validateImportReview, validateImportMerge, possibleManualDuplicate, isRepeatedActiveStatement,
+import { validateImportReview, validateImportMerge, findImportMergeConflicts, possibleManualDuplicate, isRepeatedActiveStatement,
   planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs';
 import { prepareAssistantCasRefresh } from './assistant-refresh.mjs';
 import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs';
@@ -1354,6 +1354,27 @@ function showImportPreview(holdings, label, notices, performance = []) {
   });
 }
 
+const omitOverlapsButton = document.createElement('button');
+omitOverlapsButton.type = 'button';
+omitOverlapsButton.className = 'button button-outline';
+omitOverlapsButton.hidden = true;
+$('#merge-import').after(omitOverlapsButton);
+const omitOverlapsNote = document.createElement('p');
+omitOverlapsNote.className = 'form-hint';
+omitOverlapsNote.hidden = true;
+$('#merge-validation').after(omitOverlapsNote);
+omitOverlapsButton.addEventListener('click', () => {
+  if (!pendingImport || validateImportReview(pendingImport).length || state.source !== 'user') return;
+  const overlaps = findImportMergeConflicts(state.holdings, pendingImport);
+  if (!overlaps.length || overlaps.length === pendingImport.length) return;
+  const omittedValue = overlaps.reduce((sum, item) => sum + Number(item.holding.value), 0);
+  if (!window.confirm(`Leave out ${overlaps.length} matching ${overlaps.length === 1 ? 'row' : 'rows'} worth ${rupees(omittedValue)} and keep ${pendingImport.length - overlaps.length} for import? Matching ISINs, codes or names may be separate account positions. Check the original reports and use this only when those rows represent investments already in your review.`)) return;
+  const omitted = new Set(overlaps.map(item => item.index));
+  pendingImport = pendingImport.filter((_, index) => !omitted.has(index));
+  renderImportRows();
+  $('#live-status').textContent = `${overlaps.length} matching ${overlaps.length === 1 ? 'row was' : 'rows were'} left out of the preview. Check the remaining rows, then choose Add to my holdings.`;
+});
+
 function refreshImportSummary() {
   const count = pendingImport?.length || 0;
   const total = pendingImport?.reduce((sum, holding) => sum + Number(holding.value), 0) ?? 0;
@@ -1386,6 +1407,14 @@ function refreshImportSummary() {
   mergeButton.disabled = errors.length > 0 || mergeErrors.length > 0;
   mergeValidation.hidden = !canAdd || mergeErrors.length === 0;
   mergeValidation.textContent = mergeErrors.join(' ');
+  const overlaps = canAdd && !errors.length ? findImportMergeConflicts(state.holdings, pendingImport) : [];
+  omitOverlapsButton.hidden = !overlaps.length || overlaps.length === count || errors.length > 0;
+  omitOverlapsNote.hidden = omitOverlapsButton.hidden;
+  if (!omitOverlapsButton.hidden) {
+    const omittedValue = overlaps.reduce((sum, item) => sum + Number(item.holding.value), 0);
+    omitOverlapsButton.textContent = `Leave out ${overlaps.length} matching ${overlaps.length === 1 ? 'row' : 'rows'}`;
+    omitOverlapsNote.textContent = `${overlaps.length} matching ${overlaps.length === 1 ? 'row' : 'rows'} (${rupees(omittedValue)}) may already be included. Check they belong to the same positions before leaving them out. The remaining ${count - overlaps.length} ${count - overlaps.length === 1 ? 'row' : 'rows'} will stay in the preview for your review; nothing is imported yet.`;
+  }
   const repeated = label === 'Active Statement' && canAdd &&
     isRepeatedActiveStatement(state.holdings, pendingImport);
   const refresh = label === 'Active Statement' && canAdd && !repeated ?
