@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=5c6678584f85';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=5c6678584f85';
-import { reserveMonths } from './reserve.mjs?v=5c6678584f85';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=7c6562dc4330';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=7c6562dc4330';
+import { reserveMonths } from './reserve.mjs?v=7c6562dc4330';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=5c6678584f85';
-import { asksForAdvice } from './question-scope.mjs?v=5c6678584f85';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=5c6678584f85';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=5c6678584f85';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=5c6678584f85';
-import { parseAmount } from './assistant-clarify.mjs?v=5c6678584f85';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=5c6678584f85';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=7c6562dc4330';
+import { asksForAdvice } from './question-scope.mjs?v=7c6562dc4330';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=7c6562dc4330';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7c6562dc4330';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=7c6562dc4330';
+import { parseAmount } from './assistant-clarify.mjs?v=7c6562dc4330';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=7c6562dc4330';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=5c6678584f85';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=7c6562dc4330';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -368,6 +368,11 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('This browser review does not connect to a broker account. You can upload a supported holdings CSV or XLSX export, inspect the mapped rows and dates, and confirm only the holdings you recognize.',
       'The public site reads selected holdings files in this browser and has no broker login or account synchronization.',
       'An export is a dated snapshot; it may omit accounts or assets and does not update itself. Check its value columns and report date before confirmation.', '#report-help-dialog', 'Get a broker report');
+  if (/\b(?:sector|industry|industries|sectoral)\b/.test(input) &&
+      /\b(?:allocation|exposure|split|mix|breakdown|diversif\w*|concentration|holdings?|portfolio|funds?|stocks?)\b/.test(input))
+    return answer('I cannot calculate your sector allocation from these holdings. The entered Equity, Debt and Gold labels are broad asset classes, not sectors. To review sectors, I would need dated constituents for each exact fund scheme and a checked sector classification for direct stocks.',
+      `${valid.length} entered holding ${valid.length === 1 ? 'row has' : 'rows have'} broad asset labels; this review has no complete, dated sector look-through.`,
+      'Fund constituents and sector classifications can change. A broad Equity share must not be presented as a sector share.', '#holdings', 'Check scheme holdings');
   const reviewsHoldings = /\b(?:review|analy[sz]e|assess|improv\w*)\b/.test(input);
   const reviewsFunds = /\b(?:mutual funds?|funds?)\b/.test(input);
   const reviewsStocks = /\b(?:stocks?|shares?)\b/.test(input);
@@ -420,6 +425,11 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${valid.length} entered holding ${valid.length === 1 ? 'row' : 'rows'} contain current value snapshots, not an active mandate list or complete dated cash flows. ${goal?.confirmed === true ? `Selected goal ${goal.name}; monthly illustration input ${money(goal.monthlyContribution)}${goal.assumptionsChecked?.monthlyContribution === true ? ' confirmed' : ' unconfirmed'}.` : 'No confirmed selected-goal monthly input.'}`,
       `A scheduled mandate can differ from completed payments, and the selected goal’s monthly assumption is independent of either. ${coverageNote}`, '#holdings', 'Check SIP records');
   }
+  if (/\b(?:sips?|systematic investment plans?)\b/.test(input) &&
+      /\b(?:perform\w*|returns?|xirr|cagr|doing well|gains?|profit|loss(?:es)?|benchmark)\b/.test(input))
+    return answer('I cannot calculate how your SIPs have performed from a current holdings snapshot. SIP return or XIRR needs complete dated contributions, redemptions and distributions, plus a dated value for the units still held. Check those cash flows across the relevant accounts and periods first.',
+      `${valid.length} entered current holding ${valid.length === 1 ? 'value' : 'values'}; no complete dated SIP cash-flow history or active mandate list is held in this browser review.`,
+      'A statement-period SIP purchase subtotal does not establish lifetime invested amount, current mandate status, return or benchmark performance.', '#holdings', 'Check SIP history');
   const sourceQuestion = /\b(?:which|what|show|list)\b.{0,70}\b(?:sources?|statements?|reports?)\b.{0,50}\b(?:used|included|behind|for|in)\b/.test(input) ||
     /\bwhere\b.{0,60}\b(?:values?|holdings?|numbers?)\b.{0,30}\b(?:from|come from)\b/.test(input) ||
     /\b(?:sources?|origins?|provenance) of (?:my|the|these) (?:portfolio|holdings?|values?|review)\b/.test(input) ||
@@ -934,7 +944,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${rupeesWithPaise(change.coveredValue)} entered current value minus ${rupeesWithPaise(change.invested)} entered cost for the covered positions; value dates ${change.earliestValueDate}${change.latestValueDate !== change.earliestValueDate ? ` to ${change.latestValueDate}` : ''}. ${change.missingCount} ${change.missingCount === 1 ? 'row' : 'rows'} excluded${change.costAfterValueCount ? `, including ${change.costAfterValueCount} with cost checked after the value date` : ''}.`,
       'This is not total lifetime profit or an annual return. It excludes sold positions, cash distributions, taxes, exit loads, rows without checked cost or dated value, and cost checked after the value date.', '#holdings', 'Check covered holdings');
   }
-  if (/\b(nav|share price|stock price|market price|live quote|live price|today.{0,25}(?:price|nav|value)|latest.{0,25}(?:price|nav|value))\b/.test(input)) {
+  if (/\b(nav|share price|stock price|market price|live quote|live price|ltp|(?:current|today(?:’s|'s)?|latest).{0,25}(?:price|nav|quote|ltp))\b/.test(input)) {
     const fund = valid.find(row => row.type === 'Mutual fund' && row.granularity !== 'fund_house' && row.units);
     return answer('I do not have a live market feed here. Use a dated value from your broker or fund statement, then update the holding in this browser.' +
       (fund ? ` If you checked the exact scheme NAV and still own its ${fund.units} statement units, say “set NAV of holding ${holdings.indexOf(fund) + 1} to ₹125.4321 as of YYYY-MM-DD” to preview a dated estimate.` : ''),
