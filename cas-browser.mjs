@@ -6,7 +6,7 @@ export async function previewBrowserCas(file, password = '') {
     return { holdings: [], errors: ['Check the CAS PDF password.'] };
   const bytes = await file.arrayBuffer();
   return new Promise(resolve => {
-    const worker = new Worker(new URL('./cas-browser-worker.mjs?v=a2287436b17d', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./cas-browser-worker.mjs?v=10feab84c0de', import.meta.url), { type: 'module' });
     let settled = false;
     const finish = result => {
       if (settled) return;

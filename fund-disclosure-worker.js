@@ -1,4 +1,4 @@
-importScripts('./vendor/read-excel-file/read-excel-file.min.js?v=a2287436b17d');
+importScripts('./vendor/read-excel-file/read-excel-file.min.js?v=10feab84c0de');
 
 const schemeName = value => String(value ?? '').trim().replace(/^IB\d{2}-/i, '')
   .replace(/\s*[-–—]\s*(?:direct|regular)\s+plan\b.*$/i, '')
