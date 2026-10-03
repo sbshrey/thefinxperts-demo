@@ -13,7 +13,7 @@ import { prepareAssistantCasDrafts } from './assistant-cas.mjs';
 import { analyzePortfolio, valuationDateIssue, valuationRowsNeedingCheck } from './analysis.mjs';
 import { buildReadableReport } from './readable-report.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
-import { parseReviewBackup } from './review-backup.mjs';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs';
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
@@ -2009,6 +2009,27 @@ $('#download-readable-review')?.addEventListener('click', () => {
   }
   downloadPrivateFile(report, 'text/plain;charset=utf-8', 'thefinxperts-readable-review.txt');
   say('note', 'Readable report downloaded. Keep it private; it contains holdings and values. Save a separate review file if you want to restore this work later.');
+});
+
+$('.detailed-link')?.addEventListener('click', event => {
+  const portfolio = state.account?.portfolio;
+  if (!browserOnly || !portfolio?.holdings?.length || typeof BroadcastChannel === 'undefined') return;
+  const token = crypto.randomUUID();
+  const channel = new BroadcastChannel(`thefinxperts-review-handoff-${token}`);
+  let sent = false;
+  const timeout = setTimeout(() => channel.close(), 15_000);
+  channel.onmessage = ({ data }) => {
+    if (data?.type === 'ready' && !sent) {
+      sent = true;
+      channel.postMessage({ type: 'portfolio', portfolio: buildReviewBackup(portfolio) });
+    } else if (data?.type === 'received') {
+      clearTimeout(timeout);
+      channel.close();
+    }
+  };
+  const destination = new URL('./detailed-review.html', location.href);
+  destination.hash = `handoff=${token}`;
+  event.currentTarget.href = destination.href;
 });
 
 $('#download-tab-review')?.addEventListener('click', () => {

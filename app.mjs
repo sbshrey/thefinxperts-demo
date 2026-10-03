@@ -324,6 +324,7 @@ function syncGoalSelector() {
 }
 
 function render() {
+  $('#hero-review-link').textContent = state.source === 'demo' ? 'Explore the fictional example' : 'Explore your entered review';
   $('#holding-date').max = indiaToday();
   syncGoalSelector();
   const needsGoalConfirmation = state.source !== 'demo' && state.goal.confirmed === false;
@@ -2159,4 +2160,34 @@ render();
 showInputMode('manual');
 const requestedImport = new URLSearchParams(window.location.search).get('import');
 if (['active', 'broker', 'csv', 'cas'].includes(requestedImport)) showInputMode(requestedImport);
+const handoffToken = /^#handoff=([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(location.hash)?.[1];
+if (handoffToken) {
+  history.replaceState(null, '', location.pathname + location.search);
+  clearCurrentReview();
+  showRestoreStatus('Opening the confirmed holdings from your guided review…');
+  if (typeof BroadcastChannel === 'undefined') showRestoreStatus('This browser could not transfer the review. Open a saved review file here instead.');
+  else {
+    const channel = new BroadcastChannel(`thefinxperts-review-handoff-${handoffToken}`);
+    const timeout = setTimeout(() => {
+      channel.close();
+      showRestoreStatus('The guided review did not respond. Open a saved review file here instead.');
+    }, 15_000);
+    channel.onmessage = ({ data }) => {
+      if (data?.type !== 'portfolio') return;
+      try {
+        const parsed = parseReviewBackup(JSON.stringify(data.portfolio));
+        if (parsed.errors.length) throw new Error('Invalid review');
+        applyPortfolio(parsed.portfolio);
+        showRestoreStatus('Your confirmed guided review is open here. Changes on this page stay in this tab; download a review file to keep them.');
+        channel.postMessage({ type: 'received' });
+      } catch {
+        showRestoreStatus('The guided review could not be opened. Open a saved review file here instead.');
+      } finally {
+        clearTimeout(timeout);
+        channel.close();
+      }
+    };
+    channel.postMessage({ type: 'ready' });
+  }
+}
 initAccount();
