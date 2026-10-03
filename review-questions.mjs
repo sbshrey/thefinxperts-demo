@@ -136,6 +136,38 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser.',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  const portfolioRiskQuestion = /\b(?:risks?|risky|safe|volatile|volatility)\b/.test(input) &&
+    (/\b(?:portfolio|holdings|investments|asset mix|allocation)\b/.test(input) ||
+      /\bam i taking too much risk\b/.test(input)) &&
+    !/\b(?:fall|falls|drop|drops|stress|what if)\b/.test(input);
+  if (portfolioRiskQuestion) {
+    if (!valid.length) return answer('Add and confirm at least one holding with a value and valuation date before I can describe your entered portfolio exposure.',
+      'No positive confirmed holding value is entered.',
+      'This cannot establish your personal risk capacity or whether an investment is safe.', '#holdings', 'Add a holding');
+    const scoped = Boolean(goalScopeRequested);
+    if (scoped) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const rows = scoped ? valid.flatMap(row => {
+      const share = goalShare(goal, row.id);
+      return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+    }) : valid;
+    const total = scoped ? result.goalTotal : result.total;
+    const assets = scoped ? result.goalAssets : result.assets;
+    const largest = (scoped ? result.topGoalPositions : result.topPositions)[0];
+    const dateChecks = valuationRowsNeedingCheck(rows, today);
+    const summary = scoped ? `For ${goal.name}, the assigned holdings` : `${lead}the entered holdings`;
+    return answer(`${summary} are labelled Equity ${percent(assets.Equity, total)}, Debt ${percent(assets.Debt, total)}, Gold ${percent(assets.Gold, total)} and Other ${percent(assets.Other, total)}. ` +
+      `The largest entered position is ${largest.name} at ${percent(largest.value, total)} of ${scoped ? 'assigned' : 'entered'} value. ` +
+      `${dateChecks.length ? `${dateChecks.length} ${dateChecks.length === 1 ? 'value date needs' : 'value dates need'} a check. ` : ''}` +
+      `${assets.Other ? `${money(assets.Other)} has an unresolved asset label. ` : ''}` +
+      'These are exposure checks; they cannot tell whether you are taking too much risk.',
+      `Equity ${money(assets.Equity)}, Debt ${money(assets.Debt)}, Gold ${money(assets.Gold)}, Other ${money(assets.Other)} ÷ ${money(total)} ${scoped ? 'assigned' : 'entered'} value. ` +
+      `${money(largest.value)} ÷ ${money(total)} for the largest grouped position. ${result.asOfSummary}.`,
+      `Fund constituents, other risks and holdings outside this review are not verified. A fund-house summary can contain several schemes. This is not a risk score, safety or suitability verdict, or allocation or trade instruction. ${coverageNote}`,
+      scoped ? '#goals' : '#holdings', scoped ? 'Review this goal' : 'Inspect holdings');
+  }
   if (/\b(?:largest|biggest|top)\s+(?:holding|position)\b/.test(input) &&
       /\b(?:fall|falls|fell|drop|drops|dropped|halve|halves|halved)\b/.test(input)) {
     const scoped = Boolean(goalScopeRequested);
