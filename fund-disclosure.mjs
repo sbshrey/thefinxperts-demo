@@ -96,7 +96,7 @@ export function parseFundDisclosureRows(rows,
 /** Observed shared listed equity, not complete scheme overlap or net derivative exposure. */
 export function compareFundDisclosures(first, second) {
   if (!first || !second || first.scope !== 'listed_equity' || second.scope !== 'listed_equity' ||
-      first.scheme === second.scheme && first.amc === second.amc) return null;
+      disclosureSchemeKey(first) === disclosureSchemeKey(second)) return null;
   const byIsin = new Map(second.securities.map(row => [row.isin, row]));
   const common = first.securities.flatMap(row => {
     const other = byIsin.get(row.isin);
@@ -115,6 +115,10 @@ function baseScheme(value) {
     .replace(/\s+(?:direct|regular)\s+plan\b.*$/, '')
     .replace(/\s*[-–—]\s*(?:growth|idcw)(?:\s+option)?\s*$/, '')
     .replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+export function disclosureSchemeKey(item) {
+  return `${cell(item?.amc).toLocaleLowerCase('en-IN')}:${baseScheme(item?.scheme)}`;
 }
 
 /** Candidate saved scheme rows; a person must still check the exact scheme and plan. */
@@ -143,7 +147,14 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
   if (!Array.isArray(holdings) || !Array.isArray(disclosures)) return null;
   const rows = holdings.filter(row => Number.isFinite(row?.value) && row.value > 0);
   const total = rows.reduce((sum, row) => sum + row.value, 0);
-  const matched = disclosures.flatMap(disclosure => {
+  const latestByScheme = new Map();
+  for (const disclosure of disclosures) {
+    if (disclosure?.scope !== 'listed_equity' || !validValueDate(disclosure.asOf, todayIso)) continue;
+    const key = disclosureSchemeKey(disclosure);
+    const previous = latestByScheme.get(key);
+    if (!previous || disclosure.asOf > previous.asOf) latestByScheme.set(key, disclosure);
+  }
+  const matched = [...latestByScheme.values()].flatMap(disclosure => {
     const match = disclosure?.scope === 'listed_equity' && validValueDate(disclosure.asOf, todayIso) ?
       matchFundDisclosure(disclosure, rows) : null;
     return match ? [{ disclosure, holdings: match.matches.filter(row =>
