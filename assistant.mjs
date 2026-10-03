@@ -302,6 +302,11 @@ function sayDetailedHandoff(message, source) {
   item.append(document.createTextNode('\n'), link);
 }
 
+function unclassifiedDematDrafts() {
+  return state.drafts.filter(row => row.entryOrigin === 'demat_cas' &&
+    row.type === 'Other' && row.asset === 'Other');
+}
+
 function renderDrafts() {
   const box = $('#drafts');
   box.hidden = !state.drafts.length;
@@ -312,6 +317,11 @@ function renderDrafts() {
   omitButton.hidden = !matches.length;
   omitButton.disabled = state.busy;
   omitButton.textContent = `Leave out ${matches.length} matching ${matches.length === 1 ? 'row' : 'rows'}`;
+  const dematButton = $('#demat-drafts-stock');
+  const unclassifiedDemat = unclassifiedDematDrafts();
+  dematButton.hidden = !unclassifiedDemat.length;
+  dematButton.disabled = state.busy;
+  dematButton.textContent = `Mark ${unclassifiedDemat.length} checked demat ${unclassifiedDemat.length === 1 ? 'row' : 'rows'} as direct stocks`;
   if (!state.drafts.length) return;
   const matchesByIndex = new Map(matches.map(match => [match.index, match]));
   const list = document.createElement('ul');
@@ -326,6 +336,8 @@ function renderDrafts() {
   $('#draft-help').textContent = matches.length ?
     `${matches.length} ${matches.length === 1 ? 'row may' : 'rows may'} already be counted. Check both sources and account positions before leaving them out. ${nextDraftQuestion(state.drafts) || ''}` :
     nextDraftQuestion(state.drafts) || 'Check these against your source before using them in the dashboard.';
+  if (unclassifiedDemat.length)
+    $('#draft-help').textContent += ' If every unclassified demat row is an ordinary company share, use the checked-rows button after checking the original statement.';
   $('#confirm-drafts').disabled = state.busy || state.drafts.some(row =>
     !Number.isFinite(row.value) || row.value <= 0 || row.type === 'Other' ||
     (row.type === 'Stock' && row.asset !== 'Equity'));
@@ -1524,6 +1536,17 @@ $('#omit-matching-drafts').addEventListener('click', () => {
   state.drafts = state.drafts.filter((_, index) => !omitted.has(index));
   renderDrafts();
   say('note', `${matches.length} matching ${matches.length === 1 ? 'row was' : 'rows were'} left out of the unconfirmed list. ${remaining ? `${remaining} ${remaining === 1 ? 'row remains' : 'rows remain'} for checking and confirmation.` : 'No drafts remain.'} Saved holdings have not changed.`);
+});
+
+$('#demat-drafts-stock').addEventListener('click', () => {
+  if (state.busy) return;
+  const rows = unclassifiedDematDrafts();
+  if (!rows.length || !window.confirm(`Have you checked all ${rows.length} unclassified demat ${rows.length === 1 ? 'row' : 'rows'} in the original statement and confirmed they are ordinary company shares? ETFs, REITs and other securities need individual review. No holdings will be imported yet.`)) return;
+  const selected = new Set(rows);
+  state.drafts = state.drafts.map(row => selected.has(row) ?
+    { ...row, type: 'Stock', asset: 'Equity' } : row);
+  renderDrafts();
+  say('note', `${rows.length} checked demat ${rows.length === 1 ? 'row is' : 'rows are'} now labelled direct stocks in this preview. No holdings were added; check the list before choosing Use these holdings.`);
 });
 
 $('#discard-drafts').addEventListener('click', () => {
