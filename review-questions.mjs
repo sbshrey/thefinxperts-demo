@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=6a8ceab83386';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=6a8ceab83386';
-import { reserveMonths } from './reserve.mjs?v=6a8ceab83386';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=af3d6af286d2';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=af3d6af286d2';
+import { reserveMonths } from './reserve.mjs?v=af3d6af286d2';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=6a8ceab83386';
-import { asksForAdvice } from './question-scope.mjs?v=6a8ceab83386';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=6a8ceab83386';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=6a8ceab83386';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=6a8ceab83386';
-import { parseAmount } from './assistant-clarify.mjs?v=6a8ceab83386';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=6a8ceab83386';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=af3d6af286d2';
+import { asksForAdvice } from './question-scope.mjs?v=af3d6af286d2';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=af3d6af286d2';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=af3d6af286d2';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=af3d6af286d2';
+import { parseAmount } from './assistant-clarify.mjs?v=af3d6af286d2';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=af3d6af286d2';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=6a8ceab83386';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=af3d6af286d2';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -233,7 +233,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'Start by confirming one goal’s amount in today’s rupees and when you need it, along with your current age.' :
       !result.goalTotal ? `For ${goal.name}, next choose which entered holdings you intend to count toward it.` :
         `For ${goal.name}, first check the value dates and labels of the holdings you count toward it.`;
-    return answer(`A target mix depends on your goal, time horizon, ability to bear a loss and need for access to the money. ${next} Consider whether a nearer essential expense could use these holdings and test a fall you choose against a loss you could afford. Then compare a mix you choose with the entered mix; you can ask “How diversified is my goal?” and enter your own target mix to see the difference.`,
+    return answer(`A target mix depends on your goal, time horizon, ability to bear a loss and need for access to the money. ${next} Consider whether a nearer essential expense could use these holdings and test a fall you choose against a loss you could afford. Then compare a mix you choose with the entered mix. If you already chose percentages, say “my chosen mix is” and name each category; I will show them for confirmation. You can also ask “How diversified is my goal?” to see the current assigned mix.`,
       `SEBI's investor education names goals, horizon, risk appetite, liquidity and diversification as factors in asset allocation. ${goal?.confirmed === true ? `The selected goal ${goal.name} has a confirmed horizon${result.goalTotal ? ' and assigned value' : ' but no assigned value'}.` : 'No confirmed selected goal facts were used.'} No target percentages were calculated.`,
       'This is a self-directed checklist. It does not choose percentages, funds or trades, and a holdings snapshot cannot establish your full circumstances or risk capacity.',
       'https://investor.sebi.gov.in/investment-thingsbeforeinv.html', 'Read SEBI allocation factors');
@@ -941,7 +941,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'No portfolio calculation is available yet.', '#input-choice', 'Choose an input');
   }
   if (/\b(?:goal|target|chosen) mix\b|\b(?:mix|allocation)\b.{0,30}\b(?:compare|difference|plan)\b/.test(input)) {
-    if (!goal?.targetMix) return answer('You have not entered a chosen mix for this goal. If you already have one, say “goal mix 60% equity, 30% debt, 10% gold” and confirm it. I cannot choose percentages for you.',
+    if (!goal?.targetMix) return answer('You have not entered a chosen mix for this goal. If you already have one, say “my chosen mix is” followed by percentages for the categories you chose (Equity, Debt, Gold or Other), totalling 100%, then confirm the preview. I cannot choose percentages for you.',
       'No chosen mix is saved on the selected goal.',
       'Age and time horizon alone do not establish a suitable allocation.', '#goals', 'Review selected goal');
     const plan = goal.targetMix;
