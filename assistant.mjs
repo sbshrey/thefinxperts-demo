@@ -733,7 +733,7 @@ function renderReview() {
     ask.textContent = 'Review this holding';
     ask.addEventListener('click', () => {
       if (state.busy || $('#message').value.trim() || state.file || state.drafts.length || state.goalFacts ||
-          state.reserveFacts || state.correction || state.refresh || state.pendingGoalName || state.coverageQueue) {
+          state.reserveFacts || state.correction || state.refresh) {
         say('note', 'Finish the pending review change, or send or clear your draft message or file, before opening a holding review.'); return;
       }
       if (mobileReview.matches) setReviewExpanded(false);
