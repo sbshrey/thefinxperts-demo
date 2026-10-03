@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=af3d6af286d2';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=af3d6af286d2';
-import { reserveMonths } from './reserve.mjs?v=af3d6af286d2';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=80cb7fde6994';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=80cb7fde6994';
+import { reserveMonths } from './reserve.mjs?v=80cb7fde6994';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=af3d6af286d2';
-import { asksForAdvice } from './question-scope.mjs?v=af3d6af286d2';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=af3d6af286d2';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=af3d6af286d2';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=af3d6af286d2';
-import { parseAmount } from './assistant-clarify.mjs?v=af3d6af286d2';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=af3d6af286d2';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=80cb7fde6994';
+import { asksForAdvice } from './question-scope.mjs?v=80cb7fde6994';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=80cb7fde6994';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=80cb7fde6994';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=80cb7fde6994';
+import { parseAmount } from './assistant-clarify.mjs?v=80cb7fde6994';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=80cb7fde6994';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=af3d6af286d2';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=80cb7fde6994';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';

@@ -1,42 +1,42 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=af3d6af286d2';
-import { previewBrowserCas } from './cas-browser.mjs?v=af3d6af286d2';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=af3d6af286d2';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=af3d6af286d2';
-import { goalShare } from './goals.mjs?v=af3d6af286d2';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=80cb7fde6994';
+import { previewBrowserCas } from './cas-browser.mjs?v=80cb7fde6994';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=80cb7fde6994';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=80cb7fde6994';
+import { goalShare } from './goals.mjs?v=80cb7fde6994';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=af3d6af286d2';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=af3d6af286d2';
-import { previewAssistantImport } from './assistant-import.mjs?v=af3d6af286d2';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=af3d6af286d2';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=af3d6af286d2';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=80cb7fde6994';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=80cb7fde6994';
+import { previewAssistantImport } from './assistant-import.mjs?v=80cb7fde6994';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=80cb7fde6994';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=80cb7fde6994';
 import { analyzePortfolio, sampleHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=af3d6af286d2';
-import { buildReadableReport } from './readable-report.mjs?v=af3d6af286d2';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=af3d6af286d2';
-import { parseReviewBackup } from './review-backup.mjs?v=af3d6af286d2';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=af3d6af286d2';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=af3d6af286d2';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=af3d6af286d2';
-import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=af3d6af286d2';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=80cb7fde6994';
+import { buildReadableReport } from './readable-report.mjs?v=80cb7fde6994';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=80cb7fde6994';
+import { parseReviewBackup } from './review-backup.mjs?v=80cb7fde6994';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=80cb7fde6994';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=80cb7fde6994';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=80cb7fde6994';
+import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=80cb7fde6994';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=af3d6af286d2';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=80cb7fde6994';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=af3d6af286d2';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=af3d6af286d2';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=80cb7fde6994';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=80cb7fde6994';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=af3d6af286d2';
-import { validReserve, reserveMonths } from './reserve.mjs?v=af3d6af286d2';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=80cb7fde6994';
+import { validReserve, reserveMonths } from './reserve.mjs?v=80cb7fde6994';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=af3d6af286d2';
-import { validShares } from './stock-estimate.mjs?v=af3d6af286d2';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=af3d6af286d2';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=af3d6af286d2';
-import { inflationContext } from './market-context.mjs?v=af3d6af286d2';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=af3d6af286d2';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=80cb7fde6994';
+import { validShares } from './stock-estimate.mjs?v=80cb7fde6994';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=80cb7fde6994';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=80cb7fde6994';
+import { inflationContext } from './market-context.mjs?v=80cb7fde6994';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=80cb7fde6994';
 import { compareFundDisclosures, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=af3d6af286d2';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=80cb7fde6994';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -372,7 +372,7 @@ function resumeCoverageQuestions(portfolio) {
   return askCoverageGroup();
 }
 
-function nextGoalSetupQuestion(portfolio) {
+function nextGoalSetupQuestion(portfolio, { continueProjection = false } = {}) {
   const goal = portfolio?.goals?.find(item => item.id === portfolio.activeGoalId);
   if (!goal) return null;
   if (!goal.confirmed)
@@ -382,19 +382,20 @@ function nextGoalSetupQuestion(portfolio) {
   if (portfolio.goals.length === 1 && portfolio.holdings.some(row =>
     row.id && !goal.linkedIds?.includes(row.id)))
     return `Some confirmed holdings are not counted toward ${goal.name}. If they all belong to this goal, say “count all holdings toward this goal”. I will ask you to confirm before changing the goal comparison.`;
-  if (goal.assumptionsChecked?.monthlyContribution !== true)
-    return `For ${goal.name}, how much do you plan to add at each month’s end? Say “monthly contribution ₹5,000” with your own amount, including ₹0 if that is your deliberate choice. I will ask you to confirm it before using a future illustration.`;
-  if (goal.assumptionsChecked?.returnPct !== true)
-    return `What annual growth rate would you like to test for ${goal.name}? Say “growth assumption 0%” with your own rate from -20% to 13%. This is a what-if input, not an expected return.`;
-  if (goal.assumptionsChecked?.inflationPct !== true)
-    return `What annual inflation rate would you like to test for ${goal.name}? Say “inflation assumption 0%” with your own rate from -5% to 15%. This is a what-if input, not a forecast.`;
-  if (!goal.targetMix)
-    return `If you have already chosen an asset mix for ${goal.name}, say “my chosen mix is” followed by percentages for the categories you chose (Equity, Debt, Gold or Other), totalling 100%. I will show them for confirmation before comparing with linked holdings; I cannot choose them for you.`;
-  return 'Ask “What should I check first?” to see the highest-priority factual review item for these holdings and this goal.';
+  if (continueProjection) {
+    if (goal.assumptionsChecked?.monthlyContribution !== true)
+      return `For an optional future illustration of ${goal.name}, what monthly amount do you plan to add? Say “monthly contribution” with your own amount, including ₹0 if deliberate.`;
+    if (goal.assumptionsChecked?.returnPct !== true)
+      return `What annual growth rate would you like to test for ${goal.name}? Say “growth assumption” with your own rate from -20% to 13%. This is a what-if input, not an expected return.`;
+    if (goal.assumptionsChecked?.inflationPct !== true)
+      return `What annual inflation rate would you like to test for ${goal.name}? Say “inflation assumption” with your own rate from -5% to 15%. This is a what-if input, not a forecast.`;
+    return `The optional future illustration for ${goal.name} has all three inputs you chose. Ask “What is my future goal gap?” to inspect its calculation and limits.`;
+  }
+  return `For ${goal.name}, ask “What should I check first?” for the leading source check or “How diversified is my goal?” for the assigned mix. A future illustration and a chosen asset mix are optional.`;
 }
 
-function sayGoalSetupQuestion(portfolio) {
-  const question = nextGoalSetupQuestion(portfolio);
+function sayGoalSetupQuestion(portfolio, options) {
+  const question = nextGoalSetupQuestion(portfolio, options);
   if (!question) return false;
   const item = say('assistant', question);
   const goal = portfolio?.goals?.find(row => row.id === portfolio.activeGoalId);
@@ -1095,7 +1096,7 @@ function renderGoalReview() {
   if (review.scenarioStatus === 'assumptions') {
     const names = { monthlyContribution: 'monthly contribution', returnPct: 'annual growth assumption',
       inflationPct: 'annual inflation assumption' };
-    root.append(paragraph(`Future illustration paused until you confirm your ${review.missingAssumptions.map(field => names[field]).join(', ')}. In chat, use “monthly contribution ₹5,000”, “growth assumption 0%” and “inflation assumption 0%” with values you choose. A zero is valid when you deliberately choose it.`));
+    root.append(paragraph(`Optional future illustration paused until you confirm your ${review.missingAssumptions.map(field => names[field]).join(', ')}. Ask “What is my future goal gap?” to see what it needs, then give your own monthly contribution, growth and inflation assumptions in chat. A zero is valid when you deliberately choose it.`));
   } else if (review.scenarioStatus === 'no_holdings') {
     root.append(paragraph('Future illustration paused until a confirmed holding is linked to this goal.'));
   } else if (review.scenarioStatus === 'valuation_dates') {
@@ -1559,7 +1560,7 @@ $('#cas-preview').addEventListener('click', async () => {
       const active = await previewActiveStatementFile(state.file, password);
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=af3d6af286d2');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=80cb7fde6994');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1594,7 +1595,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=af3d6af286d2');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=80cb7fde6994');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -1657,7 +1658,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=af3d6af286d2');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=80cb7fde6994');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1665,7 +1666,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=af3d6af286d2');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=80cb7fde6994');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2161,7 +2162,7 @@ $('#confirm-goal').addEventListener('click', async () => {
     say('note', goal.confirmed ? `Goal facts ${browserOnly ? 'added to this tab' : 'saved to your account'}. The goal review has been recalculated.` :
       'Goal facts saved as an unfinished draft. Share the remaining details when you are ready.');
     if (browserOnly && goal.confirmed && (completingGoalSetup || confirmingFutureAssumption)) {
-      sayGoalSetupQuestion(state.account?.portfolio);
+      sayGoalSetupQuestion(state.account?.portfolio, { continueProjection: confirmingFutureAssumption });
     }
   } catch (error) { say('note', error.message || 'The goal save failed. Your draft is still here.'); }
   finally { state.busy = false; renderGoalDraft(); renderCredits(); renderGoalReview(); }

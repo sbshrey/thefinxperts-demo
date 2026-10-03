@@ -1,4 +1,4 @@
-import { parseAmount } from './assistant-clarify.mjs?v=af3d6af286d2';
+import { parseAmount } from './assistant-clarify.mjs?v=80cb7fde6994';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -248,11 +248,5 @@ export function nextBrowserGoalQuestion(goal, pending = {}) {
   if (goal.age == null && pending.age == null) return 'How old are you now? Reply “I’m 32”, or give all three facts together: “I am 32, goal in 20 years, target 50 lakh in today’s rupees”.';
   if (goal.years == null && pending.years == null) return 'How many years until this goal? You can reply “I need it in 10 years”.';
   if (goal.target == null && pending.target == null) return 'What amount would you need in today’s rupees? You can reply “I need ₹50 lakh in today’s rupees”.';
-  if (!goal.assumptionsChecked?.monthlyContribution && pending.monthlyContribution === undefined)
-    return 'Optional for a future illustration: what monthly amount do you plan to add? Reply “monthly contribution ₹5,000” or “monthly contribution 0”.';
-  if (!goal.assumptionsChecked?.returnPct && pending.returnPct === undefined)
-    return 'Optional: what annual growth assumption do you want to test? Reply “growth assumption 0%” for a no-growth baseline, or choose your own rate.';
-  if (!goal.assumptionsChecked?.inflationPct && pending.inflationPct === undefined)
-    return 'Optional: what annual inflation assumption do you want to test? Reply “inflation assumption 0%” for a fixed-cost baseline, or choose your own rate.';
-  return 'Check the goal facts shown above, then choose “Save goal facts”.';
+  return 'Check the goal facts shown above, then choose “Save goal facts”. A future illustration and a chosen asset mix are optional later.';
 }
