@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=954e027eb635';
-import { compareMixPlan } from './mix-plan.mjs?v=954e027eb635';
-import { goalShare } from './goals.mjs?v=954e027eb635';
-import { reserveMonths } from './reserve.mjs?v=954e027eb635';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=954e027eb635';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits } from './goal-scenario.mjs?v=90f9fcc4d7d8';
+import { compareMixPlan } from './mix-plan.mjs?v=90f9fcc4d7d8';
+import { goalShare } from './goals.mjs?v=90f9fcc4d7d8';
+import { reserveMonths } from './reserve.mjs?v=90f9fcc4d7d8';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=90f9fcc4d7d8';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -75,6 +75,9 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   let costCoveredValue = 0;
   let annualCostIllustration = 0;
   let costCoveredCount = 0;
+  const fundTerDates = [];
+  let oldTerValue = 0;
+  let oldTerCount = 0;
   const fundPlans = { Direct: 0, Regular: 0, Unclear: 0 };
 
   for (const holding of valid) {
@@ -91,6 +94,11 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
         costCoveredValue += value;
         annualCostIllustration += value * holding.expenseRatioPct / 100;
         costCoveredCount++;
+        fundTerDates.push(holding.expenseRatioAsOf);
+        if (valuationDateIssue(holding.expenseRatioAsOf, today) === 'stale') {
+          oldTerValue += value;
+          oldTerCount++;
+        }
       }
     }
     if (holding.exposure) {
@@ -113,7 +121,10 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   const largestIssuer = [...issuers.entries()].sort((a, b) => b[1] - a[1])[0] || null;
   const fundCost = { coveredValue: costCoveredValue, uncoveredValue: fundHouses.fundValue - costCoveredValue,
     coveredCount: costCoveredCount, annualIllustration: annualCostIllustration,
-    weightedPct: costCoveredValue ? annualCostIllustration / costCoveredValue * 100 : null };
+    weightedPct: costCoveredValue ? annualCostIllustration / costCoveredValue * 100 : null,
+    oldestTerDate: fundTerDates.length ? fundTerDates.sort()[0] : null,
+    newestTerDate: fundTerDates.length ? fundTerDates.at(-1) : null,
+    oldTerValue, oldTerCount };
   const largestIssuerSources = largestIssuer ? issuerSources.get(largestIssuer[0]) : null;
   const largestAmc = fundHouses.largest;
   const dated = valid.map(h => h.asOf).filter(date => parseValuationDate(date));

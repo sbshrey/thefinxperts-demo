@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=954e027eb635';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=954e027eb635';
-import { reserveMonths } from './reserve.mjs?v=954e027eb635';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=90f9fcc4d7d8';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=90f9fcc4d7d8';
+import { reserveMonths } from './reserve.mjs?v=90f9fcc4d7d8';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=954e027eb635';
-import { asksForAdvice } from './question-scope.mjs?v=954e027eb635';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=954e027eb635';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=954e027eb635';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=954e027eb635';
-import { parseAmount } from './assistant-clarify.mjs?v=954e027eb635';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=954e027eb635';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=90f9fcc4d7d8';
+import { asksForAdvice } from './question-scope.mjs?v=90f9fcc4d7d8';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=90f9fcc4d7d8';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=90f9fcc4d7d8';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=90f9fcc4d7d8';
+import { parseAmount } from './assistant-clarify.mjs?v=90f9fcc4d7d8';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=90f9fcc4d7d8';
 import { compareFundDisclosures, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=954e027eb635';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=90f9fcc4d7d8';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -1398,10 +1398,17 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   }
   if (/\b(fees?|expense ratio|\bter\b|fund costs?)\b/.test(input)) {
     const cost = result.fundCost;
-    return cost.coveredValue ? answer(`${lead}dated TERs cover ${money(cost.coveredValue)} of ${money(result.fundValue)} entered fund value. Their weighted rate is ${percent(cost.annualIllustration, cost.coveredValue)} on the covered amount only.`,
-      `${money(cost.annualIllustration)} annual cost illustration ÷ ${money(cost.coveredValue)} with entered TERs; ${money(cost.uncoveredValue)} has no dated TER here.`,
-      'This is an illustration already reflected in fund NAV, not an extra charge or a full portfolio fee estimate.', '#holdings', 'Check fund TERs') :
-      answer('No dated, scheme-specific expense ratios are entered, so I cannot estimate fund cost coverage.',
+    if (cost.coveredValue) {
+      const rateDates = cost.oldestTerDate === cost.newestTerDate ?
+        `The supplied rate is dated ${cost.oldestTerDate}.` :
+        `Supplied rate dates run from ${cost.oldestTerDate} to ${cost.newestTerDate}.`;
+      const oldRates = cost.oldTerCount ?
+        ` ${money(cost.oldTerValue)} of covered fund value uses ${cost.oldTerCount} ${cost.oldTerCount === 1 ? 'rate' : 'rates'} dated over 90 days ago; recheck ${cost.oldTerCount === 1 ? 'it' : 'them'} before a current comparison.` : '';
+      return answer(`${lead}dated TERs cover ${money(cost.coveredValue)} of ${money(result.fundValue)} entered fund value. Applying those rates to the covered entered values for one year gives ${money(cost.annualIllustration)} as a cost illustration, a weighted rate of ${percent(cost.annualIllustration, cost.coveredValue)}. ${rateDates}${oldRates}`,
+        `Summed each covered fund's entered value × its supplied annual TER; ${money(cost.annualIllustration)} ÷ ${money(cost.coveredValue)} = ${percent(cost.annualIllustration, cost.coveredValue)}. ${money(cost.uncoveredValue)} has no dated TER here.`,
+        'Fund expenses are already reflected in NAV, not billed again. Actual costs depend on changing daily scheme assets and rates; this is neither an amount paid nor a full portfolio fee estimate. Scheme identities and rates were not independently verified.', '#holdings', 'Check fund TERs');
+    }
+    return answer('No dated, scheme-specific expense ratios are entered, so I cannot estimate fund cost coverage.',
         `${money(result.fundValue)} entered mutual-fund value; none has a validated dated TER in this review.`,
         'A fund name or plan label alone is not an expense ratio.', '#holdings', 'Check fund details');
   }
