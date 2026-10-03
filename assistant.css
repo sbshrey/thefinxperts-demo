@@ -149,6 +149,8 @@ body{margin:0}
 .holding-item .value-check-action:hover,.holding-item .value-check-action:focus-visible{background:#eaf4ec}
 .value-source-link{color:#176344;font-weight:700}
 .review-limit{font-size:11px;color:#6d7d74;line-height:1.4;margin:0}
+.review-limit summary{cursor:pointer;color:#285d43;font-weight:700;padding:4px 0}
+.review-limit p{margin:8px 0 0}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media(max-width:800px){.topbar{height:54px;padding:0 14px}
 .brand{font-size:15px}

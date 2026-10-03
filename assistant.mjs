@@ -428,7 +428,7 @@ function renderReview() {
   checkList.replaceChildren();
   if (!checks.length) {
     const item = document.createElement('li');
-    item.textContent = browserOnly ? 'Upload a CAMS Active Statement or holdings CSV/XLSX to start.' :
+    item.textContent = browserOnly ? 'Describe one holding in chat, or upload a CAMS Active Statement or holdings CSV/XLSX to start.' :
       'Upload a statement or describe an investment to start.';
     checkList.append(item);
   } else for (const check of checks) {
