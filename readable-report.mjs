@@ -4,7 +4,7 @@ import { goalShare, summarizeGoalCoverage } from './goals.mjs';
 import { reserveMonths } from './reserve.mjs';
 import { entryOriginText, valuationOriginText } from './entry-origin.mjs';
 import { rupeesWithPaise } from './cost-basis.mjs';
-import { confirmedGoalAssumptions } from './goal-scenario.mjs';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -21,6 +21,8 @@ export function buildReadableReport(state, preparedAt = new Date()) {
   const assumptionsReady = confirmedGoalAssumptions(goal);
   const monthsOfEssentials = reserveMonths(state.reserve);
   const goalCoverage = summarizeGoalCoverage(state.goals, state.activeGoalId, state.holdings);
+  const straightLineGap = result.goalTotal && !result.goalDateCheck.count && !result.goalAccessCheck.count ?
+    calculateStraightLineGap(result.goalTotal, goal) : null;
   const fundHouseOther = state.holdings.some(holding => holding.granularity === 'fund_house' && holding.asset === 'Other');
   const lines = [
     'THEFINXPERTS | PRIVATE PORTFOLIO REVIEW',
@@ -51,6 +53,9 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     `Linked asset mix: ${result.goalTotal ? MIX_ASSETS.map(asset => `${asset} ${(result.goalAssets[asset] / result.goalTotal * 100).toFixed(1)}%`).join(' | ') : 'No holdings linked'}`,
     `Linked value needing a valuation-date check: ${rupees(result.goalDateCheck.value)} across ${result.goalDateCheck.count} holdings (missing, future or over 90 days old; entered values remain unverified)`,
     `Current gap before growth, inflation or tax: ${rupees(result.goalGap ?? 0)}`,
+    ...(straightLineGap ? [`Simple monthly gap: ${rupees(straightLineGap.gapToday)} in today's rupees divided by ${straightLineGap.months} months = about ${rupees(straightLineGap.roundedMonthly)} per month, rounded up. This is division only, not an amount to invest or a forecast; inflation, returns, taxes, future contributions and missing holdings are excluded.`] :
+      result.goalTotal && (result.goalDateCheck.count || result.goalAccessCheck.count) ?
+        ['Simple monthly gap paused until linked value dates and withdrawal access are checked.'] : []),
     ...(result.goalAccessCheck.count ? [`Gross gap includes ${rupees(result.goalAccessCheck.value)} in ${result.goalAccessCheck.count} linked other ${result.goalAccessCheck.count === 1 ? 'investment' : 'investments'} with no verified access date. Goal-date projection is paused; check product terms before treating this value as available for the goal.`] : []),
   ];
   if (monthsOfEssentials !== null) lines.push('', 'SEPARATE RESERVE CONTEXT',

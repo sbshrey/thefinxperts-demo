@@ -14,7 +14,7 @@ import { contextNeedsReview } from './market-context.mjs';
 import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs';
 import { estimateStockValue, validShares } from './stock-estimate.mjs';
 import { chooseNextReviewStep } from './next-step.mjs';
-import { confirmedGoalAssumptions } from './goal-scenario.mjs';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs';
 import { answerReviewQuestion } from './review-questions.mjs';
 import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs';
 
@@ -365,6 +365,13 @@ function render() {
   $('#goal-gap-note').textContent = needsGoalConfirmation ? 'Confirm age, cost and time horizon below.' :
     result.goalAccessCheck.count ? `Gross entered value; ${rupees(result.goalAccessCheck.value)} of linked savings has no checked access date.` :
       'Simple arithmetic before growth, inflation or tax';
+  const straightLineGap = state.source === 'user' && !pauseGoalFigures && result.goalTotal &&
+    !result.goalDateCheck.count && !result.goalAccessCheck.count ?
+      calculateStraightLineGap(result.goalTotal, state.goal) : null;
+  $('#goal-monthly-note').hidden = !straightLineGap;
+  $('#goal-monthly-note').textContent = !straightLineGap ? '' : straightLineGap.gapToday > 0 ?
+    `Simple monthly gap: ${rupees(straightLineGap.gapToday)} in today's rupees ÷ ${straightLineGap.months} months ≈ ${rupees(straightLineGap.roundedMonthly)} per month, rounded up. Division only; no inflation, returns, taxes, future contributions or missing holdings. This is not an amount to invest.` :
+    'The entered value meets or exceeds this target in today’s rupees. Future costs and access to money may differ.';
   $('#goal-setup-note').hidden = !pauseGoalFigures;
   $('#goal-setup-note').textContent = 'Check the goal name and enter your age, goal cost and time horizon before using goal figures.';
   $('#goal-confirm-note').hidden = !needsGoalConfirmation;
