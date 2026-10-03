@@ -1,4 +1,4 @@
-import { importValueAndDates } from './assistant-import-audit.mjs?v=ffe9a8568282';
+import { importValueAndDates } from './assistant-import-audit.mjs?v=281711f6ba37';
 
 const ALLOWED_ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const today = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);

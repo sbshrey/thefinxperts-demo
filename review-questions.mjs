@@ -1,11 +1,12 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=ffe9a8568282';
-import { rupeesWithPaise } from './cost-basis.mjs?v=ffe9a8568282';
-import { reserveMonths } from './reserve.mjs?v=ffe9a8568282';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=ffe9a8568282';
-import { asksForAdvice } from './question-scope.mjs?v=ffe9a8568282';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ffe9a8568282';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ffe9a8568282';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=281711f6ba37';
+import { rupeesWithPaise } from './cost-basis.mjs?v=281711f6ba37';
+import { reserveMonths } from './reserve.mjs?v=281711f6ba37';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=281711f6ba37';
+import { asksForAdvice } from './question-scope.mjs?v=281711f6ba37';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=281711f6ba37';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=281711f6ba37';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=281711f6ba37';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -273,6 +274,47 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Grouped positive saved holding rows by their recorded entry origin${sources.changed ? ' and latest valuation origin' : ''}${goalScopeRequested ? ', using only assigned shares' : ''}. These are row counts, not uploaded-document counts.`,
       `A source label and date do not verify the document or prove complete account coverage. The saved review does not retain original PDF files or filenames, so it cannot count or identify every uploaded document. ${coverageNote}`,
       destination, 'Inspect source rows');
+  }
+  const nextSourceQuestion = /\b(?:what|which)\b.{0,60}\b(?:statements?|reports?|documents?|files?|sources?)\b.{0,55}\b(?:upload|add|need|next|missing|complete)\b/.test(input) ||
+    /\bwhat (?:should|can|do) i (?:upload|import)\b/.test(input);
+  if (nextSourceQuestion) {
+    if (source === 'demo') return answer(
+      'This is a fictional example, so it cannot identify a statement missing from your accounts. Start my review, then choose Get a report or describe a holding you own.',
+      'The example has no connected accounts or real source documents.',
+      'Do not use sample holdings as evidence of your own portfolio coverage.', '#holdings', 'Start my review');
+    if (!valid.length) return answer(
+      'Start with one current source for an investment you own: try a mutual-fund CAS or CAMS Active Statement for funds, or a broker holdings XLSX/CSV for direct shares. You can also describe one holding in chat. Tell me which groups you own so I can ask what may still be missing.',
+      'There are 0 confirmed holding rows and no account has been connected. Get a report links to official source instructions.',
+      'A CAMS Active Statement covers CAMS-serviced funds and may not include demat holdings. Supported imports still require a row-by-row confirmation.', '#holdings', 'Get a report');
+    const groups = [
+      { key: 'mutualFunds', label: 'mutual funds', source: 'Try a current original mutual-fund CAS for the missing folios, or a CAMS Active Statement if those funds are CAMS-serviced. Check its scheme rows against what is already entered before adding anything.' },
+      { key: 'directStocks', label: 'direct stocks', source: 'Download a current holdings XLSX/CSV from the broker account that is not fully represented, then compare its shares and ISINs with the entered rows before confirming an import.' },
+      { key: 'otherInvestments', label: 'other investments', source: 'For EPF, try a current EPFO member passbook. For NPS, PPF, deposits or gold, enter a dated balance manually from your own record; those formats are not all supported as uploads yet.' },
+    ];
+    const flagged = groups.find(item => ['some', 'unsure'].includes(coverage?.[item.key]));
+    if (flagged) return answer(
+      `First check ${flagged.label}: you reported ${coverage[flagged.key] === 'some' ? 'some are missing from this review' : 'you are unsure whether they are all included'}. ${flagged.source}`,
+      `Used your saved ${flagged.label} coverage answer and ${valid.length} confirmed holding rows; no external account was checked.`,
+      'This identifies a source to compare, not proof that a particular holding is missing. A new statement can overlap saved positions, so review matches before confirming an import.', '#holdings', 'Compare this source');
+    const unanswered = unansweredCoverageFields(coverage)[0];
+    if (unanswered) {
+      const label = groups.find(item => item.key === unanswered).label;
+      return answer(`First tell me whether all your ${label} are included, some are missing, you own none, or you are unsure. Then I can identify a source to check without assuming what you own.`,
+        `${valid.length} confirmed holding rows; coverage for ${label} has not been answered.`,
+        'The entered rows alone cannot establish which accounts or statements exist outside this review.', '#holdings', 'Check review coverage');
+    }
+    const dated = valuationRowsNeedingCheck(valid, today);
+    if (dated.length) {
+      const first = dated[0];
+      const sourceHint = first.row.type === 'Mutual fund' ? 'a newer scheme or folio statement' :
+        first.row.type === 'Stock' ? 'a current broker holdings report' : 'a dated balance record';
+      return answer(`Your coverage answers do not identify a missing group. Next check the value date for holding #${first.index + 1} against ${sourceHint}; ${dated.length} entered ${dated.length === 1 ? 'row needs' : 'rows need'} a date check.`,
+        `Self-reported coverage is answered for all three groups; ${dated.length} of ${valid.length} confirmed rows have missing, future or over-90-day value dates.`,
+        'Self-reported coverage and a newer value date do not verify ownership, account completeness or a live price.', '#holdings', 'Check value dates');
+    }
+    return answer('Your coverage answers do not identify a missing investment group, and the entered value dates passed the 90-day review check. Compare row counts and balances with your current account records before treating this as a complete picture.',
+      `Self-reported coverage is answered for all three groups; ${valid.length} confirmed rows have no missing, future or over-90-day value date.`,
+      'No account was connected or independently reconciled. A recent date and an “all included” answer cannot prove complete ownership.', '#holdings', 'Review entered sources');
   }
   const wholePortfolioFall = /\b(?:portfolio|holdings|investments)\b/.test(input) &&
     /\b(?:fall|falls|fell|drop|drops|dropped)\b/.test(input) &&
