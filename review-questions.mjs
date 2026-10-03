@@ -1,12 +1,12 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=471b6d5981eb';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=471b6d5981eb';
-import { reserveMonths } from './reserve.mjs?v=471b6d5981eb';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=471b6d5981eb';
-import { asksForAdvice } from './question-scope.mjs?v=471b6d5981eb';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=471b6d5981eb';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=471b6d5981eb';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=471b6d5981eb';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=7774f5b16bc3';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=7774f5b16bc3';
+import { reserveMonths } from './reserve.mjs?v=7774f5b16bc3';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=7774f5b16bc3';
+import { asksForAdvice } from './question-scope.mjs?v=7774f5b16bc3';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=7774f5b16bc3';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7774f5b16bc3';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=7774f5b16bc3';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -110,6 +110,34 @@ function investorDefinition(input) {
   const term = match[1].replace(/^(?:a|an|the)\s+/, '')
     .replace(/\s+(?:mean|stand for)$/, '').trim();
   return investorDefinitions.get(definitionAliases.get(term) || term) || null;
+}
+
+function positionChangeIntent(question) {
+  if (typeof question !== 'string' || asksForAdvice(question)) return null;
+  const input = question.trim().toLocaleLowerCase('en-IN');
+  const asksChange = /\b(?:which|what|show|list|biggest|largest|top)\b.{0,70}\b(?:holdings?|positions?|funds?|stocks?|shares?)\b.{0,50}\b(?:in (?:a )?loss|(?:making|showing) (?:a )?loss|loss(?:es)?|lost|losing|gains?|profitable|profit|up|down|in the red)\b/.test(input) ||
+    /\b(?:losing|loss.making|profitable|gaining)\b.{0,40}\b(?:holdings?|positions?|funds?|stocks?|shares?)\b/.test(input);
+  if (!asksChange) return null;
+  const mentionsFund = /\b(?:fund|funds|mutual fund|mutual funds)\b/.test(input);
+  const mentionsStock = /\b(?:stock|stocks|shares?)\b/.test(input);
+  return { kind: mentionsFund && !mentionsStock ? 'Mutual fund' :
+    mentionsStock && !mentionsFund ? 'Stock' : null,
+  losing: /\b(?:loss|losses|lost|losing|down|red)\b/.test(input) };
+}
+
+/** Expand only short, factual gain/loss follow-ups from the previous answered question. */
+export function resolveReviewFollowUp(message, previousQuestion) {
+  const previous = positionChangeIntent(previousQuestion);
+  if (!previous || typeof message !== 'string') return null;
+  const input = message.trim().toLocaleLowerCase('en-IN');
+  const namedType = /^(?:and\s+)?(?:(?:what|how)\s+about\s+)?(?:the\s+)?(mutual funds?|funds?|stocks?|shares?|holdings?|positions?)[?.!]*$/.exec(input);
+  const namedDirection = /^(?:and\s+)?(?:(?:what|how)\s+about\s+)?(?:the\s+)?(loss(?:es)?|gains?|profits?)[?.!]*$/.exec(input);
+  if (!namedType && !namedDirection) return null;
+  const kind = namedType ? /^mutual fund|^fund/.test(namedType[1]) ? 'funds' :
+    /^stock|^share/.test(namedType[1]) ? 'stocks' : 'holdings' :
+    previous.kind === 'Mutual fund' ? 'funds' : previous.kind === 'Stock' ? 'stocks' : 'holdings';
+  const losing = namedDirection ? /^loss/.test(namedDirection[1]) : previous.losing;
+  return `Which ${kind} show ${losing ? 'losses' : 'gains'}?`;
 }
 
 /** Answer a narrow set of portfolio questions from the current in-tab review. */
@@ -680,11 +708,9 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I cannot call an entered fund an underperformer from a holdings snapshot or a current-position gain or loss. Compare the exact scheme, plan and option with its stated benchmark over the same period, using verified historical figures. For your own return, complete dated cash flows are also needed.',
       `${valid.filter(row => row.type === 'Mutual fund').length} entered mutual-fund rows; this browser review holds no verified benchmark series or complete transaction history.`,
       'An entered loss does not prove benchmark underperformance, and a gain does not prove outperformance. This answer does not rank funds or suggest an exit.', '#holdings', 'Check scheme factsheet');
-  const positionChangeQuestion = /\b(?:which|what|show|list|biggest|largest|top)\b.{0,70}\b(?:holdings?|positions?|funds?|stocks?|shares?)\b.{0,50}\b(?:in (?:a )?loss|(?:making|showing) (?:a )?loss|loss(?:es)?|lost|losing|gains?|profitable|profit|up|down|in the red)\b/.test(input) ||
-    /\b(?:losing|loss.making|profitable|gaining)\b.{0,40}\b(?:holdings?|positions?|funds?|stocks?|shares?)\b/.test(input);
-  if (positionChangeQuestion) {
-    const kind = /\b(?:fund|funds|mutual fund|mutual funds)\b/.test(input) && !/\b(?:stock|stocks|shares?)\b/.test(input) ? 'Mutual fund' :
-      /\b(?:stock|stocks|shares?)\b/.test(input) && !/\b(?:fund|funds|mutual fund|mutual funds)\b/.test(input) ? 'Stock' : null;
+  const changeIntent = positionChangeIntent(input);
+  if (changeIntent) {
+    const { kind, losing } = changeIntent;
     const scope = kind === 'Mutual fund' ? 'mutual-fund' : kind === 'Stock' ? 'direct-stock' : 'holding';
     const rows = valid.flatMap(row => !kind || row.type === kind ? [{ row, number: holdings.indexOf(row) + 1 }] : []);
     if (!rows.length) return answer(`No ${scope} rows are entered for this review.`,
@@ -694,7 +720,6 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     if (!covered.length) return answer(`No ${scope} row has both a checked cost for its currently held units or shares and a usable dated value. Check those facts before asking which positions show a gain or loss.`,
       `${rows.length} entered ${scope} rows; 0 have a usable current-position cost and dated value pair.`,
       'A fund-house summary or a purchase total including sold units cannot establish a current-position gain or loss.', '#holdings', 'Check holding costs');
-    const losing = /\b(?:loss|losses|lost|losing|down|red)\b/.test(input);
     const ranked = covered.filter(item => losing ? item.difference < 0 : item.difference > 0)
       .sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference) || a.number - b.number);
     const direction = losing ? 'loss' : 'gain';
