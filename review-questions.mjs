@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=dbfdcea9e474';
-import { parseWhatIfMix } from './mix-plan.mjs?v=dbfdcea9e474';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=dbfdcea9e474';
-import { reserveMonths } from './reserve.mjs?v=dbfdcea9e474';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=3121c68facaa';
+import { parseWhatIfMix } from './mix-plan.mjs?v=3121c68facaa';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=3121c68facaa';
+import { reserveMonths } from './reserve.mjs?v=3121c68facaa';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=dbfdcea9e474';
-import { asksForAdvice } from './question-scope.mjs?v=dbfdcea9e474';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=dbfdcea9e474';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=dbfdcea9e474';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=dbfdcea9e474';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=dbfdcea9e474';
-import { parseAmount } from './assistant-clarify.mjs?v=dbfdcea9e474';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=dbfdcea9e474';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=3121c68facaa';
+import { asksForAdvice } from './question-scope.mjs?v=3121c68facaa';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=3121c68facaa';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=3121c68facaa';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=3121c68facaa';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=3121c68facaa';
+import { parseAmount } from './assistant-clarify.mjs?v=3121c68facaa';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=3121c68facaa';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=dbfdcea9e474';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=3121c68facaa';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -404,9 +404,10 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   }
 
   if (asksForAdvice(input))
-    return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser. For a self-directed checklist, ask “How do I choose a target mix?”',
+    return answer(`I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check your dated holdings and goal facts first. If you want a personal recommendation, check an investment adviser’s registration through SEBI. ${valid.length ? 'Options lets you download a private readable report to check and share only if you choose. ' : ''}For a self-directed checklist, ask “How do I choose a target mix?”`,
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
-      'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+      'A personalized action needs information and an adviser process that this browser review does not provide.',
+      'https://investor.sebi.gov.in/Investor-support.html', 'Check SEBI registration');
   if (mentionsEmployeeStockAward(input))
     return answer('A grant or option does not by itself show directly held shares. To review an employee award, first check its type, what has vested, whether options were exercised or units settled, how many shares you now hold, any sale restrictions, and the currency and date of its value. If you hold the shares in an Indian broker or demat account, you can enter the settled shares from a dated record. Keep unvested awards separate from this holdings total.',
       'No award agreement, vesting record, exercise or settlement evidence, broker record or current valuation was checked here. SEBI explains grant, vesting and exercise for ESOPs.',

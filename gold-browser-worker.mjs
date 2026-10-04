@@ -1,7 +1,7 @@
-import * as pdfjs from './vendor/pdfjs/pdf.mjs?v=dbfdcea9e474';
-import { parseGoldStatementPages } from './gold-statement.mjs?v=dbfdcea9e474';
+import * as pdfjs from './vendor/pdfjs/pdf.mjs?v=3121c68facaa';
+import { parseGoldStatementPages } from './gold-statement.mjs?v=3121c68facaa';
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=dbfdcea9e474', import.meta.url).href;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=3121c68facaa', import.meta.url).href;
 
 self.onmessage = async event => {
   const bytes = event.data?.bytes;
