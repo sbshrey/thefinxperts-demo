@@ -1,6 +1,6 @@
-import { analyzePortfolio } from './analysis.mjs?v=12fa85a27b51';
-import { goalShare } from './goals.mjs?v=12fa85a27b51';
-import { calculateStraightLineGap } from './goal-scenario.mjs?v=12fa85a27b51';
+import { analyzePortfolio } from './analysis.mjs?v=cde9b0121382';
+import { goalShare } from './goals.mjs?v=cde9b0121382';
+import { calculateStraightLineGap } from './goal-scenario.mjs?v=cde9b0121382';
 
 /** The chat dashboard reads saved facts; all scenario numbers come from the review engine. */
 export function buildAssistantGoalReview(portfolio, today = new Date()) {
@@ -25,6 +25,7 @@ export function buildAssistantGoalReview(portfolio, today = new Date()) {
     calculateStraightLineGap(result.goalTotal, goal) : null;
   return { kind: 'confirmed', name: goal.name, age: goal.age, years: goal.years, target: goal.target,
     linkedValue: result.goalTotal, linkedCount: result.goalHoldingCount,
+    goalAssets: result.goalAssets,
     gapToday: result.goalHoldingCount ? result.goalGap : null,
     gapIfOtherUnavailable: result.goalGapIfOtherUnavailable,
     straightLineGap,
