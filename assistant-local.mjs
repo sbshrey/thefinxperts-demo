@@ -1,6 +1,6 @@
-import { parseAmount } from './assistant-clarify.mjs?v=86896997b501';
-import { validShares } from './stock-estimate.mjs?v=86896997b501';
-import { validUnits } from './nav-estimate.mjs?v=86896997b501';
+import { parseAmount } from './assistant-clarify.mjs?v=9dcd59b998f4';
+import { validShares } from './stock-estimate.mjs?v=9dcd59b998f4';
+import { validUnits } from './nav-estimate.mjs?v=9dcd59b998f4';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -184,6 +184,18 @@ export function parseBrowserGoalSetup(message) {
 export function parseBrowserGoalFact(message, goal, pending = {}) {
   if (typeof message !== 'string' || !goal) return null;
   const input = message.trim();
+  const retirementAge = /^(?:i (?:want|plan|intend) to )?retire at (?:age )?(\d{1,3})[.!]?$/i.exec(input);
+  if (retirementAge && /\bretire(?:ment)?\b/i.test(goal.name || '')) {
+    const currentAge = pending.age ?? goal.age;
+    const intendedAge = Number(retirementAge[1]);
+    if (!Number.isInteger(currentAge) || currentAge < 18 || currentAge > 100)
+      return { error: 'Tell me your current age first. I cannot turn a retirement age into years until the goal without it.' };
+    const years = intendedAge - currentAge;
+    if (intendedAge > 100 || years < 1 || years > 50)
+      return { error: 'Check that your intended retirement age is later than your current age and at most 50 years away.' };
+    return { facts: { years }, clarification:
+      `Your entered age ${currentAge} to intended retirement age ${intendedAge} is ${years} years. Check that horizon in the goal draft. ${nextBrowserGoalQuestion(goal, { ...pending, years })}` };
+  }
   const bundle = /^(?:i am |my age is |age )(\d{1,3})(?: years old)?\s*[,;]\s*(?:this )?goal (?:is )?in (\d{1,2}) years?\s*[,;]\s*target(?: in today['’]?s rupees)?(?: is)?\s+(?:₹\s*)?([\d,]+(?:\.\d{1,2})?)(?:\s*(lakh|crore))?(?:\s+in today['’]?s rupees)?[.!]?$/i.exec(input);
   if (bundle) {
     const age = Number(bundle[1]);
@@ -311,7 +323,7 @@ function enteredAmount(raw) {
 export function nextBrowserGoalQuestion(goal, pending = {}) {
   if (!goal) return 'Name a goal by saying “create goal named Retirement”.';
   if (goal.age == null && pending.age == null) return 'How old are you now? Reply “I’m 32”, or give all three facts together: “I am 32, goal in 20 years, target 50 lakh in today’s rupees”.';
-  if (goal.years == null && pending.years == null) return 'How many years until this goal? You can reply “I need it in 10 years”.';
+  if (goal.years == null && pending.years == null) return `How many years until this goal? You can reply “I need it in 10 years”.${/\bretire(?:ment)?\b/i.test(goal.name || '') ? ' For a retirement goal, you can also say “I plan to retire at 60”; I will use the current age you entered.' : ''}`;
   if (goal.target == null && pending.target == null) return 'What amount would you need in today’s rupees? You can reply “I need ₹50 lakh in today’s rupees”.';
   return 'Check the goal facts shown above, then choose “Save goal facts”. A future illustration and a chosen asset mix are optional later.';
 }
