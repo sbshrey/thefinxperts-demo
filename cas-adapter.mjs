@@ -3,8 +3,8 @@
  * This boundary deliberately drops investor, PAN, folio, nominee and transaction data.
  * No PDF is parsed here; callers must use a separately verified CAS PDF parser.
  */
-import { statementSipPurchases, statementXirr } from './cas-performance.mjs?v=b5c7a573c7cd';
-import { normalizeDematHoldings } from './demat-adapter.mjs?v=b5c7a573c7cd';
+import { statementSipPurchases, statementXirr } from './cas-performance.mjs?v=d04548a32eb4';
+import { normalizeDematHoldings } from './demat-adapter.mjs?v=d04548a32eb4';
 
 const MAX_PREVIEW_PERFORMANCE_TRANSACTIONS = 2000;
 
@@ -154,7 +154,11 @@ export function normalizeCasHoldings(document) {
         } else {
           performanceTransactions += transactionCount;
           const annualPercent = statementXirr(scheme);
-          if (annualPercent !== null) performance.push({ id: holdingId, annualPercent });
+          if (annualPercent !== null) performance.push({ id: holdingId, annualPercent,
+            from: scheme.transactions.reduce((first, row) =>
+              ['PURCHASE', 'PURCHASE_SIP', 'REDEMPTION', 'DIVIDEND_PAYOUT', 'STAMP_DUTY_TAX']
+                .includes(row.type) && row.date < first ? row.date : first,
+            scheme.valuation.date), to: scheme.valuation.date });
         }
       }
       if (!holding.isin) notices.push(`${location}: ISIN is missing or invalid; scheme matching will need review.`);

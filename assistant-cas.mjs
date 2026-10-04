@@ -1,5 +1,5 @@
-import { importValueAndDates } from './assistant-import-audit.mjs?v=b5c7a573c7cd';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=b5c7a573c7cd';
+import { importValueAndDates } from './assistant-import-audit.mjs?v=d04548a32eb4';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=d04548a32eb4';
 
 const ALLOWED_ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const today = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
@@ -47,7 +47,8 @@ export function prepareAssistantCasDrafts(result, { local = false, browser = fal
       ' The parsed CAS does not establish an owner PAN for one or more demat accounts. Check account ownership in the original statement before confirming these rows.' :
       ' One or more folios do not print an owner PAN. Check ownership in the original statement before confirming these rows.' : '';
   const performance = [];
-  if (result.source !== 'Demat CAS' && Array.isArray(result.performance)) {
+  if (result.source !== 'Demat CAS' && result.ownershipUnverified !== true &&
+      Array.isArray(result.performance)) {
     const positions = new Map();
     for (const [index, holding] of result.holdings.entries()) {
       if (typeof holding.id === 'string')
@@ -57,16 +58,17 @@ export function prepareAssistantCasDrafts(result, { local = false, browser = fal
     for (const item of result.performance) {
       if (!item || typeof item.id !== 'string' || seen.has(item.id) ||
           !Number.isFinite(item.annualPercent) || item.annualPercent < -99.9 ||
-          item.annualPercent > 1000) continue;
+          item.annualPercent > 1000 || !validDate(item.from) || !validDate(item.to) ||
+          item.from >= item.to) continue;
       const index = positions.get(item.id);
-      if (index === undefined || index === null) continue;
+      if (index === undefined || index === null || result.holdings[index].asOf !== item.to) continue;
       seen.add(item.id);
-      performance.push({ index, annualPercent: item.annualPercent });
+      performance.push({ index, annualPercent: item.annualPercent, from: item.from, to: item.to });
     }
   }
   const sip = result.source !== 'CAS' || result.ownershipUnverified === true ? null :
     validatedStatementSipSummary(result.sipSummary);
   const sipMessage = sip ?
       `This detailed CAS explicitly marks ${sip.count} SIP purchase ${sip.count === 1 ? 'entry' : 'entries'} totalling ₹${sip.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from ${sip.from} to ${sip.to}; the latest marked entry is ${sip.latestDate}. These are statement-period purchases, not proof of an active mandate, bank debits or complete SIP history. This total is a preview only and is not saved with holdings.` : '';
-  return { drafts, errors: [], performance, sipSummary: sip, sipMessage, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS. ${importValueAndDates(drafts)} Only positive current positions were staged; compare the parsed value with your statement total. The supported CAS reader did not provide a statement grand total.${combined}${ownership} ${performance.length ? ` ${performance.length} of ${drafts.length} schemes have an indicative statement-period XIRR in the unconfirmed row preview. It uses supported reconciled cash flows and the statement's dated valuation, not a live price or forecast. The rate disappears after a row edit and is not saved with holdings.` : ''}${sipMessage ? ` ${sipMessage}` : ''} ${browser ? 'This browser tab read the PDF and password; neither was sent to a server.' : `The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview.`} Check the rows before confirming.${browser ? '' : ' If you later ask AI about these drafts, their names and values may be sent.'}` };
+  return { drafts, errors: [], performance, sipSummary: sip, sipMessage, message: `Found ${drafts.length} possible holding${drafts.length === 1 ? '' : 's'} in the ${origin === 'demat_cas' ? 'demat' : 'mutual-fund'} CAS. ${importValueAndDates(drafts)} Only positive current positions were staged; compare the parsed value with your statement total. The supported CAS reader did not provide a statement grand total.${combined}${ownership} ${performance.length ? ` ${performance.length} of ${drafts.length} schemes have an indicative dated cash-flow XIRR in the unconfirmed row preview. It uses supported reconciled flows and the statement's valuation, not a live price or forecast. An unchanged confirmed row can keep the estimate in this tab; edits, refreshes and reloads remove it. It is not saved with holdings.` : ''}${sipMessage ? ` ${sipMessage}` : ''} ${browser ? 'This browser tab read the PDF and password; neither was sent to a server.' : `The ${local ? 'loopback server on this computer' : 'signed-in server'} read the PDF and password for this request; neither is saved by this preview.`} Check the rows before confirming.${browser ? '' : ' If you later ask AI about these drafts, their names and values may be sent.'}` };
 }

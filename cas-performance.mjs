@@ -10,9 +10,11 @@ export function statementXirr(scheme) {
   if (valuedOn === null || value === null || closingUnits === null || closingUnits <= 0n) return null;
   const flows = [];
   let calculatedUnits = 0n;
+  let previousDate = null;
   for (const transaction of scheme.transactions) {
     const date = day(transaction?.date);
-    if (date === null || date > valuedOn) return null;
+    if (date === null || date > valuedOn || previousDate !== null && date < previousDate) return null;
+    previousDate = date;
     const amount = positiveAmount(transaction.amount);
     switch (transaction.type) {
       case 'PURCHASE':
@@ -24,10 +26,12 @@ export function statementXirr(scheme) {
       case 'REDEMPTION':
         if (amount === null || !(signedUnits(transaction.units) < 0n)) return null;
         calculatedUnits += signedUnits(transaction.units);
+        if (calculatedUnits < 0n) return null;
         flows.push({ date, amount });
         break;
       case 'DIVIDEND_PAYOUT':
-        if (amount === null || transaction.units != null && Number(transaction.units) !== 0) return null;
+        if (amount === null || calculatedUnits <= 0n ||
+            transaction.units != null && Number(transaction.units) !== 0) return null;
         flows.push({ date, amount });
         break;
       case 'STAMP_DUTY_TAX':
@@ -36,7 +40,8 @@ export function statementXirr(scheme) {
         break;
       case 'DIVIDEND_REINVEST':
         // No external investor cash flow; its new units are included in terminal value.
-        if (amount === null || !(signedUnits(transaction.units) > 0n)) return null;
+        if (amount === null || calculatedUnits <= 0n ||
+            !(signedUnits(transaction.units) > 0n)) return null;
         calculatedUnits += signedUnits(transaction.units);
         break;
       default:

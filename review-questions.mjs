@@ -1,20 +1,20 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=b5c7a573c7cd';
-import { parseWhatIfMix } from './mix-plan.mjs?v=b5c7a573c7cd';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=b5c7a573c7cd';
-import { reserveMonths } from './reserve.mjs?v=b5c7a573c7cd';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=d04548a32eb4';
+import { parseWhatIfMix } from './mix-plan.mjs?v=d04548a32eb4';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=d04548a32eb4';
+import { reserveMonths } from './reserve.mjs?v=d04548a32eb4';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=b5c7a573c7cd';
-import { asksForAdvice } from './question-scope.mjs?v=b5c7a573c7cd';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=b5c7a573c7cd';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=b5c7a573c7cd';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b5c7a573c7cd';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=b5c7a573c7cd';
-import { parseAmount } from './assistant-clarify.mjs?v=b5c7a573c7cd';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=b5c7a573c7cd';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=d04548a32eb4';
+import { asksForAdvice } from './question-scope.mjs?v=d04548a32eb4';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=d04548a32eb4';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=d04548a32eb4';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=d04548a32eb4';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=d04548a32eb4';
+import { parseAmount } from './assistant-clarify.mjs?v=d04548a32eb4';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=d04548a32eb4';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=b5c7a573c7cd';
-import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=b5c7a573c7cd';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=d04548a32eb4';
+import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=d04548a32eb4';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -185,7 +185,7 @@ export function resolveReviewFollowUp(message, previousQuestion) {
 
 /** Answer a narrow set of portfolio questions from the current in-tab review. */
 export function answerReviewQuestion(question, { holdings, goal, goals, source, coverage, reserve,
-  result, sipSummary = null, disclosures = [], today = new Date() }) {
+  result, sipSummary = null, casReturns = [], disclosures = [], today = new Date() }) {
   if (typeof question !== 'string' || !question.trim() || !result || !Array.isArray(holdings)) return null;
   const input = question.trim().toLocaleLowerCase('en-IN');
   const valid = holdings.filter(row => Number.isFinite(Number(row.value)) && Number(row.value) > 0);
@@ -1323,10 +1323,22 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Compared ${covered.length} covered current-position ${covered.length === 1 ? 'value with its' : 'values with each row’s'} checked cost; ${rows.length - covered.length} ${scope} ${rows.length - covered.length === 1 ? 'row lacks' : 'rows lack'} a usable pair.${dateChecks ? ` ${dateChecks} covered ${dateChecks === 1 ? 'value date needs' : 'value dates need'} a freshness check.` : ''}`,
       `These are per-row, dated differences, not annual returns, benchmark performance, lifetime profit or a reason to trade. They exclude sold positions, distributions, taxes, exit loads and unchecked costs. ${coverageNote}`, '#holdings', 'Inspect covered holdings');
   }
-  if (/\b(xirr|cagr|annual(?:ized)? return|performance)\b/.test(input))
+  if (/\b(xirr|cagr|annual(?:ized)? return|performance)\b/.test(input)) {
+    const checked = Array.isArray(casReturns) ? casReturns.filter(row =>
+      row && Number.isFinite(row.annualPercent) &&
+      typeof row.name === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.from || '') &&
+      /^\d{4}-\d{2}-\d{2}$/.test(row.to || '') && row.from < row.to) : [];
+    if (checked.length) {
+      const shown = checked.slice(0, 5).map(row =>
+        `${row.name}: ${row.annualPercent.toFixed(2)}%/yr (${row.from} to ${row.to})`).join('; ');
+      return answer(`I cannot calculate one return for your whole portfolio from these snapshots. This tab has ${checked.length} indicative, scheme-level CAS cash-flow ${checked.length === 1 ? 'estimate' : 'estimates'}: ${shown}${checked.length > 5 ? `; ${checked.length - 5} more are in the holdings list` : ''}.`,
+        'Each displayed rate uses supported, reconciled transactions for one scheme with zero opening units and its dated closing value. The rate is tied to that unchanged holding row in this tab; it is not saved or combined across schemes.',
+        'The CAS may omit other accounts or periods. These are neither a SIP-only return nor a portfolio XIRR, CAGR, benchmark comparison, live value or forecast. A changed value, unit balance or statement requires recalculation from complete cash flows.', '#holdings', 'Inspect CAS estimates');
+    }
     return answer('A holdings snapshot cannot establish your annual return or XIRR. Complete dated cash flows are needed before calculating those figures.',
       `${valid.length} entered current holding ${valid.length === 1 ? 'value' : 'values'}; no complete transaction history is held in this browser review.`,
       'The goal growth assumption is an illustration, not your historical return.', '#holdings', 'Check source statements');
+  }
   if (/\b(?:invested|investment amount|cost basis|purchase cost)\b/.test(input) &&
       !/\b(?:profit|gains?|loss(?:es)?|returns?)\b/.test(input)) {
     const cost = result.unrealizedChange;
