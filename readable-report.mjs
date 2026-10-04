@@ -1,10 +1,10 @@
-import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=6658b2017f9d';
-import { MIX_ASSETS } from './mix-plan.mjs?v=6658b2017f9d';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=6658b2017f9d';
-import { reserveMonths } from './reserve.mjs?v=6658b2017f9d';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=6658b2017f9d';
-import { rupeesWithPaise } from './cost-basis.mjs?v=6658b2017f9d';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=6658b2017f9d';
+import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=2a20e46d264e';
+import { MIX_ASSETS } from './mix-plan.mjs?v=2a20e46d264e';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=2a20e46d264e';
+import { reserveMonths } from './reserve.mjs?v=2a20e46d264e';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=2a20e46d264e';
+import { rupeesWithPaise } from './cost-basis.mjs?v=2a20e46d264e';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=2a20e46d264e';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();

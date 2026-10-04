@@ -1,4 +1,4 @@
-import { estimateUnitValue, realDate } from './nav-estimate.mjs?v=6658b2017f9d';
+import { estimateUnitValue, realDate } from './nav-estimate.mjs?v=2a20e46d264e';
 
 export function validShares(shares) {
   return typeof shares === 'string' && /^[1-9]\d{0,8}$/.test(shares);

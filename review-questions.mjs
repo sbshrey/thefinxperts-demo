@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=6658b2017f9d';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=6658b2017f9d';
-import { reserveMonths } from './reserve.mjs?v=6658b2017f9d';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=2a20e46d264e';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=2a20e46d264e';
+import { reserveMonths } from './reserve.mjs?v=2a20e46d264e';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=6658b2017f9d';
-import { asksForAdvice } from './question-scope.mjs?v=6658b2017f9d';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=6658b2017f9d';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=6658b2017f9d';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=6658b2017f9d';
-import { parseAmount } from './assistant-clarify.mjs?v=6658b2017f9d';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=6658b2017f9d';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=2a20e46d264e';
+import { asksForAdvice } from './question-scope.mjs?v=2a20e46d264e';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=2a20e46d264e';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=2a20e46d264e';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=2a20e46d264e';
+import { parseAmount } from './assistant-clarify.mjs?v=2a20e46d264e';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=2a20e46d264e';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=6658b2017f9d';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=2a20e46d264e';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -1259,9 +1259,22 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   if (/\b(coverage|complete|missing holdings|all my investments|what.{0,20}missed)\b/.test(input) ||
       /\b(?:which|what) (?:assets|investments|holdings) (?:are|am i) missing\b/.test(input)) {
     const label = value => ({ all: 'all included', some: 'some included', none: 'none included', unsure: 'unsure' })[value] || 'not answered';
-    return answer(`${lead}mutual-fund coverage is ${label(coverage?.mutualFunds)}, direct-stock coverage is ${label(coverage?.directStocks)}, and other-investment coverage is ${label(coverage?.otherInvestments)}.`,
+    const groups = [
+      { value: coverage?.mutualFunds, name: 'mutual funds', source: 'a current CAMS + KFintech CAS or the statements from your fund houses' },
+      { value: coverage?.directStocks, name: 'direct stocks', source: 'a current holdings report from each broker or demat account' },
+      { value: coverage?.otherInvestments, name: 'other investments', source: 'current NPS, EPF, PPF, deposit or gold account records that apply to you' },
+    ];
+    const next = groups.find(group => group.value === 'some' || group.value === 'unsure') ||
+      groups.find(group => !group.value);
+    const step = !next ? 'Your answers report no known missing group. Recheck them when you add an account or receive a newer statement.' :
+      next.value === 'some' ? `You marked ${next.name} as partly missing. Compare ${next.source} with the entered rows, then add only confirmed positions that are absent.` :
+      next.value === 'unsure' ? `You are unsure about ${next.name}. Compare ${next.source} with the entered rows before treating this total as complete.` :
+      `First confirm whether all your ${next.name} are represented. Compare ${next.source} with the entered rows if you are unsure.`;
+    return answer(`${lead}mutual-fund coverage is ${label(coverage?.mutualFunds)}, direct-stock coverage is ${label(coverage?.directStocks)}, and other-investment coverage is ${label(coverage?.otherInvestments)}. ${step}`,
       `Used your self-reported coverage answers and ${valid.length} entered holding rows; no account or statement was independently checked.`,
-      'Other investments include manually entered EPF, NPS, PPF, deposits or gold. Compare current source statements before treating the total as complete.', '#holdings', 'Check review coverage');
+      'Other investments include manually entered EPF, NPS, PPF, deposits or gold. Adding another source can duplicate an entered position; check identities and dates before confirming it.',
+      next?.value === 'some' || next?.value === 'unsure' ? '#report-help-dialog' : '#holdings',
+      next?.value === 'some' || next?.value === 'unsure' ? 'Find the source report' : 'Check review coverage');
   }
   if (/\b(next|priority|start|check first|review first)\b/.test(input)) {
     const first = result.findings?.[0];
