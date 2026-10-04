@@ -44,8 +44,11 @@ export function checkXlsxArchive(buffer, profile = 'holdings') {
       throw new Error('The XLSX archive contains an unsupported or oversized part.');
     const name = new TextDecoder().decode(bytes.subarray(position + 46, position + 46 + nameLength));
     const lower = name.toLowerCase();
+    // Some published AMC disclosures contain inert external-workbook metadata.
+    // The disclosure reader uses only local sheet values; broker imports still reject it.
+    const disclosureLink = disclosure && /^xl\/externallinks\/(?:_rels\/)?externallink\d+\.xml(?:\.rels)?$/.test(lower);
     if (lower.includes('..') || lower.includes('\\') || lower.startsWith('/') ||
-        lower.startsWith('xl/externallinks/') || lower.endsWith('vbaproject.bin'))
+        lower.startsWith('xl/externallinks/') && !disclosureLink || lower.endsWith('vbaproject.bin'))
       throw new Error('The XLSX archive contains an unsupported part.');
     names.add(lower);
     unpacked += expanded;
