@@ -1,10 +1,10 @@
-import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=9ef67c98f183';
-import { MIX_ASSETS } from './mix-plan.mjs?v=9ef67c98f183';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=9ef67c98f183';
-import { reserveMonths } from './reserve.mjs?v=9ef67c98f183';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=9ef67c98f183';
-import { rupeesWithPaise } from './cost-basis.mjs?v=9ef67c98f183';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=9ef67c98f183';
+import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=dd38125e8da5';
+import { MIX_ASSETS } from './mix-plan.mjs?v=dd38125e8da5';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=dd38125e8da5';
+import { reserveMonths } from './reserve.mjs?v=dd38125e8da5';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=dd38125e8da5';
+import { rupeesWithPaise } from './cost-basis.mjs?v=dd38125e8da5';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=dd38125e8da5';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -20,6 +20,33 @@ function fundCostLines(result) {
   lines.push(`Weighted TER on covered fund value: ${cost.weightedPct.toFixed(2)}%; one-year illustration ${rupees(cost.annualIllustration)} if entered values and rates stayed unchanged. ${rateDates} TER is already reflected in NAV, not an additional bill or an amount actually paid; rates and values are not independently verified.`);
   if (cost.oldTerCount) lines.push(`${rupees(cost.oldTerValue)} of covered fund value uses ${cost.oldTerCount} supplied ${cost.oldTerCount === 1 ? 'rate' : 'rates'} dated over 90 days ago. Recheck ${cost.oldTerCount === 1 ? 'it' : 'them'} against the exact scheme and plan before using a current comparison; 90 days is a review prompt, not a TER rule.`);
   lines.push('Check the exact scheme and plan on its AMC daily TER disclosure. AMFI explains TER and where current rates are disclosed: https://www.amfiindia.com/investor/knowledge-center-info?zoneName=expenseRatio');
+  return lines;
+}
+
+/** Compact context for every named goal; a holding still counts once in the portfolio total. */
+function allGoalLines(state, preparedAt) {
+  const goals = state.goals.filter(goal => goal?.name && !(goal.name === 'My goal' &&
+    goal.confirmed === false && goal.age == null && goal.years == null && goal.target == null));
+  if (!goals.length) return [];
+  const lines = ['', 'GOALS AT A GLANCE'];
+  for (const goal of goals) {
+    const label = `${clean(goal.name)}${goal.id === state.activeGoalId ? ' [selected]' : ''}`;
+    if (goal.confirmed !== true) {
+      lines.push(`- ${label}: details unconfirmed; no gap calculated.`);
+      continue;
+    }
+    const result = analyzePortfolio(state.holdings, goal, preparedAt, state.reserve, state.coverage);
+    if (result.goalGap === null) {
+      lines.push(`- ${label}: confirmed details need checking; no gap calculated.`);
+      continue;
+    }
+    if (!result.goalTotal) {
+      lines.push(`- ${label}: ${goal.years}-year horizon; no holdings linked; gap unavailable.`);
+      continue;
+    }
+    lines.push(`- ${label}: ${goal.years}-year horizon; ${rupees(result.goalTotal)} linked across ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}; ${rupees(goal.target)} target in today's rupees; gross current gap ${rupees(result.goalGap)}.${result.goalDateCheck.count ? ` ${result.goalDateCheck.count} linked value ${result.goalDateCheck.count === 1 ? 'date needs' : 'dates need'} checking.` : ''}${result.goalAccessCheck.count ? ` Access to ${result.goalAccessCheck.count} linked other ${result.goalAccessCheck.count === 1 ? 'investment is' : 'investments are'} unverified.` : ''}`);
+  }
+  lines.push('Each goal uses only its assigned shares of entered holdings. The portfolio total above counts each holding once; goal lines are not additional assets. Gaps use today’s target amounts, not forecasts or suitable allocations.');
   return lines;
 }
 
@@ -55,6 +82,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     ...(result.assets.Other > 0 ? [`Other category: ${rupees(result.assets.Other)}. ${fundHouseOther ?
       'CAMS non-equity totals are not classified as debt or gold here; check a detailed statement.' :
       'Check what these holdings contain before judging the asset mix.'}`] : []),
+    ...allGoalLines(state, preparedAt),
     '',
     `SELECTED GOAL: ${clean(goal.name)}`,
     `Age at goal date: ${Number(goal.age) + Number(goal.years)}`,
@@ -177,8 +205,9 @@ function buildPortfolioOnlyReport(state, preparedAt) {
     `Fund plan labels from entered names: Regular ${rupees(result.fundPlans.Regular)} | Direct ${rupees(result.fundPlans.Direct)} | unclear ${rupees(result.fundPlans.Unclear)}; current expense ratios not verified`,
     ...fundCostLines(result),
     ...(result.unrealizedChange.coveredCount ? [`Entered unrealized ${result.unrealizedChange.change >= 0 ? 'gain' : 'loss'} on ${result.unrealizedChange.coveredCount} cost-covered ${result.unrealizedChange.coveredCount === 1 ? 'holding' : 'holdings'}: ${rupeesWithPaise(Math.abs(result.unrealizedChange.change))}. ${result.unrealizedChange.missingCount} ${result.unrealizedChange.missingCount === 1 ? 'row' : 'rows'} excluded. This is not lifetime profit or annual return.`] : []),
+    ...allGoalLines(state, preparedAt),
     '', 'GOAL CONTEXT',
-    'No confirmed selected goal. Age, time horizon and target have not been used to calculate a gap, future value or suitable mix.',
+    'No confirmed selected goal. The detailed goal-date scenario is unavailable; other confirmed goals, if any, are summarized above from their entered assignments.',
     ...(goalName(state) ? [`Draft selected goal: ${clean(goalName(state))}; its details remain unconfirmed.`] : []),
     '', 'REVIEW QUESTIONS',
     `Coverage to check: ${state.coverage ? 'compare your self reported answers with current fund, broker and other investment statements' : 'confirm whether all mutual funds, direct stocks and other investments are included'}.`,
