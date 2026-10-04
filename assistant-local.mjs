@@ -1,6 +1,6 @@
-import { parseAmount } from './assistant-clarify.mjs?v=bb08bd8b826c';
-import { validShares } from './stock-estimate.mjs?v=bb08bd8b826c';
-import { validUnits } from './nav-estimate.mjs?v=bb08bd8b826c';
+import { parseAmount } from './assistant-clarify.mjs?v=ab51635191e0';
+import { validShares } from './stock-estimate.mjs?v=ab51635191e0';
+import { validUnits } from './nav-estimate.mjs?v=ab51635191e0';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -249,13 +249,15 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
       return { error: 'Choose a hypothetical equity fall from 0% to 60%, such as “equity fall 25%”.' };
     return { facts: { equityDropPct: value } };
   }
-  const limitRequest = /^loss i can (cover|tolerate)\s+(.+?)[.!]?$/i.exec(input);
+  const limitRequest = /^(?:loss i can (cover|tolerate)|i (?:can|could) (cover|tolerate) (?:a |an )?loss(?: of)?)\s+(.+?)[.!]?$/i.exec(input);
   if (limitRequest) {
-    const value = enteredAmount(limitRequest[2]);
+    const value = enteredAmount(limitRequest[3]);
     if (value === null || value > 10_000_000_000)
       return { error: 'Enter an amount in rupees for the loss you can cover or tolerate, such as “loss I can cover ₹50,000”.' };
-    return { facts: { [limitRequest[1].toLowerCase() === 'cover' ? 'affordableLoss' : 'tolerableLoss']: value } };
+    return { facts: { [(limitRequest[1] || limitRequest[2]).toLowerCase() === 'cover' ? 'affordableLoss' : 'tolerableLoss']: value } };
   }
+  if (/^i (?:can|could) (?:handle|bear|take) (?:a |an )?loss(?: of)?\s+.+[.!]?$/i.test(input))
+    return { error: 'Do you mean an amount you could cover without disrupting essentials, or a loss you could tolerate? Say “I could cover a loss of ₹50,000” or “I can tolerate a loss of ₹50,000”.' };
   const contribution = /^monthly contribution(?: is)?\s+(.+?)[.!]?$/i.exec(input);
   if (contribution) {
     const value = enteredAmount(contribution[1]);
