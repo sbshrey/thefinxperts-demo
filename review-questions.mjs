@@ -1,23 +1,29 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=74b6e9f575ba';
-import { parseWhatIfMix } from './mix-plan.mjs?v=74b6e9f575ba';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=74b6e9f575ba';
-import { reserveMonths } from './reserve.mjs?v=74b6e9f575ba';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=c02bf4998243';
+import { parseWhatIfMix } from './mix-plan.mjs?v=c02bf4998243';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=c02bf4998243';
+import { reserveMonths } from './reserve.mjs?v=c02bf4998243';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=74b6e9f575ba';
-import { asksForAdvice } from './question-scope.mjs?v=74b6e9f575ba';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=74b6e9f575ba';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=74b6e9f575ba';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=74b6e9f575ba';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=74b6e9f575ba';
-import { parseAmount } from './assistant-clarify.mjs?v=74b6e9f575ba';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=74b6e9f575ba';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=c02bf4998243';
+import { asksForAdvice } from './question-scope.mjs?v=c02bf4998243';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=c02bf4998243';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=c02bf4998243';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=c02bf4998243';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=c02bf4998243';
+import { parseAmount } from './assistant-clarify.mjs?v=c02bf4998243';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=c02bf4998243';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=74b6e9f575ba';
-import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=74b6e9f575ba';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=c02bf4998243';
+import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=c02bf4998243';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
+/** Continue a purpose clarification with the selected goal, without retaining the unverified purpose. */
+export function goalSubjectFollowUpQuestion(subject) {
+  if (subject?.kind === 'saving') return 'Am I saving enough?';
+  return subject?.yearsAsked == null ? 'Am I on track for my goal?' :
+    `Can I reach my goal in ${subject.yearsAsked} years?`;
+}
 /** Summarize saved row provenance, never the number or identity of uploaded files. */
 export function summarizeReviewSources(holdings, goal = null, today = new Date()) {
   const original = new Map();
@@ -507,11 +513,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `This describes entered exposure, not whether it is safe or suitable for your age or goal. It does not choose an allocation or trade, and fund constituents, other risks and unentered holdings are unknown. ${coverageNote}`, '#goals', 'Review goal exposure');
   }
 
-  const monthlyAmountAdvice = /^(?:how much|what(?: sip)? amount)\b/.test(input) &&
+  const monthlyAmountAdvice = (/^(?:how much|what(?: sip)? amount)\b/.test(input) &&
     /\b(?:should|need)\b/.test(input) &&
     (/\b(?:sips?|systematic investment plans?)\b/.test(input) ||
       !goalScopeRequested && !/\b(?:education|school|college|university)\b/.test(input) &&
-        /\b(?:invest|save|contribute|put aside)\b.{0,30}\b(?:monthly|per month|each month)\b/.test(input));
+        /\b(?:invest|save|contribute|put aside)\b.{0,30}\b(?:monthly|per month|each month)\b/.test(input))) ||
+    /^how much should i add (?:every month|per month|monthly)[?.!]*$/.test(input);
   if (monthlyAmountAdvice) {
     if (otherNamedGoal) return answer(
       `You asked about ${otherNamedGoal.name}, but ${goal?.name || 'another goal'} is selected. Select ${otherNamedGoal.name} first so I use its target, horizon and assigned holdings. I cannot choose a SIP amount.`,
@@ -534,7 +541,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(goal.target)} target today less ${money(result.goalTotal)} assigned entered value gives a nonnegative ${money(result.goalGap)} current gap; confirmed horizon ${formatGoalHorizon(goal.years)}. No monthly amount was chosen.`,
       `This is a dated holdings comparison, not a savings instruction, forecast or suitability assessment. ${coverageNote}`, '#goals', 'Explore monthly gap');
   }
-  if ((/\b(?:can|could)\s+(?:i|we)\s+withdraw\b|\b(?:when|how soon)\s+can\s+(?:i|we)\s+withdraw\b/.test(input)) &&
+  if ((/\b(?:can|could)\s+(?:i|we)\s+withdraw\b|\b(?:when|how soon)\s+can\s+(?:i|we)\s+withdraw\b|\b(?:can|could)\s+(?:i|we)\s+(?:take|pull)\s+(?:money|cash|funds?)\s+out\s+of\b/.test(input)) &&
       /\b(?:funds?|investments?|holdings?|goal|accounts?|money|epf|nps|ppf)\b/.test(input))
     return answer(`I cannot tell from this holdings snapshot whether that money can be withdrawn, when it would arrive, or the net amount. Check the exact scheme or account, your current units or balance, its withdrawal or redemption terms, any lock-in or exit load where relevant, settlement timing, and applicable tax before counting it for a goal. ${/\bdebt\b/.test(input) ? 'A Debt label alone' : 'An entered balance alone'} does not establish immediate access.`,
       'This review holds an entered gross value, broad asset label and valuation date; it has no checked account terms, redemption request or payout record.',
@@ -573,8 +580,11 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `A report is a dated account snapshot, not a live quote. CAS, CAMS and broker files can cover different accounts or omit assets; a newer file must be reconciled before changing this review. ${coverageNote}`,
       source === 'demo' ? '#start-review' : '#input-choice', source === 'demo' ? 'Start my review' : 'Upload newer report');
   const bankOwnershipQuestion = /\b(?:psu|public[ -]sector|private[ -]sector)\b.{0,35}\bbank(?:s|ing)?\b|\bbank(?:s|ing)?\b.{0,35}\b(?:psu|public[ -]sector|private[ -]sector)\b/.test(input);
-  if (!bankOwnershipQuestion && /\b(?:sector|industry|industries|sectoral)\b/.test(input) &&
-      /\b(?:allocation|exposure|split|mix|breakdown|diversif\w*|concentration|holdings?|portfolio|funds?|stocks?|invested|overweight|underweight)\b/.test(input)) {
+  const bankSectorQuestion = /\b(?:banks|banking)\b/.test(input) &&
+    /\b(?:overexpos\w*|expos\w*|concentrat\w*|overweight|too much|invested)\b/.test(input);
+  if (!bankOwnershipQuestion && (bankSectorQuestion ||
+      /\b(?:sector|industry|industries|sectoral)\b/.test(input) &&
+      /\b(?:allocation|exposure|split|mix|breakdown|diversif\w*|concentration|holdings?|portfolio|funds?|stocks?|invested|overweight|underweight)\b/.test(input))) {
     if (goalScopeRequested) {
       const unavailable = unavailableGoalScope();
       if (unavailable) return unavailable;
@@ -585,7 +595,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const needed = group === 'direct stocks' ? 'a checked, dated sector classification for each direct share.' :
       group === 'mutual funds' ? 'dated constituent weights for each exact fund scheme and checked sectors for those securities.' :
         'dated constituents for each exact fund scheme and a checked sector classification for direct stocks.';
-    return answer(`I cannot calculate the sector allocation of your ${scope} from these holdings. The entered Equity, Debt and Gold labels are broad asset classes, not sectors. I would need ${needed}`,
+    return answer(`I cannot calculate ${bankSectorQuestion ? 'bank-sector exposure' : 'the sector allocation'} of your ${scope} from these holdings. The entered Equity, Debt and Gold labels are broad asset classes, not sectors. I would need ${needed}`,
       `${rows.length} ${goalScopeRequested ? 'assigned' : 'entered'} holding ${rows.length === 1 ? 'row has' : 'rows have'} broad asset labels; this review has no complete, dated sector classification for the requested scope.`,
       'Fund constituents and sector classifications can change. A broad Equity share must not be presented as a sector share.', goalScopeRequested ? '#goals' : '#holdings', 'Check sector sources');
   }
@@ -672,19 +682,26 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `A holdings snapshot or goal contribution assumption cannot establish completed payments, missed instalments or an active mandate.`, '#holdings', 'Upload detailed CAS');
   }
   const childSavingQuestion = /^am i saving enough for (?:my|our) (?:child|children|kid|kids)(?:['’]s (?:education|college))?[?.!]*$/.test(input);
-  const collegeAffordQuestion = /^can i afford (?:college|university|school)(?: for (?:my|our) (?:child|children|kid|kids))? in (\d{1,3}) years?[?.!]*$/.exec(input);
-  if (childSavingQuestion || collegeAffordQuestion) {
-    const yearsAsked = collegeAffordQuestion ? Number(collegeAffordQuestion[1]) : null;
-    if (collegeAffordQuestion && (yearsAsked < 1 || yearsAsked > 50))
-      return answer('Choose a college time horizon from 1 to 50 whole years, then check which saved goal you mean.',
+  const affordabilityLead = /^(?:can (?:i|we) afford|(?:will|do) (?:i|we) have enough(?: money)? for) /.exec(input);
+  const affordabilitySubject = affordabilityLead ? input.slice(affordabilityLead[0].length) : '';
+  const collegeAffordQuestion = /^(?:(?:my|our) )?(?:child(?:['’]s)? )?(?:college|university|school|education)(?: for (?:my|our) (?:child|children|kid|kids))?(?: in (\d{1,3}) years?)?[?.!]*$/.exec(affordabilitySubject);
+  const homeAffordQuestion = /^(?:a|the|my|our) (?:house|home)(?: in (\d{1,3}) years?)?[?.!]*$/.exec(affordabilitySubject);
+  if (childSavingQuestion || collegeAffordQuestion || homeAffordQuestion) {
+    const rawYears = collegeAffordQuestion?.[1] ?? homeAffordQuestion?.[1];
+    const yearsAsked = rawYears === undefined ? null : Number(rawYears);
+    if (yearsAsked !== null && (yearsAsked < 1 || yearsAsked > 50))
+      return answer(`Choose a ${homeAffordQuestion ? 'home' : 'college'} time horizon from 1 to 50 whole years, then check which saved goal you mean.`,
         `Question horizon ${yearsAsked} years is outside this review's supported goal range.`,
         'No saved goal, target or holding value was used for an invalid horizon.', '#goals', 'Check goal timing');
     if (goal?.confirmed !== true)
-      return answer('Select or confirm the goal you mean, with its target in today’s rupees and time horizon, before I compare any saved holdings. I cannot decide whether a child’s education or college will be affordable from an unfinished goal.',
+      return answer('Select or confirm the goal you mean, with its target in today’s rupees and time horizon, before I compare any saved holdings. I cannot decide whether education or a home will be affordable from an unfinished goal.',
         `Selected goal ${goal?.name || 'unnamed'} is unfinished; no goal arithmetic was used.`,
         'A savings snapshot does not verify completed contributions, future costs or other resources.', '#goals', 'Confirm goal details');
-    const subject = childSavingQuestion ? 'saving for your child' : `college in ${yearsAsked} years`;
-    const reply = answer(`Does ${subject} mean your selected goal, ${goal.name}, saved for ${formatGoalHorizon(goal.years)}? Choose “Use selected goal” if it does. If this is a different goal, choose another goal. I have not used its target or holdings for this question yet.`,
+    const subject = childSavingQuestion ? 'saving for your child' : homeAffordQuestion ?
+      `a home${yearsAsked === null ? '' : ` in ${yearsAsked} years`}` :
+      `college${yearsAsked === null ? '' : ` in ${yearsAsked} years`}`;
+    const homeLimit = homeAffordQuestion ? ' A saved down-payment target alone cannot establish the cost of a whole home or loan.' : '';
+    const reply = answer(`Does ${subject} mean your selected goal, ${goal.name}, saved for ${formatGoalHorizon(goal.years)}? Choose “Use selected goal” if it does. If this is a different goal, choose another goal. I have not used its target or holdings for this question yet.${homeLimit}`,
       `Selected goal ${goal.name} is saved for ${formatGoalHorizon(goal.years)}; the question did not name that goal. No gap or future illustration was calculated.`,
       'Even after you choose the goal, current holdings cannot establish future affordability or verify an active saving schedule.', '#goals', 'Choose another goal');
     return { ...reply, goalSubjectClarification: { goalId: goal.id,
@@ -724,7 +741,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `A scheduled mandate can differ from completed payments, and the selected goal’s monthly assumption is independent of either. ${coverageNote}`, '#holdings', 'Check SIP records');
   }
   if (/\b(?:sips?|systematic investment plans?)\b/.test(input) &&
-      /\b(?:perform\w*|returns?|xirr|cagr|doing well|gains?|profit|loss(?:es)?|benchmark)\b/.test(input))
+      /\b(?:perform\w*|returns?|xirr|cagr|doing well|gains?|profit|loss(?:es)?|benchmark|earn(?:ed|ings)?|made)\b/.test(input))
     return answer('I cannot calculate how your SIPs have performed from a current holdings snapshot. SIP return or XIRR needs complete dated contributions, redemptions and distributions, plus a dated value for the units still held. Check those cash flows across the relevant accounts and periods first.',
       `${valid.length} entered current holding ${valid.length === 1 ? 'value' : 'values'}; no complete dated SIP cash-flow history or active mandate list is held in this browser review.`,
       'A statement-period SIP purchase subtotal does not establish lifetime invested amount, current mandate status, return or benchmark performance.', '#holdings', 'Check SIP history');
@@ -1054,7 +1071,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(largest.value)} in ${largest.entries} ${largest.entries === 1 ? 'entry' : 'entries'} × ${dropPct}% = ${money(loss)} hypothetical loss; ${money(total)} entered ${scoped ? 'assigned ' : ''}value − ${money(loss)} = ${money(after)}. Exact matching supplied ISINs and classifications are grouped. ${result.asOfSummary}.`,
       `This is a one-time arithmetic what-if, not a forecast, risk score or trade instruction. Fund constituents, other price moves, taxes and unentered holdings are unknown. ${coverageNote}`, scoped ? '#goals' : '#holdings', 'Review entered positions');
   }
-  if (/\b(?:on track|can i retire|ready to retire|enough to retire|afford to retire|(?:can|will) i reach (?:my|the|this)?\s*(?:\w+\s+){0,3}goal)\b/.test(input)) {
+  if (/\b(?:on track|can i retire|ready to retire|ready for retirement|enough to retire|enough for retirement|afford to retire|(?:can|will) i reach (?:my|the|this)?\s*(?:\w+\s+){0,3}goal)\b/.test(input)) {
     if (/\bretir\w*\b/.test(input) && !/\bretir\w*\b/i.test(goal?.name || ''))
       return answer(`The selected goal is ${goal?.name || 'unfinished'}, not Retirement. Select or create your retirement goal so this question uses its own target and assigned holdings.`,
         'Only the selected goal can supply a target, horizon and assigned value.',
@@ -1389,7 +1406,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         'The two amounts are self reported and this is not a personal reserve target or adequacy verdict.',
         'https://investor.sebi.gov.in/moneymatters-whysave.html', 'Read SEBI savings context');
   }
-  if (/\b(?:reserve|emergency buffer|emergency fund)\b/.test(input)) {
+  if (/\b(?:reserve|emergency buffer|emergency fund|emergencies)\b/.test(input)) {
     const months = reserveMonths(reserve);
     return months === null ? answer('No separate reserve totals are saved in this review. If you want the arithmetic, say “monthly essentials ₹50,000” and “accessible money outside holdings ₹3 lakh”, then confirm both.',
       'A reserve comparison needs both the monthly essential-spending total and accessible money outside these holdings.',

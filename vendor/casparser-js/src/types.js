@@ -8,8 +8,8 @@
  * reproduced here without the dependency.
  */
 
-import { Decimal } from './decimal.js?v=74b6e9f575ba';
-import { coerceDateField } from './dates.js?v=74b6e9f575ba';
+import { Decimal } from './decimal.js?v=c02bf4998243';
+import { coerceDateField } from './dates.js?v=c02bf4998243';
 
 /** Field kinds a model can declare. */
 const REQUIRED = Symbol('required');

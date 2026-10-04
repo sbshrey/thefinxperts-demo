@@ -1,4 +1,4 @@
-import { normalizeCasHoldings } from './cas-adapter.mjs?v=74b6e9f575ba';
+import { normalizeCasHoldings } from './cas-adapter.mjs?v=c02bf4998243';
 
 /** Keep only reviewed holdings, derived returns and count-safe messages across the worker boundary. */
 export function normalizeBrowserCasResult(parsed) {

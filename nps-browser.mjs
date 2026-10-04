@@ -4,7 +4,7 @@ export async function previewNpsStatement(file, password = '') {
     return { holding: null, errors: ['Choose an NPS transaction-statement PDF smaller than 15 MB.'] };
   const bytes = await file.arrayBuffer();
   return new Promise(resolve => {
-    const worker = new Worker(new URL('./nps-browser-worker.mjs?v=74b6e9f575ba', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./nps-browser-worker.mjs?v=c02bf4998243', import.meta.url), { type: 'module' });
     let settled = false;
     const finish = result => {
       if (settled) return;
