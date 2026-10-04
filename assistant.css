@@ -73,6 +73,10 @@ body[data-mode="browser-only"] .tools-items>.quiet:disabled{opacity:.5}
 .starter-secondary button{min-width:0;text-align:center;padding-inline:8px}
 .starter-actions button:hover{border-color:#56866a;background:#edf6ee}
 .starter-actions>button:first-of-type:hover{background:#246b50}
+body[data-mode="browser-only"] .panel-heading{padding-top:18px;padding-bottom:12px}
+body[data-mode="browser-only"] .messages{padding-top:14px;padding-bottom:14px}
+body[data-mode="browser-only"] .starter-actions{gap:6px;padding:12px}
+body[data-mode="browser-only"] .starter-actions button{padding-block:8px}
 .message{flex:none;max-width:82%;padding:14px 17px;border-radius:16px;line-height:1.48;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
 .message.assistant{align-self:flex-start;background:#eff5f0;border-bottom-left-radius:4px}
 .definition-source{display:block;margin-top:10px;color:#176344;font-size:13px;font-weight:700}
