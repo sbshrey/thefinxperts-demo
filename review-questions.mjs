@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=b13730c42bd3';
-import { parseWhatIfMix } from './mix-plan.mjs?v=b13730c42bd3';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=b13730c42bd3';
-import { reserveMonths } from './reserve.mjs?v=b13730c42bd3';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=f1c4d4254c74';
+import { parseWhatIfMix } from './mix-plan.mjs?v=f1c4d4254c74';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=f1c4d4254c74';
+import { reserveMonths } from './reserve.mjs?v=f1c4d4254c74';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=b13730c42bd3';
-import { asksForAdvice } from './question-scope.mjs?v=b13730c42bd3';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=b13730c42bd3';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=b13730c42bd3';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b13730c42bd3';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=b13730c42bd3';
-import { parseAmount } from './assistant-clarify.mjs?v=b13730c42bd3';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=b13730c42bd3';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=f1c4d4254c74';
+import { asksForAdvice } from './question-scope.mjs?v=f1c4d4254c74';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=f1c4d4254c74';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=f1c4d4254c74';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f1c4d4254c74';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=f1c4d4254c74';
+import { parseAmount } from './assistant-clarify.mjs?v=f1c4d4254c74';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=f1c4d4254c74';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=b13730c42bd3';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=f1c4d4254c74';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -601,6 +601,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   const namesDirectStocks = /\b(?:my|direct|held)\s+(?:equity\s+)?(?:stocks?|shares?)\b|\b(?:stocks?|shares?)\s+(?:i|we)\s+(?:own|hold)\b/.test(input);
   const oneChosenStockFall = namesDirectStocks && (input.match(/\d+(?:\.\d+)?\s*%/g) || []).length === 1;
   const oneChosenMarketFall = /\bstock market\b/.test(input) && (input.match(/\d+(?:\.\d+)?\s*%/g) || []).length === 1;
+  if (/\bmarket\b.{0,35}\b(?:fall|falls|fell|drop|drops|dropped)\b|\b(?:fall|falls|fell|drop|drops|dropped)\b.{0,35}\bmarket\b/.test(input) &&
+      !/\bstock market\b/.test(input) &&
+      !/\b(?:direct stocks?|equity(?:-labelled)? holdings?|whole portfolio|all holdings)\b/.test(input))
+    return answer('A market fall does not tell me how much each investment would move. Do you want to test your directly held stocks, all holdings labelled Equity including equity funds, or every entered holding? Choose one group and a hypothetical percentage, such as “What if my Equity holdings fell 30%?”',
+      `The review has ${money(result.assets.Equity)} labelled Equity and ${money(result.total)} in all entered holdings; no group-specific change was applied.`,
+      `Funds and individual shares need not move by the market index percentage, and holdings outside this review are unknown. This is a one-time what-if, not a prediction. ${coverageNote}`, '#holdings', 'Choose a group');
   const wholePortfolioFall = (/\b(?:portfolio|holdings|investments)\b/.test(input) || oneChosenEquityFall || oneChosenStockFall || oneChosenMarketFall) &&
     /\b(?:fall|falls|fell|drop|drops|dropped)\b/.test(input) &&
     /\b(?:what if|if|test|simulate)\b/.test(input) &&
@@ -703,7 +709,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   }
   const portfolioRiskQuestion = (/\b(?:risks?|risky|safe|safer|volatile|volatility|balanced?)\b/.test(input) &&
     (/\b(?:portfolio|holdings|investments|asset mix|allocation)\b/.test(input) ||
-      /\bam i taking too much risk\b/.test(input))) ||
+      /\bam i taking too much risk\b|\bmy money\b/.test(input))) ||
     /\b(?:biggest|main|top) risk\b/.test(input);
   const descriptiveRiskQuestion = portfolioRiskQuestion && !/\b(?:fall|falls|drop|drops|stress|what if)\b/.test(input);
   if (descriptiveRiskQuestion) {
@@ -724,7 +730,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const largest = (scoped ? result.topGoalPositions : result.topPositions)[0];
     const dateChecks = valuationRowsNeedingCheck(rows, today);
     const summary = scoped ? `For ${goal.name}, the assigned holdings` : `${lead}the entered holdings`;
-    return answer(`${/\b(?:biggest|main|top) risk\b/.test(input) ? 'I cannot rank your personal risks from a holdings snapshot. These are visible exposure checks: ' : ''}${summary} are labelled Equity ${percent(assets.Equity, total)}, Debt ${percent(assets.Debt, total)}, Gold ${percent(assets.Gold, total)} and Other ${percent(assets.Other, total)}. ` +
+    return answer(`${/\b(?:safe|safer)\b/.test(input) ? 'I cannot verify that your investments or accounts are safe. These are visible investment exposure checks: ' : /\b(?:biggest|main|top) risk\b/.test(input) ? 'I cannot rank your personal risks from a holdings snapshot. These are visible exposure checks: ' : ''}${summary} are labelled Equity ${percent(assets.Equity, total)}, Debt ${percent(assets.Debt, total)}, Gold ${percent(assets.Gold, total)} and Other ${percent(assets.Other, total)}. ` +
       `The largest entered position is ${largest.name} at ${percent(largest.value, total)} of ${scoped ? 'assigned' : 'entered'} value. ` +
       `${dateChecks.length ? `${dateChecks.length} ${dateChecks.length === 1 ? 'value date needs' : 'value dates need'} a check. ` : ''}` +
       `${assets.Other ? `${money(assets.Other)} has an unresolved asset label. ` : ''}` +
@@ -974,6 +980,21 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `These are supplied links and dated values, not verified account coverage or proof that the money can be used at the goal date. A fund-house summary can combine schemes. ${coverageNote}`,
       '#goals', 'Review assigned holdings');
   }
+  if (/\b(?:stocks?|shares?|equity)\b.{0,35}\b(?:including|inside|within|through|via)\b.{0,25}\b(?:mutual funds?|funds?)\b/.test(input) &&
+      /\b(?:how much|percent(?:age)?|fraction|share|exposure)\b/.test(input)) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const total = goalScopeRequested ? result.goalTotal : result.total;
+    const assets = goalScopeRequested ? result.goalAssets : result.assets;
+    return answer(total ?
+      `${goalScopeRequested ? `For ${goal.name}, ` : lead}${money(assets.Equity)} (${percent(assets.Equity, total)}) of ${money(total)} ${goalScopeRequested ? 'assigned' : 'entered'} value is labelled Equity. This includes direct shares and funds you labelled Equity; it is not the exact value of shares held through every fund.` :
+      'Add and confirm dated holdings before checking equity-labelled exposure.',
+      `Equity-labelled value ${money(assets.Equity)} ÷ ${money(total)} ${goalScopeRequested ? 'assigned' : 'entered'} value. ${result.asOfSummary}.`,
+      `A hybrid, debt or fund-house summary may also contain shares, and an Equity fund may hold some cash. Complete underlying stock exposure needs current constituent weights for each exact scheme. ${coverageNote}`,
+      goalScopeRequested ? '#goals' : '#holdings', 'Check asset labels');
+  }
   if ((/\b(?:mutual funds?|funds?)\b/.test(input) && /\b(?:stocks?|shares?)\b/.test(input) &&
       /\b(?:how much|how many|percent(?:age)?|share|split|breakdown|versus|vs)\b/.test(input)) ||
       /\b(?:product|investment)\s+(?:type|category)\s+(?:split|breakdown|mix)\b/.test(input)) {
@@ -997,8 +1018,9 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `A mutual fund may itself hold stocks or other assets, and a fund-house summary may contain multiple schemes. This is a product-type split, not underlying asset exposure. ${coverageNote}`,
       goalScopeRequested ? '#goals' : '#holdings', goalScopeRequested ? 'Review assigned holdings' : 'Inspect holdings');
   }
-  if (/\b(?:portfolio|holdings|investments)\b/.test(input) &&
-      /\b(?:beat(?:ing)?|outperform(?:ing)?|underperform(?:ing)?|lag(?:ging)?)\b.{0,20}\b(?:nifty|sensex|benchmark|index)\b/.test(input))
+  if ((/\b(?:portfolio|holdings|investments)\b/.test(input) &&
+      /\b(?:beat(?:ing)?|outperform(?:ing)?|underperform(?:ing)?|lag(?:ging)?)\b.{0,20}\b(?:nifty|sensex|benchmark|index)\b/.test(input)) ||
+      /\b(?:compare|comparison|versus|vs)\b.{0,60}\b(?:nifty|sensex|benchmark|index)\b/.test(input))
     return answer('I cannot establish whether your portfolio beat that benchmark from a current holdings snapshot. A fair comparison needs complete dated cash flows, a matching period and a verified benchmark series.',
       `${valid.length} current entered holding ${valid.length === 1 ? 'row' : 'rows'}; no verified benchmark series or complete transaction history is available.`,
       'A current value, entered gain or goal growth assumption is not a historical portfolio return.', '#holdings', 'Check transaction history');
@@ -1006,6 +1028,14 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I cannot call an entered fund an underperformer from a holdings snapshot or a current-position gain or loss. Compare the exact scheme, plan and option with its stated benchmark over the same period, using verified historical figures. For your own return, complete dated cash flows are also needed.',
       `${valid.filter(row => row.type === 'Mutual fund').length} entered mutual-fund rows; this browser review holds no verified benchmark series or complete transaction history.`,
       'An entered loss does not prove benchmark underperformance, and a gain does not prove outperformance. This answer does not rank funds or suggest an exit.', '#holdings', 'Check scheme factsheet');
+  if (/\b(?:what|which|how much)\b.{0,55}\b(?:return|growth)\b.{0,35}\b(?:expect|forecast|predict|future)\b|\b(?:expected|future|forecast|predicted)\b.{0,25}\b(?:return|growth)\b|\b(?:return|growth)\b.{0,20}\bshould i expect\b/.test(input))
+    return answer('I cannot predict the return your portfolio will earn. A chosen growth rate can be used for a goal what-if, but it is an assumption you supply, not an expected outcome.',
+      `${valid.length} current holding ${valid.length === 1 ? 'value' : 'values'} entered; no verified forward return estimate exists. ${goal?.confirmed === true ? `The selected goal is ${goal.name}.` : 'No confirmed selected goal is available.'}`,
+      'Past gains, current-position cost differences and an illustrative goal growth rate cannot establish a future portfolio return. Losses are possible.', '#goals', 'Review goal assumptions');
+  if (/\bwhich\b.{0,45}\b(?:investment|holding|position|fund|stock)\b.{0,50}\b(?:dragging|hurting|pulling)\b.{0,30}\b(?:returns?|performance)\b/.test(input))
+    return answer('I cannot identify which investment dragged down your return from this holdings snapshot. That needs a defined period, complete dated cash flows and valuations. You can ask “Which holdings show losses?” to inspect checked current-position cost differences instead.',
+      `${valid.length} current holding ${valid.length === 1 ? 'value' : 'values'} entered; ${result.unrealizedChange?.coveredCount || 0} have checked current-position costs paired with usable dated values. No complete return history is held.`,
+      'A current unrealized loss is not the same as a contribution to your historical return, and an omitted or sold position may change the answer.', '#holdings', 'Check return history');
   const changeIntent = positionChangeIntent(input);
   if (changeIntent) {
     const { kind, losing } = changeIntent;
@@ -1047,7 +1077,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Added only checked current-position costs paired with dated values; covered value ${rupeesWithPaise(cost.coveredValue)}. ${cost.missingCount} ${cost.missingCount === 1 ? 'row' : 'rows'} excluded${cost.costAfterValueCount ? `, including ${cost.costAfterValueCount} with cost checked after the value date` : ''}.`,
       'This is a partial cost total for holdings still entered here, not all money ever invested or lifetime profit. Sold units, other assets and unchecked costs are excluded.', '#holdings', 'Check covered holdings');
   }
-  if (/\b(?:profit|gains?|gained|lost|loss(?:es)?|invested|returns?)\b/.test(input)) {
+  if (/\b(?:profit|gains?|gained|lost|loss(?:es)?|invested|returns?|money (?:have i|i have|i've|did i) made|made (?:on|from) (?:these|my|the) investments?)\b/.test(input)) {
     const change = result.unrealizedChange;
     if (!change?.coveredCount) return answer(change?.costAfterValueCount ?
       'The checked invested amount is dated after the holding value. Refresh the value for the same units or shares before calculating an unrealized gain or loss.' :
@@ -1473,10 +1503,17 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         goalId: goal.id, label: 'Monthly contribution', savedInput: `${money(goal.monthlyContribution)} per month`,
         alternativeInput: `${money(alternative)} per month`, base, alternative: changed } };
   }
+  const educationSavingsQuestion = /\b(?:save|saving|need|put aside)\b/.test(input) &&
+    /\b(?:per month|each month|every month|a month|monthly)\b/.test(input) &&
+    /\b(?:education|school|college|university)\b/.test(input);
+  if (educationSavingsQuestion && !/\b(?:education|school|college|university)\b/i.test(goal?.name || ''))
+    return answer(`The selected goal is ${goal?.name || 'unfinished'}, not the education goal in your question. Select or create an education goal, then confirm its target in today's rupees, time horizon and assigned holdings before comparing a monthly gap.`,
+      'No amount from another selected goal was used for this education question.',
+      'A monthly amount depends on the target, time period and what is already assigned; this review does not decide what you should save.', '#goals', 'Select education goal');
   const monthlyGoalQuestion = /\b(?:per month|each month|every month|a month|monthly)\b/.test(input) &&
-    (/\b(?:goal|target|gap|retirement)\b/.test(input) || namedGoal);
+    (/\b(?:goal|target|gap|retirement)\b/.test(input) || namedGoal || educationSavingsQuestion);
   const straightLineQuestion = monthlyGoalQuestion &&
-    (/\b(?:simple|straight[ -]line|today|without (?:returns?|growth)|zero growth)\b/.test(input) ||
+    (educationSavingsQuestion || /\b(?:simple|straight[ -]line|today|without (?:returns?|growth)|zero growth)\b/.test(input) ||
       !confirmedGoalAssumptions(goal) && !/\b(?:future|project\w*|growth|inflation)\b/.test(input));
   if (straightLineQuestion) {
     if (goal?.confirmed !== true) return answer('Confirm the selected goal’s age, target in today’s rupees and time horizon first.',
