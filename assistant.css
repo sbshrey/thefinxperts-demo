@@ -65,9 +65,11 @@ body[data-mode="browser-only"] .tools-items>.quiet:disabled{opacity:.5}
 .starter-actions{align-self:center;margin:auto;width:min(100%,360px);display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid #dce9df;border-radius:17px;background:#fbfdfb}
 .starter-actions strong{font-size:12px;color:#456b55;margin-bottom:2px}
 .starter-actions button{border:1px solid #bad3c0;border-radius:10px;padding:10px 12px;background:#fff;color:#174d3f;text-align:left;font:700 13px Arial,Helvetica,sans-serif;cursor:pointer}
-.starter-actions button:first-of-type{background:#174d3f;border-color:#174d3f;color:#fff}
+.starter-actions>button:first-of-type{background:#174d3f;border-color:#174d3f;color:#fff}
+.starter-secondary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.starter-secondary button{min-width:0;text-align:center;padding-inline:8px}
 .starter-actions button:hover{border-color:#56866a;background:#edf6ee}
-.starter-actions button:first-of-type:hover{background:#246b50}
+.starter-actions>button:first-of-type:hover{background:#246b50}
 .message{flex:none;max-width:82%;padding:14px 17px;border-radius:16px;line-height:1.48;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
 .message.assistant{align-self:flex-start;background:#eff5f0;border-bottom-left-radius:4px}
 .definition-source{display:block;margin-top:10px;color:#176344;font-size:13px;font-weight:700}
@@ -258,4 +260,4 @@ body[data-mode="browser-only"] .mobile-data-link{display:inline-block;margin-top
 .tools-items>.quiet:disabled{opacity:.5}
 }
 @media(max-width:360px){.suggested-questions button[data-guided-question="How diversified am I?"]{display:none}}
-@media(max-height:600px){.workspace{grid-template-rows:minmax(0,1fr) minmax(125px,22dvh)}.panel-heading{padding:8px 12px 7px}.panel-heading .eyebrow{display:none}.panel-heading h1{margin:0;font-size:18px}.starter-actions{width:100%;margin:0;padding:0;border:0;background:transparent;gap:0}.starter-actions strong,.starter-actions small,.starter-actions button:not(:first-of-type):not(#starter-describe){display:none}.starter-actions button:first-of-type,.starter-actions #starter-describe{width:100%;text-align:center;padding:9px 10px}}
+@media(max-height:600px){.workspace{grid-template-rows:minmax(0,1fr) minmax(125px,22dvh)}.panel-heading{padding:8px 12px 7px}.panel-heading .eyebrow{display:none}.panel-heading h1{margin:0;font-size:18px}.starter-actions{width:100%;margin:0;padding:0;border:0;background:transparent;gap:0}.starter-actions strong,.starter-actions small,.starter-secondary,.starter-actions>button:not(:first-of-type):not(#starter-describe){display:none}.starter-actions>button:first-of-type,.starter-actions #starter-describe{width:100%;text-align:center;padding:9px 10px}}
