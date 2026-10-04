@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=18432fb4d77f';
-import { parseWhatIfMix } from './mix-plan.mjs?v=18432fb4d77f';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=18432fb4d77f';
-import { reserveMonths } from './reserve.mjs?v=18432fb4d77f';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=b091de30402b';
+import { parseWhatIfMix } from './mix-plan.mjs?v=b091de30402b';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=b091de30402b';
+import { reserveMonths } from './reserve.mjs?v=b091de30402b';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=18432fb4d77f';
-import { asksForAdvice } from './question-scope.mjs?v=18432fb4d77f';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=18432fb4d77f';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=18432fb4d77f';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=18432fb4d77f';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=18432fb4d77f';
-import { parseAmount } from './assistant-clarify.mjs?v=18432fb4d77f';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=18432fb4d77f';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=b091de30402b';
+import { asksForAdvice } from './question-scope.mjs?v=b091de30402b';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=b091de30402b';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=b091de30402b';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b091de30402b';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=b091de30402b';
+import { parseAmount } from './assistant-clarify.mjs?v=b091de30402b';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=b091de30402b';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=18432fb4d77f';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=b091de30402b';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -458,7 +458,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         `These gaps can change the apparent mix. I cannot decide whether the goal is safe or the mix suitable. ${coverageNote}`, '#holdings', 'Check goal holdings');
     }
     const equity = result.goalAssets.Equity;
-    return answer(`For ${goal.name}, due in ${goal.years} ${goal.years === 1 ? 'year' : 'years'}, ${money(equity)} (${percent(equity, result.goalTotal)}) of assigned value is labelled Equity. The other entered labels are Debt ${percent(result.goalAssets.Debt, result.goalTotal)}, Gold ${percent(result.goalAssets.Gold, result.goalTotal)} and Other ${percent(result.goalAssets.Other, result.goalTotal)}. ${equity ? 'To see a one-time fall using a percentage you choose, say “equity fall 20%” with your own figure.' : 'No assigned value is labelled Equity in this snapshot.'}`,
+    return answer(`For ${goal.name}, due in ${goal.years} ${goal.years === 1 ? 'year' : 'years'}, ${money(equity)} (${percent(equity, result.goalTotal)}) of assigned value is labelled Equity. The other entered labels are Debt ${percent(result.goalAssets.Debt, result.goalTotal)}, Gold ${percent(result.goalAssets.Gold, result.goalTotal)} and Other ${percent(result.goalAssets.Other, result.goalTotal)}. Your entered age is ${goal.age}; age and horizon alone cannot show whether this mix fits your circumstances. ${equity ? 'To see a one-time fall using a percentage you choose, say “equity fall 20%” with your own figure.' : 'No assigned value is labelled Equity in this snapshot.'}`,
       `${money(equity)} labelled Equity ÷ ${money(result.goalTotal)} assigned value; entered age ${goal.age} and ${goal.years}-year horizon; ${result.asOfSummary}.`,
       `This describes entered exposure, not whether it is safe or suitable for your age or goal. It does not choose an allocation or trade, and fund constituents, other risks and unentered holdings are unknown. ${coverageNote}`, '#goals', 'Review goal exposure');
   }

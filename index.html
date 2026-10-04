@@ -8,8 +8,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
   <title>TheFinxperts · Understand your investments</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./assistant.css?v=18432fb4d77f">
-  <script type="module" src="./assistant.mjs?v=18432fb4d77f"></script>
+  <link rel="stylesheet" href="./assistant.css?v=b091de30402b">
+  <script type="module" src="./assistant.mjs?v=b091de30402b"></script>
 </head>
 <body data-mode="browser-only">
   <div class="shell">
@@ -38,7 +38,7 @@
             <button type="button" data-guided-question="What do I own?" hidden>What do I own?</button>
             <button type="button" data-guided-question="Review my mutual funds" data-requires="fund" hidden>Review funds</button>
             <button type="button" data-guided-question="Review my stocks" data-requires="stock" hidden>Review stocks</button>
-            <button type="button" data-guided-question="How diversified am I?" hidden>Diversification</button>
+            <button id="quick-exposure" type="button" data-guided-question="How diversified am I?" hidden>Diversification</button>
             <button type="button" data-guided-question="Which of my funds say Regular or Direct Plan?" data-requires="fund" hidden>Fund plans</button>
             <button type="button" data-guided-question="Which of my funds hold the same stocks?" data-requires="two-funds" hidden>Inside funds</button>
             <button id="quick-next" type="button" data-guided-question="What should I check first?" hidden>Next check</button>

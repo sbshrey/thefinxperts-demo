@@ -292,5 +292,5 @@ body[data-mode="browser-only"] .mobile-data-link{display:inline-block;margin-top
 .tools-items>.quiet:hover{background:#edf5ee}
 .tools-items>.quiet:disabled{opacity:.5}
 }
-@media(max-width:360px){.suggested-questions button[data-guided-question="How diversified am I?"]{display:none}}
+@media(max-width:360px){#quick-exposure{display:none}}
 @media(max-height:600px){.workspace{grid-template-rows:minmax(0,1fr) minmax(125px,22dvh)}.panel-heading{padding:8px 12px 7px}.panel-heading .eyebrow{display:none}.panel-heading h1{margin:0;font-size:18px}.starter-actions{width:100%;margin:0;padding:0;border:0;background:transparent;gap:0}.starter-actions strong,.starter-actions small,.starter-secondary,.starter-actions>button:not(:first-of-type):not(#starter-describe){display:none}.starter-actions>button:first-of-type,.starter-actions #starter-describe{width:100%;text-align:center;padding:9px 10px}}
