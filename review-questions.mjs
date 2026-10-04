@@ -1,17 +1,18 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=ab51635191e0';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=ab51635191e0';
-import { reserveMonths } from './reserve.mjs?v=ab51635191e0';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=1e6af04ef7e3';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=1e6af04ef7e3';
+import { reserveMonths } from './reserve.mjs?v=1e6af04ef7e3';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=ab51635191e0';
-import { asksForAdvice } from './question-scope.mjs?v=ab51635191e0';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ab51635191e0';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ab51635191e0';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=ab51635191e0';
-import { parseAmount } from './assistant-clarify.mjs?v=ab51635191e0';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=ab51635191e0';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=1e6af04ef7e3';
+import { asksForAdvice } from './question-scope.mjs?v=1e6af04ef7e3';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=1e6af04ef7e3';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=1e6af04ef7e3';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=1e6af04ef7e3';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=1e6af04ef7e3';
+import { parseAmount } from './assistant-clarify.mjs?v=1e6af04ef7e3';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=1e6af04ef7e3';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=ab51635191e0';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=1e6af04ef7e3';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -378,6 +379,11 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check the dated values and your own goal mix before discussing an action with a registered investment adviser. For a self-directed checklist, ask “How do I choose a target mix?”',
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
       'A personalized action needs information and an adviser process that this browser review does not provide.', '#goals', 'Review my goal');
+  if (mentionsEmployeeStockAward(input))
+    return answer('A grant or option does not by itself show directly held shares. To review an employee award, first check its type, what has vested, whether options were exercised or units settled, how many shares you now hold, any sale restrictions, and the currency and date of its value. If you hold the shares in an Indian broker or demat account, you can enter the settled shares from a dated record. Keep unvested awards separate from this holdings total.',
+      'No award agreement, vesting record, exercise or settlement evidence, broker record or current valuation was checked here. SEBI explains grant, vesting and exercise for ESOPs.',
+      'Award terms and tax treatment vary. This review does not value an award, decide whether to exercise or sell, or give tax advice.',
+      'https://investor.sebi.gov.in/esop.html', 'Read SEBI ESOP basics');
   if (/\bwhat should i check\b/.test(input) && /\b(?:changing|switching|selling|redeeming)\b.{0,30}\bfunds?\b/.test(input))
     return answer('Before deciding about a fund change, check the exact scheme and plan, its dated value and cost, your goal and time horizon, the current scheme factsheet and benchmark, expense ratio, exit load, and possible tax effects. Record why you hold it and what the change would accomplish. A registered investment adviser can assess a personal decision.',
       'This is a general due-diligence checklist. No scheme, tax lot, benchmark series or personal suitability assessment was verified for this question.',

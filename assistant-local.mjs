@@ -1,6 +1,7 @@
-import { parseAmount } from './assistant-clarify.mjs?v=ab51635191e0';
-import { validShares } from './stock-estimate.mjs?v=ab51635191e0';
-import { validUnits } from './nav-estimate.mjs?v=ab51635191e0';
+import { parseAmount } from './assistant-clarify.mjs?v=1e6af04ef7e3';
+import { validShares } from './stock-estimate.mjs?v=1e6af04ef7e3';
+import { validUnits } from './nav-estimate.mjs?v=1e6af04ef7e3';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=1e6af04ef7e3';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -10,6 +11,8 @@ export function parseBrowserHoldingStatement(message, today = new Date()) {
   const hasHolding = /^i have$/i.test(opening[1]);
   let description = opening[2].trim();
   if (/\b(?:should|buy|sell|switch|recommend|advice)\b/i.test(description)) return null;
+  if (mentionsEmployeeStockAward(description))
+    return { error: 'An employee stock award or option is not enough to count directly held shares. Check the award type, vesting, exercise or settlement, shares actually held, restrictions, currency and a dated INR value. Enter settled shares only from a dated broker or demat record.' };
   if (hasHolding && /\b(?:invested|bought|paid|cost basis)\b/i.test(description))
     return { error: 'An invested or purchase amount is not a current holding value. Name the investment and give its total current value in rupees.' };
 

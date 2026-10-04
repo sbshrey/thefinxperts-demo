@@ -1,7 +1,8 @@
 /** Shared boundary for requests to choose a personal investment action. */
 export function asksForAdvice(message) {
   if (typeof message !== 'string') return false;
-  return /\b(?:recommend|suggest|target allocation|what should i do with|should (?:i|we) (?:buy|sell|switch|rebalance|invest|allocate|increase|reduce|stop|start|continue|pause|cancel|hold|exit|move|shift)|would you (?:buy|sell|switch|invest|allocate|hold)|is it time to (?:buy|sell|switch|invest|exit))\b/i.test(message) &&
+  return /\b(?:should i|would you|is it wise to|is it a good idea to|help me decide whether to)\s+(?:exercise|sell|hold|keep|buy)\b.{0,70}\b(?:esops?|rsus?|espps?|employee (?:stock|share) options?|stock awards?|restricted stock units?)\b/i.test(message) ||
+    /\b(?:recommend|suggest|target allocation|what should i do with|should (?:i|we) (?:buy|sell|switch|rebalance|invest|allocate|increase|reduce|stop|start|continue|pause|cancel|hold|exit|move|shift)|would you (?:buy|sell|switch|invest|allocate|hold)|is it time to (?:buy|sell|switch|invest|exit))\b/i.test(message) &&
       /\b(?:buy|sell|switch|rebalance|invest|fund|stock|share|portfolio|allocate|allocation|sip|increase|reduce|stop|start|hold|exit|move|shift)\b/i.test(message) ||
     /\b(?:best|top)\s+(?:fund|stock|share|investment)s?\b.{0,50}\b(?:for me|for my|to buy|to invest)\b/i.test(message) ||
     /\b(?:fund|stock|share|investment)s?\s+is\s+(?:the\s+)?best\b.{0,50}\b(?:for me|for my)\b/i.test(message) ||
