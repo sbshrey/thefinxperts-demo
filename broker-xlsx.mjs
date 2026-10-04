@@ -6,7 +6,8 @@ const AMOUNT = /^(?:\d+|\d{1,3}(?:,\d{2})*,\d{3}|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2}
 
 /** Reject oversized or unexpected ZIP contents before the workbook reader runs. */
 export function checkXlsxArchive(buffer, profile = 'holdings') {
-  const disclosure = profile === 'disclosure';
+  const hdfcFlexi = profile === 'hdfc-flexi-disclosure';
+  const disclosure = profile === 'disclosure' || hdfcFlexi;
   const maxFileBytes = disclosure ? 5_000_000 : MAX_FILE_BYTES;
   const maxUnpackedBytes = disclosure ? 15_000_000 : MAX_UNPACKED_BYTES;
   const maxEntries = disclosure ? 400 : MAX_ENTRIES;
@@ -39,11 +40,15 @@ export function checkXlsxArchive(buffer, profile = 'holdings') {
     const extraLength = view.getUint16(position + 30, true);
     const commentLength = view.getUint16(position + 32, true);
     const end = position + 46 + nameLength + extraLength + commentLength;
-    if (end > eocd || (flags & 1) || ![0, 8].includes(method) || expanded > 5_000_000 ||
-        compressed > maxFileBytes || expanded === 0xffffffff)
-      throw new Error('The XLSX archive contains an unsupported or oversized part.');
+    if (end > eocd) throw new Error('The XLSX archive directory is invalid.');
     const name = new TextDecoder().decode(bytes.subarray(position + 46, position + 46 + nameLength));
     const lower = name.toLowerCase();
+    // One checked HDFC file has a large derivative sheet. It is never selected
+    // for parsing, and the whole archive remains below the disclosure limit.
+    const maxPartBytes = hdfcFlexi && lower === 'xl/worksheets/sheet2.xml' ? 6_000_000 : 5_000_000;
+    if ((flags & 1) || ![0, 8].includes(method) || expanded > maxPartBytes ||
+        compressed > maxFileBytes || expanded === 0xffffffff)
+      throw new Error('The XLSX archive contains an unsupported or oversized part.');
     // Some published AMC disclosures contain inert external-workbook metadata.
     // The disclosure reader uses only local sheet values; broker imports still reject it.
     const disclosureLink = disclosure && /^xl\/externallinks\/(?:_rels\/)?externallink\d+\.xml(?:\.rels)?$/.test(lower);
