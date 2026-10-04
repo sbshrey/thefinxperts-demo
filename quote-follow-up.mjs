@@ -1,5 +1,5 @@
-import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=852ae3825c78';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=852ae3825c78';
+import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=75f148da8032';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=75f148da8032';
 
 const indiaToday = now => new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
 
@@ -13,11 +13,41 @@ export function beginQuoteFollowUp(row, index, revision) {
     stage: 'amount' };
 }
 
+/** Ask for a plan-specific published TER without treating a scheme name as a rate. */
+export function beginTerFollowUp(row, index, revision) {
+  if (row?.type !== 'Mutual fund' || row.granularity === 'fund_house' ||
+      !Number.isInteger(index) || index < 0) return null;
+  return { kind: 'ter', index, revision, stage: 'amount',
+    hasRate: Number.isFinite(row.expenseRatioPct) };
+}
+
 /** Return null for a new question so it can leave the short follow-up cleanly. */
 export function advanceQuoteFollowUp(pending, message, now = new Date()) {
   if (!pending || typeof message !== 'string') return null;
   const input = message.trim();
   if (/^(?:cancel|stop|never mind)[.!]?$/i.test(input)) return { cancelled: true };
+  if (pending.kind === 'ter') {
+    if (pending.stage === 'amount') {
+      if (pending.hasRate && /^(?:clear|remove)(?: (?:saved )?(?:ter|rate))?[.!]?$/i.test(input))
+        return { command: { kind: 'ter-clear', selector: `holding ${pending.index + 1}` } };
+      const raw = /^(?:(?:ter|expense ratio)\s+(?:is\s+)?)?(\d+(?:\.\d{1,4})?)\s*%?[.!]?$/i.exec(input)?.[1];
+      if (!raw && !/^(?:ter|expense ratio|[-\d])/i.test(input)) return null;
+      const ratePct = Number(raw);
+      if (!raw || !Number.isFinite(ratePct) || ratePct < 0 || ratePct > 10)
+        return { error: 'Enter the checked annual TER as a percentage from 0% to 10%, with up to four decimal places. No fund rate changed.' };
+      return { pending: { ...pending, ratePct, stage: 'date' },
+        question: 'What publication date is shown for that exact scheme and Direct or Regular plan TER? Reply YYYY-MM-DD.' };
+    }
+    if (pending.stage === 'date') {
+      const date = /^(?:(?:as of|dated|on)\s+)?(\d{4}-\d{2}-\d{2})[.!]?$/i.exec(input)?.[1];
+      if (!date && !/^(?:(?:as of|dated|on)\s+)?\d{4}-/i.test(input)) return null;
+      if (!realDate(date) || date > indiaToday(now))
+        return { error: 'Use the real published TER date, no later than today. No fund rate changed.' };
+      return { command: { kind: 'ter', selector: `holding ${pending.index + 1}`,
+        ratePct: pending.ratePct, asOf: date } };
+    }
+    return null;
+  }
   const label = pending.kind === 'nav' ? 'NAV' : 'share price';
   if (pending.stage === 'amount') {
     const amount = /^(?:(?:nav|share price|price)\s+(?:is\s+)?)?(?:₹\s*|rs\.?\s*|inr\s*)?([\d,.]+)[.!]?$/i.exec(input)?.[1];

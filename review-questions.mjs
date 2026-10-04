@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=852ae3825c78';
-import { parseWhatIfMix } from './mix-plan.mjs?v=852ae3825c78';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=852ae3825c78';
-import { reserveMonths } from './reserve.mjs?v=852ae3825c78';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=75f148da8032';
+import { parseWhatIfMix } from './mix-plan.mjs?v=75f148da8032';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=75f148da8032';
+import { reserveMonths } from './reserve.mjs?v=75f148da8032';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=852ae3825c78';
-import { asksForAdvice } from './question-scope.mjs?v=852ae3825c78';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=852ae3825c78';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=852ae3825c78';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=852ae3825c78';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=852ae3825c78';
-import { parseAmount } from './assistant-clarify.mjs?v=852ae3825c78';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=852ae3825c78';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=75f148da8032';
+import { asksForAdvice } from './question-scope.mjs?v=75f148da8032';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=75f148da8032';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=75f148da8032';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=75f148da8032';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=75f148da8032';
+import { parseAmount } from './assistant-clarify.mjs?v=75f148da8032';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=75f148da8032';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=852ae3825c78';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=75f148da8032';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -1744,7 +1744,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       /\b(?:fund|funds|scheme|schemes)\b/.test(input)) {
     const funds = valid.filter(row => row.type === 'Mutual fund');
     const checked = funds.filter(row => hasDatedFundTer(row, today));
-    if (!checked.length) return answer('No dated scheme expense ratio is entered, so I cannot name the highest one.',
+    if (!checked.length) return answer('No dated scheme expense ratio is entered, so I cannot name the highest one. Use “Check fund TER” beside an individual fund to enter a rate and its publication date from the exact scheme and plan.',
       `0 of ${funds.length} entered mutual-fund rows have a usable scheme TER and date.`,
       'Fund names and plan labels do not establish their current expense ratios.', '#holdings', 'Check fund TERs');
     const highest = checked.reduce((best, row) => row.expenseRatioPct > best.expenseRatioPct ? row : best);
@@ -1765,8 +1765,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         `Summed each covered fund's entered value × its supplied annual TER; ${money(cost.annualIllustration)} ÷ ${money(cost.coveredValue)} = ${percent(cost.annualIllustration, cost.coveredValue)}. ${money(cost.uncoveredValue)} has no dated TER here.`,
         'Fund expenses are already reflected in NAV, not billed again. Actual costs depend on changing daily scheme assets and rates; this is neither an amount paid nor a full portfolio fee estimate. Scheme identities and rates were not independently verified.', '#holdings', 'Check fund TERs');
     }
-    return answer('No dated, scheme-specific expense ratios are entered, so I cannot estimate fund cost coverage.',
-        `${money(result.fundValue)} entered mutual-fund value; none has a validated dated TER in this review.`,
+    return answer('No dated, scheme-specific expense ratios are entered, so I cannot estimate fund cost coverage. Use “Check fund TER” beside an individual fund to enter its published rate and date.',
+        `${money(result.fundValue)} entered mutual-fund value; none has an investor-entered, dated TER in this review.`,
         'A fund name or plan label alone is not an expense ratio.', '#holdings', 'Check fund details');
   }
   if (/\b(diversif(?:y|ied|ication)?|spread across assets)\b/.test(input)) {

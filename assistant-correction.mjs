@@ -1,8 +1,8 @@
-import { parseAmount } from './assistant-clarify.mjs?v=852ae3825c78';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=852ae3825c78';
-import { removeHoldingAllocation } from './goals.mjs?v=852ae3825c78';
-import { estimateNavValue, realDate } from './nav-estimate.mjs?v=852ae3825c78';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=852ae3825c78';
+import { parseAmount } from './assistant-clarify.mjs?v=75f148da8032';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=75f148da8032';
+import { removeHoldingAllocation } from './goals.mjs?v=75f148da8032';
+import { estimateNavValue, realDate } from './nav-estimate.mjs?v=75f148da8032';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=75f148da8032';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const indiaToday = today => new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
@@ -11,6 +11,8 @@ const indiaToday = today => new Date(today.getTime() + 330 * 60_000).toISOString
 export function parseHoldingCorrection(message, today = new Date()) {
   if (typeof message !== 'string' || message.length > 1500) return null;
   const input = message.trim();
+  const clearTer = /^(?:clear|remove) (?:saved )?(?:ter|expense ratio) of (.+?)[.!]?$/i.exec(input);
+  if (clearTer) return { kind: 'ter-clear', selector: clearTer[1].trim() };
   const remove = /^remove (?:holding )?(.+?)[.!]?$/i.exec(input);
   if (remove) return { kind: 'remove', selector: remove[1].trim() };
   const cost = /^(?:set|update) invested amount of (.+?) to (.+?) checked (\d{4}-\d{2}-\d{2})[.!]?$/i.exec(input);
@@ -22,6 +24,15 @@ export function parseHoldingCorrection(message, today = new Date()) {
   }
   if (/^(?:set|update) invested amount\b/i.test(input))
     return { error: 'Say “set invested amount of NAME to ₹40,000 checked YYYY-MM-DD”. Use the holding number if its name appears more than once.' };
+  const ter = /^(?:set|update) (?:ter|expense ratio) of (.+?) to (\d+(?:\.\d{1,4})?)\s*%\s+(?:as of|checked) (\d{4}-\d{2}-\d{2})[.!]?$/i.exec(input);
+  if (ter) {
+    const ratePct = Number(ter[2]);
+    if (ratePct > 10 || !realDate(ter[3]) || ter[3] > indiaToday(today))
+      return { error: 'Use a published TER from 0% to 10% and a real, non-future date for that exact scheme and plan.' };
+    return { kind: 'ter', selector: ter[1].trim(), ratePct, asOf: ter[3] };
+  }
+  if (/^(?:set|update) (?:ter|expense ratio)\b/i.test(input))
+    return { error: 'Say “set TER of holding 1 to 1.25% as of YYYY-MM-DD” using the published rate for that exact scheme and Direct or Regular plan.' };
   const nav = /^(?:set|update) nav of (.+?) to ₹?([0-9]+(?:\.[0-9]+)?) as of (\d{4}-\d{2}-\d{2})[.!]?$/i.exec(input);
   if (nav) return { kind: 'nav', selector: nav[1].trim(), nav: nav[2], asOf: nav[3] };
   if (/^(?:set|update) nav\b/i.test(input))
@@ -119,7 +130,7 @@ function findRow(holdings, selector) {
 export function prepareHoldingCorrection(saved, command, today = new Date()) {
   if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(saved.goals))
     return { portfolio: null, errors: ['Add a confirmed holding before correcting the review.'] };
-  if (!command || !['update', 'remove', 'cost', 'classify', 'nav', 'price'].includes(command.kind) ||
+  if (!command || !['update', 'remove', 'cost', 'ter', 'ter-clear', 'classify', 'nav', 'price'].includes(command.kind) ||
       typeof command.selector !== 'string' || !command.selector.trim())
     return { portfolio: null, errors: ['Name the confirmed holding or use its number in Included holdings.'] };
   const match = findRow(saved.holdings, command.selector);
@@ -159,6 +170,31 @@ export function prepareHoldingCorrection(saved, command, today = new Date()) {
     return { portfolio, errors: [],
       description: `Set holding ${index + 1}: ${row.name} invested amount to ${rupeesWithPaise(command.value)}, checked ${command.checkedOn}. Current value stays ${money(row.value)} as of ${row.asOf}. Confirm this is the cost of the units or shares still held, after any sales or redemptions; this does not record lifetime contributions or transactions.`,
       result: `${row.name} now has your checked current-position invested amount of ${rupeesWithPaise(command.value)} dated ${command.checkedOn}. Ask “What is my unrealized gain or loss?” for a partial calculation.` };
+  }
+  if (command.kind === 'ter') {
+    if (row.type !== 'Mutual fund' || row.granularity === 'fund_house')
+      return { portfolio: null, errors: ['A dated TER needs one individual mutual-fund scheme, not a stock or fund-house summary.'] };
+    if (!Number.isFinite(command.ratePct) || command.ratePct < 0 || command.ratePct > 10 ||
+        Math.abs(command.ratePct * 10_000 - Math.round(command.ratePct * 10_000)) > 0.000001 ||
+        !realDate(command.asOf) || command.asOf > indiaToday(today))
+      return { portfolio: null, errors: ['Use a published scheme TER from 0% to 10% and a real, non-future date.'] };
+    if (row.expenseRatioPct === command.ratePct && row.expenseRatioAsOf === command.asOf)
+      return { portfolio: null, errors: ['That TER and publication date already match this fund.'] };
+    portfolio.holdings[index].expenseRatioPct = command.ratePct;
+    portfolio.holdings[index].expenseRatioAsOf = command.asOf;
+    return { portfolio, errors: [],
+      description: `Set holding ${index + 1}: ${row.name} TER to ${command.ratePct}% as published on ${command.asOf}. Check the exact scheme and Direct or Regular plan at the AMC or AMFI source before applying. At unchanged entered value ${money(row.value)} and this rate for a year, ${money(row.value * command.ratePct / 100)} is a cost illustration already reflected in NAV, not an additional bill. The holding value, date and goal links stay unchanged.`,
+      result: `${row.name} now has your checked TER of ${command.ratePct}% dated ${command.asOf}. Ask “What are my fund costs?” for covered-value arithmetic; this is not an amount actually paid.` };
+  }
+  if (command.kind === 'ter-clear') {
+    if (row.type !== 'Mutual fund' || row.granularity === 'fund_house' ||
+        row.expenseRatioPct === undefined)
+      return { portfolio: null, errors: ['This individual fund has no saved TER to clear.'] };
+    delete portfolio.holdings[index].expenseRatioPct;
+    delete portfolio.holdings[index].expenseRatioAsOf;
+    return { portfolio, errors: [],
+      description: `Clear the entered TER ${row.expenseRatioPct}% dated ${row.expenseRatioAsOf} from holding ${index + 1}: ${row.name}. Its value, source date, cost basis and goal links stay. Fund-cost coverage will exclude this row until you enter a checked rate again.`,
+      result: `${row.name} no longer has an entered TER. Its holding value and goal links stayed unchanged; fund-cost coverage was recalculated.` };
   }
   if (command.kind === 'nav') {
     if (row.type !== 'Mutual fund' || row.granularity === 'fund_house' || !row.units || !realDate(row.asOf))
