@@ -1,45 +1,45 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=b091de30402b';
-import { previewBrowserCas } from './cas-browser.mjs?v=b091de30402b';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=aa985f93cc3e';
+import { previewBrowserCas } from './cas-browser.mjs?v=aa985f93cc3e';
 import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps,
-  findDraftBatchOverlaps, findCrossAccountDrafts } from './assistant-save.mjs?v=b091de30402b';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=b091de30402b';
-import { goalShare } from './goals.mjs?v=b091de30402b';
+  findDraftBatchOverlaps, findCrossAccountDrafts } from './assistant-save.mjs?v=aa985f93cc3e';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=aa985f93cc3e';
+import { goalShare } from './goals.mjs?v=aa985f93cc3e';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=b091de30402b';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=b091de30402b';
-import { previewAssistantImport } from './assistant-import.mjs?v=b091de30402b';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=b091de30402b';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=b091de30402b';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=aa985f93cc3e';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=aa985f93cc3e';
+import { previewAssistantImport } from './assistant-import.mjs?v=aa985f93cc3e';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=aa985f93cc3e';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=aa985f93cc3e';
 import { analyzePortfolio, freshFictionalHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck, marketValueDateChecks } from './analysis.mjs?v=b091de30402b';
-import { buildReadableReport } from './readable-report.mjs?v=b091de30402b';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=b091de30402b';
-import { parseReviewBackup } from './review-backup.mjs?v=b091de30402b';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=b091de30402b';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b091de30402b';
-import { brokerAccountKey, validBrokerAccountLabel } from './broker-account.mjs?v=b091de30402b';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=b091de30402b';
-import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=b091de30402b';
+  valuationRowsNeedingCheck, marketValueDateChecks } from './analysis.mjs?v=aa985f93cc3e';
+import { buildReadableReport } from './readable-report.mjs?v=aa985f93cc3e';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=aa985f93cc3e';
+import { parseReviewBackup } from './review-backup.mjs?v=aa985f93cc3e';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=aa985f93cc3e';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=aa985f93cc3e';
+import { brokerAccountKey, validBrokerAccountLabel } from './broker-account.mjs?v=aa985f93cc3e';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=aa985f93cc3e';
+import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=aa985f93cc3e';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalSetup, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=b091de30402b';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=aa985f93cc3e';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=b091de30402b';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=b091de30402b';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=aa985f93cc3e';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=aa985f93cc3e';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=b091de30402b';
-import { validReserve, reserveMonths } from './reserve.mjs?v=b091de30402b';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=aa985f93cc3e';
+import { validReserve, reserveMonths } from './reserve.mjs?v=aa985f93cc3e';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantSimpleCsvRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=b091de30402b';
-import { validShares } from './stock-estimate.mjs?v=b091de30402b';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=b091de30402b';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=b091de30402b';
-import { beginQuoteFollowUp, beginTerFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=b091de30402b';
-import { inflationContext, observeIndiaDateChange } from './market-context.mjs?v=b091de30402b';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=b091de30402b';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=aa985f93cc3e';
+import { validShares } from './stock-estimate.mjs?v=aa985f93cc3e';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=aa985f93cc3e';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=aa985f93cc3e';
+import { beginQuoteFollowUp, beginTerFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=aa985f93cc3e';
+import { inflationContext, observeIndiaDateChange } from './market-context.mjs?v=aa985f93cc3e';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=aa985f93cc3e';
 import { compareFundDisclosures, datedSourceIssue, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=b091de30402b';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=aa985f93cc3e';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -796,10 +796,15 @@ function renderRefresh() {
   box.hidden = !state.refresh;
   if (!state.refresh) return;
   const stale = state.account?.revision !== state.refresh.revision;
+  const navReport = state.refresh.kind === 'nav_report';
+  const navCheck = $('#nav-report-check');
+  if (navCheck) navCheck.hidden = !navReport;
   $('#refresh-help').textContent = ['broker', 'simple_csv'].includes(state.refresh.kind) ?
     'Confirm this newer report covers the same account and positions. Unmatched rows will stay out.' :
     state.refresh.kind === 'epfo' ?
       'Confirm this newer passbook covers the same EPF member account. Check the printed date and balance.' :
+    navReport ?
+      'Check each exact scheme, plan and option, its NAV date and your current units before applying these estimates.' :
     state.refresh.replacesManual ?
       'Confirm the manual NPS row and this Tier I statement are for the same PRAN. The manual value will be replaced, not added.' :
     state.refresh.kind === 'nps' ?
@@ -815,9 +820,12 @@ function renderRefresh() {
     const item = document.createElement('li'); item.textContent = change; changes.append(item);
   }
   $('#confirm-refresh').textContent = state.refresh.scopeOnly ?
-    'Recheck coverage' : state.refresh.replacesManual ? 'Replace checked NPS row' : 'Apply report refresh';
-  $('#confirm-refresh').disabled = state.busy || stale;
+    'Recheck coverage' : state.refresh.replacesManual ? 'Replace checked NPS row' :
+      navReport ? 'Apply NAV estimates' : 'Apply report refresh';
+  $('#confirm-refresh').disabled = state.busy || stale ||
+    (navReport && !$('#nav-report-units-checked')?.checked);
 }
+$('#nav-report-units-checked')?.addEventListener('change', renderRefresh);
 
 function renderDisclosureDraft() {
   const draft = state.disclosureDraft;
@@ -1110,7 +1118,7 @@ function renderReview() {
     const savedRow = state.account?.portfolio?.holdings?.[index];
     const item = document.createElement('div'); item.className = 'holding-item';
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
-    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.accountLabel ? ` · broker account ${row.accountLabel}` : ''}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.units ? ` · ${row.units} ${row.entryOrigin === 'manual' ? 'entered' : 'statement'} units; verify current balance` : ''}${row.shares ? ` · ${row.shares} ${row.entryOrigin === 'manual' ? 'entered' : 'reported'} shares; verify current balance` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${savedRow?.stockEstimate ? ' · user-entered stock-price estimate; shares assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}${savedRow?.expenseRatioPct !== undefined ? ` · entered TER ${savedRow.expenseRatioPct}% · source date ${savedRow.expenseRatioAsOf}` : ''}`;
+    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.accountLabel ? ` · broker account ${row.accountLabel}` : ''}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.units ? ` · ${row.units} ${row.entryOrigin === 'manual' ? 'entered' : 'statement'} units; verify current balance` : ''}${row.shares ? ` · ${row.shares} ${row.entryOrigin === 'manual' ? 'entered' : 'reported'} shares; verify current balance` : ''}${savedRow?.navEstimate ? ' · investor-checked NAV estimate; units assumed unchanged' : ''}${savedRow?.stockEstimate ? ' · user-entered stock-price estimate; shares assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}${savedRow?.expenseRatioPct !== undefined ? ` · entered TER ${savedRow.expenseRatioPct}% · source date ${savedRow.expenseRatioAsOf}` : ''}`;
     item.append(name, meta);
     const ask = document.createElement('button'); ask.className = 'holding-review-action'; ask.type = 'button';
     ask.textContent = 'Review this holding';
@@ -1978,9 +1986,9 @@ $('#cas-preview').addEventListener('click', async () => {
       }
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=b091de30402b');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=aa985f93cc3e');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=b091de30402b');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=aa985f93cc3e');
       if (stageGoldResult(await previewGoldStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -2016,7 +2024,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=b091de30402b');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=aa985f93cc3e');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -2091,7 +2099,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=b091de30402b');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=aa985f93cc3e');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2099,7 +2107,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=b091de30402b');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=aa985f93cc3e');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2107,7 +2115,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a digital-gold statement in this browser…');
     try {
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=b091de30402b');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=aa985f93cc3e');
       if (stageGoldResult(await previewGoldStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2500,6 +2508,41 @@ $('#message').addEventListener('keydown', event => {
 });
 $('#report-help-open')?.addEventListener('click', () => $('#report-help-dialog').showModal());
 $('#report-help-close')?.addEventListener('click', () => $('#report-help-dialog').close());
+$('#nav-report-open')?.addEventListener('click', () => $('#nav-report-file').click());
+$('#nav-report-file')?.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!browserOnly || !file) return;
+  $('#report-help-dialog').close();
+  if (state.busy || state.demo || !state.account?.portfolio || state.drafts.length ||
+      state.refresh || state.correction || state.reserveFacts || state.disclosureDraft) {
+    say('note', 'Finish or discard the current preview and confirm individual mutual-fund holdings with units before opening a NAV report.');
+    return;
+  }
+  if (!/\.txt$/i.test(file.name) || file.size > 4_000_000) {
+    say('note', 'Choose the Complete NAV Report .txt file from AMFI, smaller than 4 MB. No values changed.');
+    return;
+  }
+  state.busy = true;
+  renderAccountActions();
+  try {
+    const { parseAmfiNavReport, prepareNavReportRefresh } = await import('./nav-report.mjs?v=aa985f93cc3e');
+    const report = parseAmfiNavReport(await file.text());
+    const prepared = prepareNavReportRefresh(state.account.portfolio, report);
+    if (prepared.errors?.length) say('note', prepared.errors.join(' '));
+    else if (prepared.repeated) say('note', prepared.description);
+    else {
+      state.refresh = { ...prepared, revision: state.account.revision };
+      $('#nav-report-units-checked').checked = false;
+      say('assistant', 'I found newer exact NAV matches for saved funds. Review every change and check your current units before applying. Your dashboard has not changed yet.');
+    }
+  } catch {
+    say('note', 'The NAV text file could not be read. No values changed.');
+  } finally {
+    state.busy = false;
+    renderAccountActions();
+  }
+});
 const reportChoices = [...document.querySelectorAll('[data-report-choice]')];
 const reportPanels = [...document.querySelectorAll('[data-report-panel]')];
 for (const button of reportChoices) button.addEventListener('click', () => {
@@ -2757,17 +2800,21 @@ $('#discard-correction')?.addEventListener('click', () => {
 $('#confirm-refresh')?.addEventListener('click', async () => {
   const refresh = state.refresh;
   if (state.busy || !refresh || !state.account || refresh.revision !== state.account.revision) return;
+  if (refresh.kind === 'nav_report' && !$('#nav-report-units-checked')?.checked) return;
   state.busy = true; renderAccountActions();
   try {
     await writeAccount(refresh.portfolio,
       'The saved review changed in another tab. Discard this report preview and open the report again.');
     state.refresh = null;
+    if ($('#nav-report-units-checked')) $('#nav-report-units-checked').checked = false;
     say('note', refresh.result);
   } catch (error) { say('note', error.message || 'The report refresh could not be saved. Check the preview and try again.'); }
   finally { state.busy = false; renderAccountActions(); }
 });
 $('#discard-refresh')?.addEventListener('click', () => {
-  state.refresh = null; renderRefresh(); say('note', 'The report refresh was discarded. Your confirmed review did not change.');
+  state.refresh = null;
+  if ($('#nav-report-units-checked')) $('#nav-report-units-checked').checked = false;
+  renderRefresh(); say('note', 'The report refresh was discarded. Your confirmed review did not change.');
 });
 
 $('#export-saved').addEventListener('click', async () => {

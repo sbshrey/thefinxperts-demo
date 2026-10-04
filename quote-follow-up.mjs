@@ -1,5 +1,5 @@
-import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=b091de30402b';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=b091de30402b';
+import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=aa985f93cc3e';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=aa985f93cc3e';
 
 const indiaToday = now => new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
 
@@ -57,7 +57,7 @@ export function advanceQuoteFollowUp(pending, message, now = new Date()) {
     const estimate = validAmount ? pending.kind === 'nav' ? estimateNavValue(pending.quantity, value) :
       estimateStockValue(pending.quantity, value) : null;
     if (!validAmount || estimate === null)
-      return { error: `Enter the checked ${label} as a positive rupee number with up to six decimal places. No value has changed.` };
+      return { error: `Enter the checked ${label} as a positive rupee number with up to ${pending.kind === 'nav' ? 'eight' : 'six'} decimal places. No value has changed.` };
     return { pending: { ...pending, amount: value, stage: 'date' },
       question: `What is the published date for that ${label}? Reply YYYY-MM-DD. It must be newer than ${pending.asOf}.` };
   }

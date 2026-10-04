@@ -1,8 +1,8 @@
-import { parseAmount } from './assistant-clarify.mjs?v=b091de30402b';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=b091de30402b';
-import { removeHoldingAllocation } from './goals.mjs?v=b091de30402b';
-import { estimateNavValue, realDate } from './nav-estimate.mjs?v=b091de30402b';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=b091de30402b';
+import { parseAmount } from './assistant-clarify.mjs?v=aa985f93cc3e';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=aa985f93cc3e';
+import { removeHoldingAllocation } from './goals.mjs?v=aa985f93cc3e';
+import { estimateNavValue, realDate } from './nav-estimate.mjs?v=aa985f93cc3e';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=aa985f93cc3e';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const indiaToday = today => new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
@@ -201,7 +201,7 @@ export function prepareHoldingCorrection(saved, command, today = new Date()) {
       return { portfolio: null, errors: ['A dated NAV estimate needs one individual mutual-fund scheme with known units and a dated value. Import a detailed CAS or check the scheme first.'] };
     const value = estimateNavValue(row.units, command.nav);
     if (value === null || !realDate(command.asOf) || command.asOf > indiaToday(today) || command.asOf <= row.asOf)
-      return { portfolio: null, errors: ['Use a positive NAV with up to six decimal places and a real publication date newer than this holding’s value date, not after today.'] };
+      return { portfolio: null, errors: ['Use a positive NAV with up to eight decimal places and a real publication date newer than this holding’s value date, not after today.'] };
     const originalValue = row.navEstimate?.originalValue ?? row.value;
     const originalAsOf = row.navEstimate?.originalAsOf ?? row.asOf;
     portfolio.holdings[index] = { ...row, value, asOf: command.asOf,

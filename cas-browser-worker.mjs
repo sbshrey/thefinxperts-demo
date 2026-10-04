@@ -1,9 +1,9 @@
-import * as pdfjs from './vendor/pdfjs/pdf.mjs?v=b091de30402b';
-import { createPdfjsBackend } from './vendor/casparser-js/src/pdf/pdfjs.js?v=b091de30402b';
-import { readCasPdf } from './vendor/casparser-js/src/parsers/index.js?v=b091de30402b';
-import { normalizeBrowserCasResult } from './cas-browser-result.mjs?v=b091de30402b';
+import * as pdfjs from './vendor/pdfjs/pdf.mjs?v=aa985f93cc3e';
+import { createPdfjsBackend } from './vendor/casparser-js/src/pdf/pdfjs.js?v=aa985f93cc3e';
+import { readCasPdf } from './vendor/casparser-js/src/parsers/index.js?v=aa985f93cc3e';
+import { normalizeBrowserCasResult } from './cas-browser-result.mjs?v=aa985f93cc3e';
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=b091de30402b', import.meta.url).href;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=aa985f93cc3e', import.meta.url).href;
 
 self.onmessage = async event => {
   const { bytes, password } = event.data || {};

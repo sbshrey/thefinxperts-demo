@@ -1,11 +1,13 @@
-import { estimateUnitValue, realDate } from './nav-estimate.mjs?v=b091de30402b';
+import { estimateUnitValue, realDate } from './nav-estimate.mjs?v=aa985f93cc3e';
 
 export function validShares(shares) {
   return typeof shares === 'string' && /^[1-9]\d{0,8}$/.test(shares);
 }
 
 export function estimateStockValue(shares, price) {
-  return validShares(shares) ? estimateUnitValue(shares, price) : null;
+  return validShares(shares) && typeof price === 'string' &&
+    /^(?:0|[1-9]\d{0,6})(?:\.\d{1,6})?$/.test(price) ?
+    estimateUnitValue(shares, price) : null;
 }
 
 export function validStockEstimate(holding, today) {

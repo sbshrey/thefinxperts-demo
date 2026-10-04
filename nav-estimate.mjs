@@ -1,20 +1,22 @@
 const UNIT = /^(?:0|[1-9]\d{0,9})(?:\.\d{1,6})?$/;
-const NAV = /^(?:0|[1-9]\d{0,6})(?:\.\d{1,6})?$/;
+const NAV = /^(?:0|[1-9]\d{0,6})(?:\.\d{1,8})?$/;
 
 export function validUnits(units) {
   return typeof units === 'string' && UNIT.test(units) && /[1-9]/.test(units);
 }
 
-function micros(text) {
+function scaled(text, places) {
   const [whole, fraction = ''] = text.split('.');
-  return BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, '0'));
+  const scale = 10n ** BigInt(places);
+  return BigInt(whole) * scale + BigInt(fraction.padEnd(places, '0'));
 }
 
-/** Paise rounded half up from exact six-place unit and NAV strings. */
+/** Paise rounded half up from exact six-place units and up to eight-place NAV. */
 export function estimateUnitValue(units, nav) {
   if (!validUnits(units) ||
       typeof nav !== 'string' || !NAV.test(nav) || !/[1-9]/.test(nav)) return null;
-  const paise = (micros(units) * micros(nav) + 5_000_000_000n) / 10_000_000_000n;
+  const paise = (scaled(units, 6) * scaled(nav, 8) + 500_000_000_000n) /
+    1_000_000_000_000n;
   if (paise <= 0n || paise > 1_000_000_000_000n) return null;
   return Number(paise) / 100;
 }
