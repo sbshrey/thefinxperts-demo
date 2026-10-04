@@ -33,6 +33,7 @@ export function asksForAdvice(message) {
     /\bhow\s+(?:can|do|should)\s+i\s+optimi[sz]e\s+(?:this|it|my\s+(?:portfolio|investments?|holdings?))\s+for\s+my\s+(?:age|goal|retirement)\b/i.test(message) ||
     /\bis\s+my\s+(?:asset\s+)?allocation\s+(?:right|suitable|appropriate|ideal)\b/i.test(message) ||
     /\bwhat\s+should\s+i\s+do\s+with\s+my\s+(?:investments?|holdings?|funds?|stocks?|shares?)\b/i.test(message) ||
+    /\b(?:step[ -]by[ -]step|action plan)\b.{0,70}\b(?:buy|sell|switch|redeem|rebalance|replace|move|shift|increase|reduce)\b.{0,65}\b(?:funds?|stocks?|shares?|investments?|holdings?|portfolio|allocation)\b/i.test(message) ||
     /\b(?:is|would)\s+my\s+(?:asset\s+allocation|asset\s+mix|equity.{0,15}debt\s+split)\b.{0,45}\b(?:right|suitable|appropriate|ideal)\s+for\s+(?:my\s+)?(?:retirement|goal|age|me)\b/i.test(message) ||
     /\bhow\s+(?:can|do|should)\s+i\s+(?:improve|optimi[sz]e)\s+my\s+(?:portfolio|investments?|holdings?)\b/i.test(message);
 }

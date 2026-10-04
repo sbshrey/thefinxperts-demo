@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=d98a6ab971da';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=d98a6ab971da';
-import { reserveMonths } from './reserve.mjs?v=d98a6ab971da';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=a51dcb7ab95b';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=a51dcb7ab95b';
+import { reserveMonths } from './reserve.mjs?v=a51dcb7ab95b';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=d98a6ab971da';
-import { asksForAdvice } from './question-scope.mjs?v=d98a6ab971da';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=d98a6ab971da';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=d98a6ab971da';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=d98a6ab971da';
-import { parseAmount } from './assistant-clarify.mjs?v=d98a6ab971da';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=d98a6ab971da';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=a51dcb7ab95b';
+import { asksForAdvice } from './question-scope.mjs?v=a51dcb7ab95b';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=a51dcb7ab95b';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=a51dcb7ab95b';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=a51dcb7ab95b';
+import { parseAmount } from './assistant-clarify.mjs?v=a51dcb7ab95b';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=a51dcb7ab95b';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=d98a6ab971da';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=a51dcb7ab95b';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -258,13 +258,31 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'Names and expense ratios are not independently verified. A plan label alone does not establish current TER, tax, exit load, service value or whether to switch.', '#holdings', 'Check fund plan labels');
   }
 
+  const stepByStepQuestion = /\b(?:step[ -]by[ -]step|(?:simple|clear) (?:plan|steps?)|action plan)\b/.test(input) &&
+    /\b(?:portfolio|investments?|holdings?|review|improv\w*)\b/.test(input) && !asksForAdvice(input);
   const openReviewQuestion = /^(?:what should i do(?: next)?|how (?:(?:can|do|should) i|to) (?:improve|optimi[sz]e) (?:my )?(?:portfolio|review|investments?)(?: for (?:my )?(?:age and goal|age|goal))?|where should i start|what can i improve|which holdings? need(?:s)? (?:my )?attention first)[?.!]*$/.test(input) ||
-    /^(?:what should i check(?: first)? to (?:improve|optimi[sz]e) (?:my )?(?:portfolio|investments?)|what (?:is|looks) wrong with (?:my|the) (?:portfolio|investments?)|can you help me improve (?:my )?(?:portfolio|investments?))[?.!]*$/.test(input);
-  if (openReviewQuestion) {
+    /^(?:what should i check(?: first)? to (?:improve|optimi[sz]e) (?:my )?(?:portfolio|investments?)|what (?:is|looks) wrong with (?:my|the) (?:portfolio|investments?)|can you help me improve (?:my )?(?:portfolio|investments?))[?.!]*$/.test(input) ||
+    /\b(?:what should i do with (?:these|my) investments?|what is the first thing i should check|(?:what is )?my biggest blind spot)\b/.test(input) ||
+    stepByStepQuestion;
+  if (openReviewQuestion && !/\b(?:buy|sell|switch|redeem|rebalance|replace|move|shift)\b/.test(input)) {
+    if (/\bretir(?:e|ement|ing)\b/.test(input) && !/\bretir(?:e|ement|ing)\b/i.test(goal?.name || ''))
+      return answer(`The selected goal is ${goal?.name || 'unfinished'}, not Retirement. Start or select a Retirement goal, then confirm your current age, years until retirement, target amount in today's rupees and which holdings count toward it. I can then show the entered mix and current gap for that goal.`,
+        `No confirmed Retirement goal is selected; no values from ${goal?.name || 'an unfinished goal'} were used for retirement.`,
+        'A stated age and retirement age alone do not establish a target amount, suitable mix or trade. The question has not changed your saved goals.', '#goals', 'Set up retirement goal');
     if (!valid.length) return answer('Start by adding and confirming a current holding from a supported statement or broker report. Then I can show what the entered portfolio contains and what needs checking.',
       'No confirmed holding value is available for a factual review.',
       'I cannot choose investments or trades; an import remains a draft until you confirm it.', '#holdings', 'Add a holding');
     const first = result.findings?.[0];
+    if (stepByStepQuestion) {
+      const checks = (result.findings || []).slice(0, 3);
+      const steps = checks.map((item, index) => `${index + 1}. ${item.title}: ${item.question}`).join(' ');
+      const next = checks.length < 3 ? `${checks.length + 1}. ${goal?.confirmed === true ?
+        `Check which holdings you assigned to ${goal.name} and compare their dates and entered asset labels.` :
+        'Confirm one goal with your age, horizon and target amount, then choose which holdings count toward it.'}` : '';
+      return answer(`Here is a source-check plan for this entered snapshot. ${steps} ${next}`.trim(),
+        `Ordered the first ${checks.length} visible review ${checks.length === 1 ? 'finding' : 'findings'} from ${valid.length} positive entered holding ${valid.length === 1 ? 'row' : 'rows'} and the selected goal.`,
+        `These steps check data and exposure; they do not choose a fund, allocation or trade. ${coverageNote}`, '#review', 'Open review checks');
+    }
     const goalSnapshotReady = goal?.confirmed === true && result.goalTotal > 0 &&
       result.goalDateCheck?.count === 0 && result.goalAccessCheck?.count === 0 &&
       result.goalAssets?.Other === 0 && Number.isFinite(Number(goal.target)) &&
@@ -298,9 +316,10 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
   }
 
-  const goalRiskQuestion = /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match)\b/.test(input) &&
-    (/(?:\b(?:goal|retirement)\b.{0,60}\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match)\b)/.test(input) ||
-      /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match)\b.{0,60}\b(?:goal|retirement|my age|age and goal)\b/.test(input));
+  const suitabilityWords = '(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match|too high|too much|excessive|overexposed)';
+  const goalRiskQuestion = new RegExp(`\\b${suitabilityWords}\\b`).test(input) &&
+    (new RegExp(`\\b(?:goal|retirement)\\b.{0,65}\\b${suitabilityWords}\\b`).test(input) ||
+      new RegExp(`\\b${suitabilityWords}\\b.{0,65}\\b(?:goal|retirement|my age|age and goal)\\b`).test(input));
   if (goalRiskQuestion && !/\b(?:buy|sell|switch|redeem|rebalance|replace|increase|reduce|move|shift|trade|invest|allocate|recommend|suggest|optimi[sz]e)\b/.test(input)) {
     if (goal?.confirmed !== true)
       return answer('Confirm the selected goal’s age, target and years until it is due before checking the exposure of its assigned holdings.',
@@ -1162,7 +1181,11 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       limitation, destination, 'Inspect fund holdings');
   }
   const fundSimilarityQuestion = /\b(?:funds?|mutual funds?)\b.{0,30}\b(?:too similar|similar to each other)\b|\b(?:similar|same)\b.{0,20}\b(?:funds?|mutual funds?)\b/.test(input);
-  const disclosureQuestion = fundSimilarityQuestion || /\b(?:overlaps?|same stocks?|underlying (?:stocks|shares|companies)|companies? (?:inside|through)|issuer exposure|inside (?:my|the) funds)\b/.test(input);
+  const companyDiversificationQuestion = /\bdiversif\w*\b.{0,25}\bcompan(?:y|ies)\b|\bcompan(?:y|ies)\b.{0,25}\bdiversif\w*\b/.test(input);
+  const companyExposureQuestion = companyDiversificationQuestion ||
+    /\b(?:one|single|same|largest|top)\s+compan(?:y|ies)\b/.test(input) &&
+    /\b(?:funds?|mutual funds?|portfolio|money|investments?|exposure)\b/.test(input);
+  const disclosureQuestion = fundSimilarityQuestion || companyExposureQuestion || /\b(?:overlaps?|same stocks?|underlying (?:stocks|shares|companies)|companies? (?:inside|through)|issuer exposure|inside (?:my|the) funds)\b/.test(input);
   const checkedDisclosures = Array.isArray(disclosures) ? disclosures.filter(item =>
     matchFundDisclosure(item, valid)) : [];
   if (!goalScopeRequested && disclosureQuestion && checkedDisclosures.length) {
@@ -1206,13 +1229,22 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         a[1].reduce((sum, row) => sum + row.value * row.weight, 0))[0];
     if (shared) {
       const [issuer, rows] = shared;
-      const direct = valid.some(row => row.type === 'Stock' && row.name === issuer);
+      const directValue = valid.filter(row => row.type === 'Stock' && row.name === issuer)
+        .reduce((sum, row) => sum + Number(row.value), 0);
+      const visibleValue = rows.reduce((sum, row) => sum + row.value * row.weight, 0) + directValue;
+      if (companyExposureQuestion) return answer(`In the fictional example, ${money(visibleValue)} (${percent(visibleValue, result.total)}) of entered value visibly points to ${issuer} across ${rows.length} funds${directValue ? ' and a matching direct stock' : ''}. ${companyDiversificationQuestion ? 'That shows one shared company; it cannot establish whether the whole portfolio is diversified across companies.' : 'This is a partial illustrated company exposure, not the largest verified company position.'}`,
+        `${rows.map(row => `${money(row.value)} × ${percent(row.weight, 1)} in ${row.name}`).join(' + ')}${directValue ? ` + ${money(directValue)} matching direct stock` : ''} = ${money(visibleValue)}; entered total ${money(result.total)}.`,
+        'The weights and company match are fictional samples. Unnamed fund holdings and unentered investments can change the result; this does not establish a current concentration or a trade to make.', '#fund-disclosure-card', 'Check fund constituents');
+      const direct = directValue > 0;
       return answer(`In the fictional example, ${issuer} appears in ${rows.length} entered funds: ${rows.map(row =>
         `${row.name} ${percent(row.weight, 1)}`).join('; ')}.${direct ? ' It is also held directly.' : ''} These named weights show only one shared company, not total fund similarity.`,
       rows.map(row => `${row.name}: ${money(row.value)} × ${percent(row.weight, 1)} from its fictional constituent sample dated ${row.asOf}`).join('; '),
       'These are fictional, partial constituent weights. Unnamed holdings could add overlap; real funds need their own current, checked AMC disclosures. No trade or suitability conclusion follows.', '#fund-disclosure-card', 'Check fund constituents');
     }
   }
+  if (companyExposureQuestion) return answer(`${companyDiversificationQuestion ? 'I cannot tell whether this portfolio is diversified across companies from the entered fund and stock values alone.' : 'I cannot calculate a complete one-company share from these holdings yet.'} Confirm the exact fund schemes and upload their supported dated AMC portfolio sheets; this review can then show the identified listed-share portion alongside a direct stock with a matching checked ISIN.`,
+    `${valid.filter(row => row.type === 'Mutual fund').length} entered mutual-fund rows and ${valid.filter(row => row.type === 'Stock').length} direct-stock rows; no usable matched, dated constituent view covers this question.`,
+    'A fund value is not a company value. Unchecked or older constituents, other fund assets and missing accounts remain unknown.', '#fund-disclosure-card', 'Check fund constituents');
   if (fundSimilarityQuestion || /\b(overlaps?|overlapping|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
   {
     const byInstrument = new Map();
