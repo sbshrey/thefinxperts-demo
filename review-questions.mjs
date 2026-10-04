@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=f82990b70512';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=f82990b70512';
-import { reserveMonths } from './reserve.mjs?v=f82990b70512';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=4e7b69b0d686';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=4e7b69b0d686';
+import { reserveMonths } from './reserve.mjs?v=4e7b69b0d686';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=f82990b70512';
-import { asksForAdvice } from './question-scope.mjs?v=f82990b70512';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=f82990b70512';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f82990b70512';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=f82990b70512';
-import { parseAmount } from './assistant-clarify.mjs?v=f82990b70512';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=f82990b70512';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=4e7b69b0d686';
+import { asksForAdvice } from './question-scope.mjs?v=4e7b69b0d686';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=4e7b69b0d686';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=4e7b69b0d686';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=4e7b69b0d686';
+import { parseAmount } from './assistant-clarify.mjs?v=4e7b69b0d686';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=4e7b69b0d686';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=f82990b70512';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=4e7b69b0d686';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -390,10 +390,46 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'The public site reads selected holdings files in this browser and has no broker login or account synchronization.',
       'An export is a dated snapshot; it may omit accounts or assets and does not update itself. Check its value columns and report date before confirmation.', '#report-help-dialog', 'Get a broker report');
   if (/\b(?:sector|industry|industries|sectoral)\b/.test(input) &&
-      /\b(?:allocation|exposure|split|mix|breakdown|diversif\w*|concentration|holdings?|portfolio|funds?|stocks?)\b/.test(input))
-    return answer('I cannot calculate your sector allocation from these holdings. The entered Equity, Debt and Gold labels are broad asset classes, not sectors. To review sectors, I would need dated constituents for each exact fund scheme and a checked sector classification for direct stocks.',
-      `${valid.length} entered holding ${valid.length === 1 ? 'row has' : 'rows have'} broad asset labels; this review has no complete, dated sector look-through.`,
-      'Fund constituents and sector classifications can change. A broad Equity share must not be presented as a sector share.', '#holdings', 'Check scheme holdings');
+      /\b(?:allocation|exposure|split|mix|breakdown|diversif\w*|concentration|holdings?|portfolio|funds?|stocks?)\b/.test(input)) {
+    const scope = namesStocks && !namesFunds ? 'direct stocks' : namesFunds && !namesStocks ? 'mutual funds' : 'portfolio';
+    const needed = scope === 'direct stocks' ? 'a checked, dated sector classification for each direct share.' :
+      scope === 'mutual funds' ? 'dated constituent weights for each exact fund scheme and checked sectors for those securities.' :
+        'dated constituents for each exact fund scheme and a checked sector classification for direct stocks.';
+    return answer(`I cannot calculate the sector allocation of your ${scope} from these holdings. The entered Equity, Debt and Gold labels are broad asset classes, not sectors. I would need ${needed}`,
+      `${valid.length} entered holding ${valid.length === 1 ? 'row has' : 'rows have'} broad asset labels; this review has no complete, dated sector classification for the requested scope.`,
+      'Fund constituents and sector classifications can change. A broad Equity share must not be presented as a sector share.', '#holdings', 'Check sector sources');
+  }
+  if (/\b(?:psu|public[ -]sector|private[ -]sector)\b.{0,35}\bbank(?:s|ing)?\b|\bbank(?:s|ing)?\b.{0,35}\b(?:psu|public[ -]sector|private[ -]sector)\b/.test(input)) {
+    const fundCount = valid.filter(row => row.type === 'Mutual fund').length;
+    const stockCount = valid.filter(row => row.type === 'Stock').length;
+    return answer('I cannot split your exposure between PSU and private banks from these holdings. For direct shares, check each company’s dated sector and ownership classification. For mutual funds, also check the exact schemes’ dated constituent lists before adding indirect exposure.',
+      `${stockCount} direct-stock ${stockCount === 1 ? 'row' : 'rows'} and ${fundCount} mutual-fund ${fundCount === 1 ? 'row' : 'rows'} are entered; neither bank ownership tags nor complete fund constituent classifications are saved here.`,
+      'A bank name, fund name or broad Equity label does not establish a PSU/private-bank exposure percentage. The classifications and fund weights can change.', '#holdings', 'Check bank exposure sources');
+  }
+  const marketCapQuestion = /\b(?:market[ -]?cap(?:italisation|italization)?|large[ -]?cap|mid[ -]?cap|small[ -]?cap)\b/.test(input) &&
+    /\b(?:break\s*down|breakdown|split|allocation|mix|exposure|diversif\w*|large vs mid|mid vs small)\b/.test(input);
+  if (marketCapQuestion) {
+    const fundCount = valid.filter(row => row.type === 'Mutual fund').length;
+    const stockCount = valid.filter(row => row.type === 'Stock').length;
+    const scope = namesFunds && !namesStocks ? 'mutual funds' : namesStocks && !namesFunds ? 'direct stocks' : 'portfolio';
+    const evidence = scope === 'mutual funds' ?
+      'For a scheme-category split, check each exact fund’s current category and plan with its AMC; for underlying company-size exposure, dated constituent weights and checked company-size labels are also needed.' :
+      scope === 'direct stocks' ?
+        'Check a dated market-cap value or size classification for each direct stock first.' :
+        'Check dated size classifications for direct stocks and exact scheme categories or constituent weights for funds first.';
+    return answer(`I cannot calculate a large-, mid- and small-cap split for your ${scope} from this snapshot. ${evidence}`,
+      `${fundCount} entered fund ${fundCount === 1 ? 'row has' : 'rows have'} a value and ${stockCount} direct-stock ${stockCount === 1 ? 'row has' : 'rows have'} a value, but no verified market-cap categories or complete dated company-size look-through.`,
+      'Names and broad Equity labels do not establish company size or the market caps of a fund’s underlying holdings. Size categories and weights can change; no split or suitability conclusion was inferred.', '#holdings', 'Check size classifications');
+  }
+  if (/\bfunds?\b/.test(input) && /\b(?:loser|winner|gainer|worst|best)\b/.test(input) &&
+      /\b(?:this year|year to date|ytd|past year|past 12 months)\b/.test(input))
+    return answer('I cannot rank your mutual funds by this year’s gain or loss from a current holdings snapshot. That needs each exact scheme’s value at the start of the period, dated purchases, redemptions and distributions, and its latest checked value. A largest fund by value is not a biggest loser.',
+      `${valid.filter(row => row.type === 'Mutual fund').length} current mutual-fund values are entered; no complete year-to-date cash-flow and opening-value series is saved in this review.`,
+      'An optional checked cost for currently held units can show partial unrealized change, but it is not a this-year fund return or benchmark comparison.', '#holdings', 'Check fund history');
+  if (/\bnet worth\b/.test(input) && /\b(?:trend|over time|current vs invested|change through time)\b/.test(input))
+    return answer('I cannot show a net-worth trend from current investment values versus checked invested amounts. Those two figures can support a partial unrealized gain or loss for covered holdings, but a trend needs dated snapshots over time and net worth also needs assets and liabilities outside this review.',
+      `${valid.length} current investment holding ${valid.length === 1 ? 'row is' : 'rows are'} entered; this browser review has no complete historical net-worth snapshots or liability history.`,
+      'A current investment subtotal, cost difference, or goal projection must not be labelled a net-worth time series.', '#holdings', 'Check dated snapshots');
   const reviewsHoldings = /\b(?:review|analy[sz]e|assess|improv\w*)\b/.test(input);
   const reviewsFunds = /\b(?:mutual funds?|funds?)\b/.test(input);
   const reviewsStocks = /\b(?:stocks?|shares?)\b/.test(input);

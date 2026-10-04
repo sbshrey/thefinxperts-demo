@@ -1,43 +1,43 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=f82990b70512';
-import { previewBrowserCas } from './cas-browser.mjs?v=f82990b70512';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=f82990b70512';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=f82990b70512';
-import { goalShare } from './goals.mjs?v=f82990b70512';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=4e7b69b0d686';
+import { previewBrowserCas } from './cas-browser.mjs?v=4e7b69b0d686';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=4e7b69b0d686';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=4e7b69b0d686';
+import { goalShare } from './goals.mjs?v=4e7b69b0d686';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=f82990b70512';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=f82990b70512';
-import { previewAssistantImport } from './assistant-import.mjs?v=f82990b70512';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=f82990b70512';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=f82990b70512';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=4e7b69b0d686';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=4e7b69b0d686';
+import { previewAssistantImport } from './assistant-import.mjs?v=4e7b69b0d686';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=4e7b69b0d686';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=4e7b69b0d686';
 import { analyzePortfolio, freshFictionalHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=f82990b70512';
-import { buildReadableReport } from './readable-report.mjs?v=f82990b70512';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=f82990b70512';
-import { parseReviewBackup } from './review-backup.mjs?v=f82990b70512';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=f82990b70512';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f82990b70512';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=f82990b70512';
-import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=f82990b70512';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=4e7b69b0d686';
+import { buildReadableReport } from './readable-report.mjs?v=4e7b69b0d686';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=4e7b69b0d686';
+import { parseReviewBackup } from './review-backup.mjs?v=4e7b69b0d686';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=4e7b69b0d686';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=4e7b69b0d686';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=4e7b69b0d686';
+import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=4e7b69b0d686';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalSetup, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=f82990b70512';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=4e7b69b0d686';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=f82990b70512';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=f82990b70512';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=4e7b69b0d686';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=4e7b69b0d686';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=f82990b70512';
-import { validReserve, reserveMonths } from './reserve.mjs?v=f82990b70512';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=4e7b69b0d686';
+import { validReserve, reserveMonths } from './reserve.mjs?v=4e7b69b0d686';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=f82990b70512';
-import { validShares } from './stock-estimate.mjs?v=f82990b70512';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=f82990b70512';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=f82990b70512';
-import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=f82990b70512';
-import { inflationContext } from './market-context.mjs?v=f82990b70512';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=f82990b70512';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=4e7b69b0d686';
+import { validShares } from './stock-estimate.mjs?v=4e7b69b0d686';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=4e7b69b0d686';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=4e7b69b0d686';
+import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=4e7b69b0d686';
+import { inflationContext } from './market-context.mjs?v=4e7b69b0d686';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=4e7b69b0d686';
 import { compareFundDisclosures, datedSourceIssue, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=f82990b70512';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=4e7b69b0d686';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -1740,9 +1740,9 @@ $('#cas-preview').addEventListener('click', async () => {
       }
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=f82990b70512');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=4e7b69b0d686');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=f82990b70512');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=4e7b69b0d686');
       if (stageGoldResult(await previewGoldStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1778,7 +1778,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=f82990b70512');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=4e7b69b0d686');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -1841,7 +1841,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=f82990b70512');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=4e7b69b0d686');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1849,7 +1849,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=f82990b70512');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=4e7b69b0d686');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1857,7 +1857,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a digital-gold statement in this browser…');
     try {
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=f82990b70512');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=4e7b69b0d686');
       if (stageGoldResult(await previewGoldStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
