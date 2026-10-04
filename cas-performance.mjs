@@ -90,6 +90,7 @@ export function statementSipPurchases(document, today = new Date()) {
   let count = 0;
   let totalPaise = 0n;
   let latestDate = null;
+  const byMonth = new Map();
   for (const folio of document.folios) {
     if (!Array.isArray(folio?.schemes)) return null;
     for (const scheme of folio.schemes) {
@@ -109,17 +110,24 @@ export function statementSipPurchases(document, today = new Date()) {
         totalPaise += amount;
         if (totalPaise > 100_000_000_000_000n) return null;
         count++;
+        const month = transaction.date.slice(0, 7);
+        const previous = byMonth.get(month) || { count: 0, paise: 0n };
+        byMonth.set(month, { count: previous.count + 1, paise: previous.paise + amount });
+        if (byMonth.size > 240) return null;
         if (latestDate === null || transaction.date > latestDate) latestDate = transaction.date;
       }
     }
   }
-  return count ? { from, to, latestDate, count, total: Number(totalPaise) / 100 } : null;
+  const months = [...byMonth].sort(([left], [right]) => left.localeCompare(right))
+    .map(([month, value]) => ({ month, count: value.count, total: Number(value.paise) / 100 }));
+  return count ? { from, to, latestDate, count, total: Number(totalPaise) / 100, months } : null;
 }
 
 /** Recheck the identity-free aggregate when it crosses a browser or answer boundary. */
 export function validatedStatementSipSummary(value, today = new Date()) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
-      Object.keys(value).sort().join(',') !== 'count,from,latestDate,to,total' ||
+      !['count,from,latestDate,to,total', 'count,from,latestDate,months,to,total']
+        .includes(Object.keys(value).sort().join(',')) ||
       day(value.from) === null || day(value.to) === null || day(value.latestDate) === null ||
       value.from > value.latestDate || value.latestDate > value.to ||
       value.to > new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10) ||
@@ -127,8 +135,31 @@ export function validatedStatementSipSummary(value, today = new Date()) {
       typeof value.total !== 'number' || !Number.isFinite(value.total) ||
       value.total < 0.01 || value.total > 1_000_000_000_000 ||
       Math.abs(value.total * 100 - Math.round(value.total * 100)) > 0.01) return null;
+  if (value.months !== undefined) {
+    if (!Array.isArray(value.months) || !value.months.length || value.months.length > 240) return null;
+    let monthCount = 0;
+    let monthPaise = 0;
+    let previousMonth = '';
+    for (const entry of value.months) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry) ||
+          Object.keys(entry).sort().join(',') !== 'count,month,total' ||
+          typeof entry.month !== 'string' || !/^\d{4}-\d{2}$/.test(entry.month) ||
+          day(`${entry.month}-01`) === null || entry.month <= previousMonth ||
+          entry.month < value.from.slice(0, 7) || entry.month > value.to.slice(0, 7) ||
+          !Number.isInteger(entry.count) || entry.count < 1 || entry.count > 2000 ||
+          typeof entry.total !== 'number' || !Number.isFinite(entry.total) ||
+          entry.total < 0.01 || entry.total > 1_000_000_000_000 ||
+          Math.abs(entry.total * 100 - Math.round(entry.total * 100)) > 0.01) return null;
+      previousMonth = entry.month;
+      monthCount += entry.count;
+      monthPaise += Math.round(entry.total * 100);
+    }
+    if (monthCount !== value.count || monthPaise !== Math.round(value.total * 100) ||
+        value.latestDate.slice(0, 7) !== previousMonth) return null;
+  }
   return { from: value.from, to: value.to, latestDate: value.latestDate,
-    count: value.count, total: value.total };
+    count: value.count, total: value.total,
+    ...(value.months === undefined ? {} : { months: value.months.map(entry => ({ ...entry })) }) };
 }
 
 function positivePaise(value) {

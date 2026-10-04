@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=bbabee0a4417';
-import { parseWhatIfMix } from './mix-plan.mjs?v=bbabee0a4417';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=bbabee0a4417';
-import { reserveMonths } from './reserve.mjs?v=bbabee0a4417';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=da200429ed44';
+import { parseWhatIfMix } from './mix-plan.mjs?v=da200429ed44';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=da200429ed44';
+import { reserveMonths } from './reserve.mjs?v=da200429ed44';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=bbabee0a4417';
-import { asksForAdvice } from './question-scope.mjs?v=bbabee0a4417';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=bbabee0a4417';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=bbabee0a4417';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=bbabee0a4417';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=bbabee0a4417';
-import { parseAmount } from './assistant-clarify.mjs?v=bbabee0a4417';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=bbabee0a4417';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=da200429ed44';
+import { asksForAdvice } from './question-scope.mjs?v=da200429ed44';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=da200429ed44';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=da200429ed44';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=da200429ed44';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=da200429ed44';
+import { parseAmount } from './assistant-clarify.mjs?v=da200429ed44';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=da200429ed44';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=bbabee0a4417';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=da200429ed44';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -511,6 +511,20 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Used ${rows.length} positive ${kind} rows${goalScopeRequested ? ` and only their assignment shares for ${goal.name}` : ''}; grouped exact matching supplied ISINs and fund-house summaries for the largest position. ${money(largest.value)} ÷ ${money(groupTotal)} = ${percent(largest.value, groupTotal)}. ${datedChecks.length} ${datedChecks.length === 1 ? 'row needs' : 'rows need'} a value-date check.`,
       `These are supplied values and labels, not verified current account coverage${reviewsFunds ? ' or fund look-through' : ''}. This review does not choose a fund, stock, trade or suitable personal mix. ${coverageNote}`,
       goalScopeRequested ? '#goals' : '#holdings', 'Inspect this group');
+  }
+  if (/\b(?:sips?|systematic investment plans?)\b/.test(input) &&
+      /\b(?:which months?|what months?|month by month|monthly history|miss(?:ed|ing)?|skipp?ed|regular|consistent)\b/.test(input)) {
+    const printedSip = source === 'demo' ? null : validatedStatementSipSummary(sipSummary, today);
+    if (printedSip?.months) {
+      const recent = printedSip.months.slice(-12);
+      const monthList = recent.map(entry => `${entry.month}: ${entry.count} ${entry.count === 1 ? 'entry' : 'entries'}, ${money(entry.total)}`).join('; ');
+      return answer(`This detailed CAS shows explicitly SIP-marked purchases in ${printedSip.months.length} ${printedSip.months.length === 1 ? 'month' : 'months'} during its printed period ${printedSip.from} to ${printedSip.to}. ${printedSip.months.length > 12 ? 'The latest 12 observed months are: ' : 'Observed months: '}${monthList}. An unlisted month does not establish a missed SIP payment.`,
+        `Grouped ${printedSip.count} explicitly SIP-marked purchase rows by transaction month; these sum to ${money(printedSip.total)}. The month totals are held only in this chat tab, not saved with holdings.`,
+        `The statement may cover only some accounts or periods. It does not establish an active mandate, its schedule, bank debits or whether an unlisted month was due. Check the original CAS and current mandates to investigate gaps.`, '#holdings', 'Check SIP rows');
+    }
+    return answer('I cannot check SIP purchase months from current holdings alone. Upload a supported detailed CAMS or KFintech CAS covering the period you want to inspect, then ask again.',
+      `No validated month-by-month SIP purchase aggregate from a detailed CAS is available in this chat tab.`,
+      `A holdings snapshot or goal contribution assumption cannot establish completed payments, missed instalments or an active mandate.`, '#holdings', 'Upload detailed CAS');
   }
   if (isSipAmountQuestion(input)) {
     const historical = /\b(?:invested|paid|deposited|contributed|total|purchases?|payments?)\b/.test(input);
