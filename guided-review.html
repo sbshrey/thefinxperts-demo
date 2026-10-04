@@ -8,8 +8,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
   <title>Guided browser review · TheFinxperts</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./assistant.css?v=6176787af317">
-  <script type="module" src="./assistant.mjs?v=6176787af317"></script>
+  <link rel="stylesheet" href="./assistant.css?v=edf19348a259">
+  <script type="module" src="./assistant.mjs?v=edf19348a259"></script>
 </head>
 <body data-mode="browser-only">
   <div class="shell">
@@ -57,6 +57,7 @@
         <div class="review-head"><div><span class="eyebrow">LIVE REVIEW</span><h2 id="review-title">Your picture</h2></div><span id="review-badge">No holdings yet</span><button id="review-toggle" class="review-toggle" type="button" aria-controls="review-body" aria-expanded="false">Open review</button></div>
         <div id="review-body" class="review-body">
           <div class="hero-card"><span id="total-label">CONFIRMED HOLDINGS VALUE</span><strong id="total">₹0</strong><small id="date-note">Add a holding to begin. Values are dated, not live quotes.</small></div>
+          <section id="draft-preview" class="draft-preview" aria-labelledby="draft-preview-title" hidden><span class="draft-preview-label">UNCONFIRMED EXTRACTION</span><h3 id="draft-preview-title">Possible holdings</h3><strong id="draft-preview-total">₹0</strong><p id="draft-preview-value-note"></p><p id="draft-preview-checks"></p></section>
           <div class="stat-grid"><div><span>Holdings</span><strong id="count">0</strong></div><div><span>Need a date check</span><strong id="stale-count">0</strong></div></div>
           <div class="section-card" id="goal-card"><h3>Selected goal</h3><div id="goal-review"><p>Add a goal to see how its assigned holdings compare with its target.</p></div></div>
           <div class="section-card"><h3>Asset picture</h3><div id="asset-bars" class="asset-bars"><p>Nothing to compare yet.</p></div></div>

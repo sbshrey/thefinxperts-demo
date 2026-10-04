@@ -139,6 +139,12 @@ body[data-mode="browser-only"] .tools-items>.quiet:disabled{opacity:.5}
 .hero-card span{font-size:10px;letter-spacing:.12em;opacity:.75}
 .hero-card strong{font-size:38px;letter-spacing:-.05em}
 .hero-card small{font-size:12px;opacity:.76}
+.draft-preview{background:#fff9e9;border:1px solid #e9d89f;border-radius:14px;padding:15px 17px;display:flex;flex-direction:column;gap:5px}
+.draft-preview[hidden]{display:none!important}
+.draft-preview-label{font-size:10px;letter-spacing:.1em;font-weight:800;color:#856624}
+.draft-preview h3{font-size:15px;margin:0;color:#59471e}
+.draft-preview strong{font-size:26px;letter-spacing:-.03em;color:#59471e}
+.draft-preview p{font-size:12px;line-height:1.4;color:#6c5b36;margin:0}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .stat-grid>div,.section-card{background:#fff;border:1px solid #e3ebe5;border-radius:14px;padding:16px}
 .stat-grid span{display:block;color:#698073;font-size:12px}
