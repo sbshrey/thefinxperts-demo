@@ -1,7 +1,7 @@
-import { validShares } from './stock-estimate.mjs?v=1e6af04ef7e3';
-import { validUnits } from './nav-estimate.mjs?v=1e6af04ef7e3';
-import { validCostBasis } from './cost-basis.mjs?v=1e6af04ef7e3';
-import { npsTier } from './account-label.mjs?v=1e6af04ef7e3';
+import { validShares } from './stock-estimate.mjs?v=416b8426a5c0';
+import { validUnits } from './nav-estimate.mjs?v=416b8426a5c0';
+import { validCostBasis } from './cost-basis.mjs?v=416b8426a5c0';
+import { npsTier } from './account-label.mjs?v=416b8426a5c0';
 
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const SOURCES = new Set(['manual', 'active_statement', 'broker_csv', 'broker_xlsx', 'simple_csv', 'cas', 'demat_cas', 'epfo_passbook', 'nps_statement', 'digital_gold_statement']);
@@ -81,6 +81,16 @@ export function findSavedDraftOverlaps(existing, drafts) {
   if (!Array.isArray(drafts)) return [];
   return drafts.flatMap((draft, index) => {
     const match = findAssistantOverlap(existing, draft);
+    return match ? [{ index, draft, ...match }] : [];
+  });
+}
+
+/** Flag the later row when two unconfirmed rows may describe the same position. */
+export function findDraftBatchOverlaps(drafts) {
+  if (!Array.isArray(drafts)) return [];
+  return drafts.flatMap((draft, index) => {
+    const match = findAssistantOverlap(drafts.slice(0, index), draft,
+      { allowComplementarySummary: true });
     return match ? [{ index, draft, ...match }] : [];
   });
 }

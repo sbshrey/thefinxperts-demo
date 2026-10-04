@@ -1,43 +1,44 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=1e6af04ef7e3';
-import { previewBrowserCas } from './cas-browser.mjs?v=1e6af04ef7e3';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=1e6af04ef7e3';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=1e6af04ef7e3';
-import { goalShare } from './goals.mjs?v=1e6af04ef7e3';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=416b8426a5c0';
+import { previewBrowserCas } from './cas-browser.mjs?v=416b8426a5c0';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps,
+  findDraftBatchOverlaps } from './assistant-save.mjs?v=416b8426a5c0';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=416b8426a5c0';
+import { goalShare } from './goals.mjs?v=416b8426a5c0';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=1e6af04ef7e3';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=1e6af04ef7e3';
-import { previewAssistantImport } from './assistant-import.mjs?v=1e6af04ef7e3';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=1e6af04ef7e3';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=1e6af04ef7e3';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=416b8426a5c0';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=416b8426a5c0';
+import { previewAssistantImport } from './assistant-import.mjs?v=416b8426a5c0';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=416b8426a5c0';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=416b8426a5c0';
 import { analyzePortfolio, freshFictionalHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=1e6af04ef7e3';
-import { buildReadableReport } from './readable-report.mjs?v=1e6af04ef7e3';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=1e6af04ef7e3';
-import { parseReviewBackup } from './review-backup.mjs?v=1e6af04ef7e3';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=1e6af04ef7e3';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=1e6af04ef7e3';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=1e6af04ef7e3';
-import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=1e6af04ef7e3';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=416b8426a5c0';
+import { buildReadableReport } from './readable-report.mjs?v=416b8426a5c0';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=416b8426a5c0';
+import { parseReviewBackup } from './review-backup.mjs?v=416b8426a5c0';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=416b8426a5c0';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=416b8426a5c0';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=416b8426a5c0';
+import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=416b8426a5c0';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalSetup, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=1e6af04ef7e3';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=416b8426a5c0';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=1e6af04ef7e3';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=1e6af04ef7e3';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=416b8426a5c0';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=416b8426a5c0';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=1e6af04ef7e3';
-import { validReserve, reserveMonths } from './reserve.mjs?v=1e6af04ef7e3';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=416b8426a5c0';
+import { validReserve, reserveMonths } from './reserve.mjs?v=416b8426a5c0';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=1e6af04ef7e3';
-import { validShares } from './stock-estimate.mjs?v=1e6af04ef7e3';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=1e6af04ef7e3';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=1e6af04ef7e3';
-import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=1e6af04ef7e3';
-import { inflationContext } from './market-context.mjs?v=1e6af04ef7e3';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=1e6af04ef7e3';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=416b8426a5c0';
+import { validShares } from './stock-estimate.mjs?v=416b8426a5c0';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=416b8426a5c0';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=416b8426a5c0';
+import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=416b8426a5c0';
+import { inflationContext } from './market-context.mjs?v=416b8426a5c0';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=416b8426a5c0';
 import { compareFundDisclosures, datedSourceIssue, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=1e6af04ef7e3';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=416b8426a5c0';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -575,12 +576,18 @@ function unclassifiedBrokerDrafts() {
     row.type === 'Other' && row.asset === 'Other');
 }
 
+function previewDraftOverlaps() {
+  const matches = [...findSavedDraftOverlaps(state.account?.portfolio?.holdings || state.confirmed, state.drafts),
+    ...findDraftBatchOverlaps(state.drafts)];
+  return matches.filter((match, index) => matches.findIndex(item => item.index === match.index) === index);
+}
+
 function renderDrafts() {
   const box = $('#drafts');
   box.hidden = !state.drafts.length;
   $('#draft-title').textContent = state.drafts.length ? `Possible holdings (${state.drafts.length})` : 'Possible holdings';
   $('#draft-list').replaceChildren();
-  const matches = findSavedDraftOverlaps(state.account?.portfolio?.holdings || state.confirmed, state.drafts);
+  const matches = previewDraftOverlaps();
   const preview = $('#draft-preview');
   preview.hidden = !state.drafts.length;
   if (state.drafts.length) {
@@ -651,13 +658,13 @@ function renderDrafts() {
   }
   $('#draft-list').append(list);
   $('#draft-help').textContent = matches.length ?
-    `${matches.length} ${matches.length === 1 ? 'row may' : 'rows may'} already be counted. Check both sources and account positions before leaving them out. ${nextDraftQuestion(state.drafts) || ''}` :
+    `${matches.length} ${matches.length === 1 ? 'row may' : 'rows may'} already be counted in saved holdings or another draft. Check the source and leave out matching rows before using this batch. Separate account positions need source-aware reconciliation. ${nextDraftQuestion(state.drafts) || ''}` :
     nextDraftQuestion(state.drafts) || 'Check these against your source before using them in the dashboard.';
   if (unclassifiedDemat.length)
     $('#draft-help').textContent += ' If every unclassified demat row is an ordinary company share, use the checked-rows button after checking the original statement.';
   if (unclassifiedBroker.length)
     $('#draft-help').textContent += ' If every unclassified broker row is an ordinary company share, use the checked-rows button after checking the report.';
-  $('#confirm-drafts').disabled = state.busy || state.drafts.some(row =>
+  $('#confirm-drafts').disabled = state.busy || matches.length > 0 || state.drafts.some(row =>
     !Number.isFinite(row.value) || row.value <= 0 || row.type === 'Other' ||
     (row.type === 'Stock' && row.asset !== 'Equity'));
 }
@@ -1760,9 +1767,9 @@ $('#cas-preview').addEventListener('click', async () => {
       }
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=1e6af04ef7e3');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=416b8426a5c0');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=1e6af04ef7e3');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=416b8426a5c0');
       if (stageGoldResult(await previewGoldStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1798,7 +1805,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=1e6af04ef7e3');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=416b8426a5c0');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -1861,7 +1868,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=1e6af04ef7e3');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=416b8426a5c0');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1869,7 +1876,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=1e6af04ef7e3');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=416b8426a5c0');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1877,7 +1884,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a digital-gold statement in this browser…');
     try {
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=1e6af04ef7e3');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=416b8426a5c0');
       if (stageGoldResult(await previewGoldStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2312,6 +2319,9 @@ for (const prompt of document.querySelectorAll('[data-guided-question]')) {
 
 $('#confirm-drafts').addEventListener('click', async () => {
   if (state.busy || !state.drafts.length) return;
+  if (previewDraftOverlaps().length) {
+    say('note', 'Possible matching holdings need checking before this batch can be used. Leave out rows already counted, or reconcile separate account positions from their sources.'); return;
+  }
   if (state.hosted && !state.account) {
     say('note', 'The saved account has not loaded. Your drafts remain in this tab; try again after the account is available.'); return;
   }
@@ -2356,7 +2366,7 @@ $('#confirm-drafts').addEventListener('click', async () => {
 
 $('#omit-matching-drafts').addEventListener('click', () => {
   if (state.busy || !state.drafts.length) return;
-  const matches = findSavedDraftOverlaps(state.account?.portfolio?.holdings || state.confirmed, state.drafts);
+  const matches = previewDraftOverlaps();
   if (!matches.length) return;
   const value = matches.reduce((sum, match) => sum + (Number.isFinite(match.draft.value) ? match.draft.value : 0), 0);
   const remaining = state.drafts.length - matches.length;
