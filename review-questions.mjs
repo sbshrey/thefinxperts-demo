@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=25ef4288d68b';
-import { parseWhatIfMix } from './mix-plan.mjs?v=25ef4288d68b';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=25ef4288d68b';
-import { reserveMonths } from './reserve.mjs?v=25ef4288d68b';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=0e4dd62e8c2d';
+import { parseWhatIfMix } from './mix-plan.mjs?v=0e4dd62e8c2d';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=0e4dd62e8c2d';
+import { reserveMonths } from './reserve.mjs?v=0e4dd62e8c2d';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=25ef4288d68b';
-import { asksForAdvice } from './question-scope.mjs?v=25ef4288d68b';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=25ef4288d68b';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=25ef4288d68b';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=25ef4288d68b';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=25ef4288d68b';
-import { parseAmount } from './assistant-clarify.mjs?v=25ef4288d68b';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=25ef4288d68b';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=0e4dd62e8c2d';
+import { asksForAdvice } from './question-scope.mjs?v=0e4dd62e8c2d';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=0e4dd62e8c2d';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=0e4dd62e8c2d';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=0e4dd62e8c2d';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=0e4dd62e8c2d';
+import { parseAmount } from './assistant-clarify.mjs?v=0e4dd62e8c2d';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=0e4dd62e8c2d';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=25ef4288d68b';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=0e4dd62e8c2d';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -388,8 +388,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       if (steps.length < 3) steps.push(goal?.confirmed === true && result.goalTotal ?
         `Check which holdings you assigned to ${goal.name} and compare their dates and entered asset labels.` :
         'Check the values and dates against your most recent statements before interpreting this snapshot.');
-      const numbered = steps.map((item, index) => `${index + 1}. ${item}`).join(' ');
-      return answer(`Here is a source-check plan for this entered snapshot. ${numbered}`,
+      const numbered = steps.map((item, index) => `${index + 1}. ${item}`).join('\n');
+      return answer(`Here is a source-check plan for this entered snapshot.\n\n${numbered}`,
         `Used ${valid.length} positive entered holding ${valid.length === 1 ? 'row' : 'rows'}, ${used.size} visible review ${used.size === 1 ? 'finding' : 'findings'}, and ${goalStep ? 'the missing selected-goal step' : 'the selected goal'}.`,
         `These steps check data and exposure; they do not choose a fund, allocation or trade. ${coverageNote}`, goalStep ? '#goals' : '#review',
         goalStep ? 'Open selected goal' : 'Open review checks');

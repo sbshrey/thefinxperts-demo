@@ -19,7 +19,7 @@
  *   isin(isin, name, issuer, type, status, symbol, exchange)
  */
 
-import { Decimal } from './decimal.js?v=25ef4288d68b';
+import { Decimal } from './decimal.js?v=0e4dd62e8c2d';
 
 /**
  * Registrar names as the database stores them. A statement writes the current trading
