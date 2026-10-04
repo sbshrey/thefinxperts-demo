@@ -3,8 +3,8 @@
  * This boundary deliberately drops investor, PAN, folio, nominee and transaction data.
  * No PDF is parsed here; callers must use a separately verified CAS PDF parser.
  */
-import { statementSipPurchases, statementXirr } from './cas-performance.mjs?v=9001bdd7691c';
-import { normalizeDematHoldings } from './demat-adapter.mjs?v=9001bdd7691c';
+import { statementSipPurchases, statementXirr } from './cas-performance.mjs?v=28a942c6f80e';
+import { normalizeDematHoldings } from './demat-adapter.mjs?v=28a942c6f80e';
 
 const MAX_PREVIEW_PERFORMANCE_TRANSACTIONS = 2000;
 

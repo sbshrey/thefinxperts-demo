@@ -1,20 +1,20 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=9001bdd7691c';
-import { parseWhatIfMix } from './mix-plan.mjs?v=9001bdd7691c';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=9001bdd7691c';
-import { reserveMonths } from './reserve.mjs?v=9001bdd7691c';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=28a942c6f80e';
+import { parseWhatIfMix } from './mix-plan.mjs?v=28a942c6f80e';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=28a942c6f80e';
+import { reserveMonths } from './reserve.mjs?v=28a942c6f80e';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=9001bdd7691c';
-import { asksForAdvice } from './question-scope.mjs?v=9001bdd7691c';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=9001bdd7691c';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=9001bdd7691c';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=9001bdd7691c';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=9001bdd7691c';
-import { parseAmount } from './assistant-clarify.mjs?v=9001bdd7691c';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=9001bdd7691c';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=28a942c6f80e';
+import { asksForAdvice } from './question-scope.mjs?v=28a942c6f80e';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=28a942c6f80e';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=28a942c6f80e';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=28a942c6f80e';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=28a942c6f80e';
+import { parseAmount } from './assistant-clarify.mjs?v=28a942c6f80e';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=28a942c6f80e';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=9001bdd7691c';
-import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=9001bdd7691c';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=28a942c6f80e';
+import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=28a942c6f80e';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -238,13 +238,14 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       /\b(?:goal|money|portfolio|investments?|mix|allocation|retire|retirement|target|gap|future|monthly|sip)\b/.test(input) &&
       (relativeHorizon || statedYears !== Number(goal.years)))
     return { ...answer(relativeHorizon ?
-      `You said next year, while the selected goal, ${goal.name}, is saved for ${formatGoalHorizon(goal.years)}. How many whole months from now do you mean, and is this the same goal? I need that timing confirmed before using the selected goal's mix or target for your question.` :
-      `You mentioned ${horizonLabel}, but the selected goal, ${goal.name}, is saved for ${formatGoalHorizon(goal.years)}. Is this a separate goal, or has its date changed? Select or update the intended goal before I use its mix or target for this question.`,
+      `You said next year, while the selected goal, ${goal.name}, is saved for ${formatGoalHorizon(goal.years)}. How many whole months from now do you mean? Reply “same goal in 6 months” with your actual number, or “separate goal”. I need that timing confirmed before using the selected goal's mix or target for your question.` :
+      `You mentioned ${horizonLabel}, but the selected goal, ${goal.name}, is saved for ${formatGoalHorizon(goal.years)}. Is this a separate goal, or has its date changed? Reply “same goal” to stage ${horizonLabel} for confirmation, or “separate goal” to start another goal. Select or update the intended goal before I use its mix or target for this question.`,
       `Question horizon ${horizonLabel}; selected goal horizon ${formatGoalHorizon(goal.years)}. No goal scenario or suitability conclusion was calculated.`,
       'A different date can change the target and which holdings belong to it. Age and horizon alone cannot establish a suitable mix.',
       '#goals', 'Review goal timing'), goalTimingClarification: {
         goalId: goal.id, label: horizonLabel, selectedHorizon: formatGoalHorizon(goal.years),
         calendar: Boolean(relativeHorizon),
+        proposedYears: !relativeHorizon && goalMonths(statedYears) !== null ? statedYears : null,
       } };
 
   if (goalScopeRequested && /\b(?:fees?|expense ratios?|ter|fund costs?)\b/.test(input)) {

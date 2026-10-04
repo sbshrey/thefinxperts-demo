@@ -1,9 +1,9 @@
-import { parseAmount } from './assistant-clarify.mjs?v=9001bdd7691c';
-import { validShares } from './stock-estimate.mjs?v=9001bdd7691c';
-import { validUnits } from './nav-estimate.mjs?v=9001bdd7691c';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=9001bdd7691c';
-import { parseMixPercentages } from './mix-plan.mjs?v=9001bdd7691c';
-import { goalMonths, yearsForMonths } from './goal-horizon.mjs?v=9001bdd7691c';
+import { parseAmount } from './assistant-clarify.mjs?v=28a942c6f80e';
+import { validShares } from './stock-estimate.mjs?v=28a942c6f80e';
+import { validUnits } from './nav-estimate.mjs?v=28a942c6f80e';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=28a942c6f80e';
+import { parseMixPercentages } from './mix-plan.mjs?v=28a942c6f80e';
+import { goalMonths, yearsForMonths } from './goal-horizon.mjs?v=28a942c6f80e';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -322,4 +322,18 @@ export function nextBrowserGoalQuestion(goal, pending = {}) {
   if (goal.years == null && pending.years == null) return `When will you need money for this goal? Reply “I need it in 6 months” or “I need it in 10 years”.${/\bretire(?:ment)?\b/i.test(goal.name || '') ? ' For a retirement goal, you can also say “I plan to retire at 60”; I will use the current age you entered.' : ''}`;
   if (goal.target == null && pending.target == null) return 'What amount would you need in today’s rupees? You can reply “I need ₹50 lakh in today’s rupees”.';
   return 'Check the goal facts shown above, then choose “Save goal facts”. A future illustration and a chosen asset mix are optional later.';
+}
+
+/** Interpret a reply only while a goal-date conflict is awaiting a decision. */
+export function parseBrowserGoalTimingReply(message, timing) {
+  if (typeof message !== 'string' || !timing?.goalId) return null;
+  const input = message.trim().toLocaleLowerCase('en-IN').replace(/[.!]$/, '');
+  if (input === 'separate goal' || input === 'different goal') return { kind: 'separate' };
+  if (input === 'same goal') return goalMonths(timing.proposedYears) !== null ?
+    { kind: 'update', years: timing.proposedYears } : { kind: 'need_time' };
+  const match = /^same goal in (\d{1,3}) (months?|years?)$/.exec(input);
+  if (!match) return null;
+  const years = match[2].startsWith('month') ? yearsForMonths(Number(match[1])) : Number(match[1]);
+  return goalMonths(years) !== null ? { kind: 'update', years } :
+    { kind: 'error', message: 'Use a whole number of months from 1 to 600 for this goal.' };
 }
