@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=f51f8897a573';
-import { parseWhatIfMix } from './mix-plan.mjs?v=f51f8897a573';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=f51f8897a573';
-import { reserveMonths } from './reserve.mjs?v=f51f8897a573';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=ce90d933d0ac';
+import { parseWhatIfMix } from './mix-plan.mjs?v=ce90d933d0ac';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=ce90d933d0ac';
+import { reserveMonths } from './reserve.mjs?v=ce90d933d0ac';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=f51f8897a573';
-import { asksForAdvice } from './question-scope.mjs?v=f51f8897a573';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=f51f8897a573';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=f51f8897a573';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f51f8897a573';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=f51f8897a573';
-import { parseAmount } from './assistant-clarify.mjs?v=f51f8897a573';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=f51f8897a573';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=ce90d933d0ac';
+import { asksForAdvice } from './question-scope.mjs?v=ce90d933d0ac';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=ce90d933d0ac';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ce90d933d0ac';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ce90d933d0ac';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=ce90d933d0ac';
+import { parseAmount } from './assistant-clarify.mjs?v=ce90d933d0ac';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=ce90d933d0ac';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=f51f8897a573';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=ce90d933d0ac';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -229,7 +229,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   if (goal?.confirmed === true && statedHorizon && !absoluteHorizonWhatIf &&
       /\b(?:goal|money|portfolio|investments?|mix|allocation|retire|retirement|target|gap|future|monthly|sip)\b/.test(input) &&
       statedYears !== Number(goal.years))
-    return answer(`You mentioned ${statedHorizon[1]} years, but the selected ${goal.name} goal is saved for ${goal.years} years. Is this a separate goal, or has its date changed? Select or update the intended goal before I use its mix or target for this question.`,
+    return answer(`You mentioned ${statedHorizon[1]} years, but the selected goal, ${goal.name}, is saved for ${goal.years} years. Is this a separate goal, or has its date changed? Select or update the intended goal before I use its mix or target for this question.`,
       `Question horizon ${statedHorizon[1]} years; selected goal horizon ${goal.years} years. No goal scenario or suitability conclusion was calculated.`,
       'A different date can change the target and which holdings belong to it. Age and horizon alone cannot establish a suitable mix.', '#goals', 'Review goal timing');
 

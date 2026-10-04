@@ -1,25 +1,25 @@
-import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=f51f8897a573';
-import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=f51f8897a573';
-import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=f51f8897a573';
+import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=ce90d933d0ac';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=ce90d933d0ac';
+import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=ce90d933d0ac';
 import { validateImportReview, validateImportMerge, findImportMergeConflicts, possibleManualDuplicate, isRepeatedActiveStatement,
-  planActiveStatementRefresh, planDematCasRefresh } from './import-review.mjs?v=f51f8897a573';
-import { prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=f51f8897a573';
-import { findCrossAccountDrafts } from './assistant-save.mjs?v=f51f8897a573';
-import { validBrokerAccountLabel } from './broker-account.mjs?v=f51f8897a573';
-import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=f51f8897a573';
-import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f51f8897a573';
-import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=f51f8897a573';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=f51f8897a573';
-import { buildReadableReport } from './readable-report.mjs?v=f51f8897a573';
-import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=f51f8897a573';
-import { validReserve, reserveMonths } from './reserve.mjs?v=f51f8897a573';
-import { contextNeedsReview, indiaToday, observeIndiaDateChange } from './market-context.mjs?v=f51f8897a573';
-import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=f51f8897a573';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=f51f8897a573';
-import { chooseNextReviewStep } from './next-step.mjs?v=f51f8897a573';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=f51f8897a573';
-import { answerReviewQuestion } from './review-questions.mjs?v=f51f8897a573';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=f51f8897a573';
+  planActiveStatementRefresh, planDematCasRefresh } from './import-review.mjs?v=ce90d933d0ac';
+import { prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=ce90d933d0ac';
+import { findCrossAccountDrafts } from './assistant-save.mjs?v=ce90d933d0ac';
+import { validBrokerAccountLabel } from './broker-account.mjs?v=ce90d933d0ac';
+import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=ce90d933d0ac';
+import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ce90d933d0ac';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=ce90d933d0ac';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=ce90d933d0ac';
+import { buildReadableReport } from './readable-report.mjs?v=ce90d933d0ac';
+import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=ce90d933d0ac';
+import { validReserve, reserveMonths } from './reserve.mjs?v=ce90d933d0ac';
+import { contextNeedsReview, indiaToday, observeIndiaDateChange } from './market-context.mjs?v=ce90d933d0ac';
+import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=ce90d933d0ac';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=ce90d933d0ac';
+import { chooseNextReviewStep } from './next-step.mjs?v=ce90d933d0ac';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=ce90d933d0ac';
+import { answerReviewQuestion } from './review-questions.mjs?v=ce90d933d0ac';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=ce90d933d0ac';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -1369,7 +1369,7 @@ $('#broker-read').addEventListener('click', async () => {
       brokerRows = parseBrokerCsvRows(await file.text());
       brokerSource = 'Broker CSV';
     } else if (file.name.toLowerCase().endsWith('.xlsx')) {
-      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=f51f8897a573');
+      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=ce90d933d0ac');
       brokerRows = await readBrokerWorkbook(file);
       brokerSource = 'Broker XLSX';
     } else throw new Error('Choose a broker holdings XLSX or CSV report.');
@@ -1752,7 +1752,7 @@ $('#preview-active').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Reading in this tab…';
   try {
-    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=f51f8897a573');
+    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=ce90d933d0ac');
     const result = await previewActiveStatementFile(file, password);
     if (result.errors.length) {
       $('#active-error').textContent = result.errors.slice(0, 5).join(' ');
@@ -1806,7 +1806,7 @@ $('#preview-cas').addEventListener('click', async () => {
     let result;
     let responseOk = true;
     if (casMode === 'browser') {
-      const { previewBrowserCas } = await import('./cas-browser.mjs?v=f51f8897a573');
+      const { previewBrowserCas } = await import('./cas-browser.mjs?v=ce90d933d0ac');
       result = await previewBrowserCas(file, password);
     } else {
       const bytes = new Uint8Array(await file.arrayBuffer());
