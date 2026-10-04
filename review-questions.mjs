@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=2ad5ddcde4a4';
-import { parseWhatIfMix } from './mix-plan.mjs?v=2ad5ddcde4a4';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=2ad5ddcde4a4';
-import { reserveMonths } from './reserve.mjs?v=2ad5ddcde4a4';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=3ce860de2534';
+import { parseWhatIfMix } from './mix-plan.mjs?v=3ce860de2534';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=3ce860de2534';
+import { reserveMonths } from './reserve.mjs?v=3ce860de2534';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=2ad5ddcde4a4';
-import { asksForAdvice } from './question-scope.mjs?v=2ad5ddcde4a4';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=2ad5ddcde4a4';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=2ad5ddcde4a4';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=2ad5ddcde4a4';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=2ad5ddcde4a4';
-import { parseAmount } from './assistant-clarify.mjs?v=2ad5ddcde4a4';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=2ad5ddcde4a4';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=3ce860de2534';
+import { asksForAdvice } from './question-scope.mjs?v=3ce860de2534';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=3ce860de2534';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=3ce860de2534';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=3ce860de2534';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=3ce860de2534';
+import { parseAmount } from './assistant-clarify.mjs?v=3ce860de2534';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=3ce860de2534';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=2ad5ddcde4a4';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=3ce860de2534';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -256,7 +256,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This allocates an illustration across goal links, not an actual fee paid by the goal. TER is already reflected in NAV. Scheme identities, rates and goal shares are investor-entered; daily values and rates can change. This is not an allocation or trade recommendation.', '#goals', 'Review goal links');
   }
 
-  if (goalScopeRequested && /\b(?:invested|profit|gains?|loss(?:es)?|underperform\w*|outperform\w*|performance|returns?|ter|expense ratio|regular plans?|direct plans?|overlap)\b/.test(input))
+  if (goalScopeRequested && /\b(?:invested|profit|gains?|loss(?:es)?|underperform\w*|outperform\w*|performance|returns?|ter|expense ratio|regular plans?|direct plans?|overlap)\b/.test(input) &&
+      !/\b(?:sector|industry|industries|sectoral)\b/.test(input))
     return answer(`I cannot calculate that metric separately for ${goal?.name || 'the selected goal'} from this review. Ask about the goal’s assigned value or asset mix, or ask for the whole-portfolio metric without naming a goal.`,
       'Goal links assign shares of current holding value; checked cost, historical performance, fund fees and overlap are not allocated to individual goals here.',
       'Using a whole-portfolio figure as a goal figure would be misleading.', '#goals', 'Review goal assignments');
@@ -427,10 +428,11 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   }
 
   const suitabilityWords = '(?:safe|safer|risky|risk|suitable|appropriate|right|good|balance|balanced|aligned|fit|match|too high|too much|excessive|overexposed)';
+  const riskRankingQuestion = /\b(?:which|what)\b.{0,45}\b(?:holding|investment|fund|stock)s?\b.{0,40}\b(?:most risky|riskiest|least risky|highest risk)\b/.test(input);
   const goalRiskQuestion = new RegExp(`\\b${suitabilityWords}\\b`).test(input) &&
     (new RegExp(`\\b(?:goal|retirement)\\b.{0,65}\\b${suitabilityWords}\\b`).test(input) ||
       new RegExp(`\\b${suitabilityWords}\\b.{0,65}\\b(?:goal|retirement|my age|age and goal)\\b`).test(input));
-  if (goalRiskQuestion && !/\b(?:buy|sell|switch|redeem|rebalance|replace|increase|reduce|move|shift|trade|invest|allocate|recommend|suggest|optimi[sz]e)\b/.test(input)) {
+  if (goalRiskQuestion && !riskRankingQuestion && !/\b(?:buy|sell|switch|redeem|rebalance|replace|increase|reduce|move|shift|trade|invest|allocate|recommend|suggest|optimi[sz]e)\b/.test(input)) {
     if (goal?.confirmed !== true)
       return answer('Confirm the selected goal’s age, target and years until it is due before checking the exposure of its assigned holdings.',
         `The selected goal ${goal?.name || 'unnamed'} is unfinished.`,
@@ -541,17 +543,24 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${valid.length} entered holding ${valid.length === 1 ? 'row' : 'rows'}; ${result.asOfSummary}. No source was fetched or holding updated by this answer.`,
       `A report is a dated account snapshot, not a live quote. CAS, CAMS and broker files can cover different accounts or omit assets; a newer file must be reconciled before changing this review. ${coverageNote}`,
       source === 'demo' ? '#start-review' : '#input-choice', source === 'demo' ? 'Start my review' : 'Upload newer report');
-  if (/\b(?:sector|industry|industries|sectoral)\b/.test(input) &&
-      /\b(?:allocation|exposure|split|mix|breakdown|diversif\w*|concentration|holdings?|portfolio|funds?|stocks?)\b/.test(input)) {
-    const scope = namesStocks && !namesFunds ? 'direct stocks' : namesFunds && !namesStocks ? 'mutual funds' : 'portfolio';
-    const needed = scope === 'direct stocks' ? 'a checked, dated sector classification for each direct share.' :
-      scope === 'mutual funds' ? 'dated constituent weights for each exact fund scheme and checked sectors for those securities.' :
+  const bankOwnershipQuestion = /\b(?:psu|public[ -]sector|private[ -]sector)\b.{0,35}\bbank(?:s|ing)?\b|\bbank(?:s|ing)?\b.{0,35}\b(?:psu|public[ -]sector|private[ -]sector)\b/.test(input);
+  if (!bankOwnershipQuestion && /\b(?:sector|industry|industries|sectoral)\b/.test(input) &&
+      /\b(?:allocation|exposure|split|mix|breakdown|diversif\w*|concentration|holdings?|portfolio|funds?|stocks?|invested|overweight|underweight)\b/.test(input)) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const group = namesStocks && !namesFunds ? 'direct stocks' : namesFunds && !namesStocks ? 'mutual funds' : 'portfolio';
+    const scope = goalScopeRequested ? `${group === 'portfolio' ? 'holdings' : group} assigned to ${goal.name}` : group;
+    const rows = goalScopeRequested ? valid.filter(row => goalShare(goal, row.id) > 0) : valid;
+    const needed = group === 'direct stocks' ? 'a checked, dated sector classification for each direct share.' :
+      group === 'mutual funds' ? 'dated constituent weights for each exact fund scheme and checked sectors for those securities.' :
         'dated constituents for each exact fund scheme and a checked sector classification for direct stocks.';
     return answer(`I cannot calculate the sector allocation of your ${scope} from these holdings. The entered Equity, Debt and Gold labels are broad asset classes, not sectors. I would need ${needed}`,
-      `${valid.length} entered holding ${valid.length === 1 ? 'row has' : 'rows have'} broad asset labels; this review has no complete, dated sector classification for the requested scope.`,
-      'Fund constituents and sector classifications can change. A broad Equity share must not be presented as a sector share.', '#holdings', 'Check sector sources');
+      `${rows.length} ${goalScopeRequested ? 'assigned' : 'entered'} holding ${rows.length === 1 ? 'row has' : 'rows have'} broad asset labels; this review has no complete, dated sector classification for the requested scope.`,
+      'Fund constituents and sector classifications can change. A broad Equity share must not be presented as a sector share.', goalScopeRequested ? '#goals' : '#holdings', 'Check sector sources');
   }
-  if (/\b(?:psu|public[ -]sector|private[ -]sector)\b.{0,35}\bbank(?:s|ing)?\b|\bbank(?:s|ing)?\b.{0,35}\b(?:psu|public[ -]sector|private[ -]sector)\b/.test(input)) {
+  if (bankOwnershipQuestion) {
     const fundCount = valid.filter(row => row.type === 'Mutual fund').length;
     const stockCount = valid.filter(row => row.type === 'Stock').length;
     return answer('I cannot split your exposure between PSU and private banks from these holdings. For direct shares, check each company’s dated sector and ownership classification. For mutual funds, also check the exact schemes’ dated constituent lists before adding indirect exposure.',
@@ -749,6 +758,17 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   const namesDirectStocks = /\b(?:my|direct|held)\s+(?:equity\s+)?(?:stocks?|shares?)\b|\b(?:stocks?|shares?)\s+(?:i|we)\s+(?:own|hold)\b/.test(input);
   const oneChosenStockFall = namesDirectStocks && (input.match(/\d+(?:\.\d+)?\s*%/g) || []).length === 1;
   const oneChosenMarketFall = /\bstock market\b/.test(input) && (input.match(/\d+(?:\.\d+)?\s*%/g) || []).length === 1;
+  if (/\bmarkets?\b.{0,35}\b(?:crash(?:es|ed)?|plung(?:e|es|ed))\b|\b(?:crash(?:es|ed)?|plung(?:e|es|ed))\b.{0,35}\bmarkets?\b/.test(input)) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const assets = goalScopeRequested ? result.goalAssets : result.assets;
+    const total = goalScopeRequested ? result.goalTotal : result.total;
+    return answer(`A market crash does not tell me how much each investment would move${goalScopeRequested ? ` for ${goal.name}` : ''}. Choose whether you mean your directly held stocks, all holdings labelled Equity including equity funds, or every entered holding, and give a hypothetical percentage. For example, ask “What if my Equity holdings fell 30%?”`,
+      `${money(assets.Equity)} is labelled Equity and ${money(total)} is ${goalScopeRequested ? `assigned to ${goal.name}` : 'entered across all holdings'}; no crash percentage or group-specific change was applied.`,
+      `Different funds and shares need not move by the same percentage, and the scale or timing of a market crash cannot be predicted here. ${coverageNote}`, goalScopeRequested ? '#goals' : '#holdings', 'Choose a hypothetical fall');
+  }
   if (/\bmarket\b.{0,35}\b(?:fall|falls|fell|drop|drops|dropped)\b|\b(?:fall|falls|fell|drop|drops|dropped)\b.{0,35}\bmarket\b/.test(input) &&
       !/\bstock market\b/.test(input) &&
       !/\b(?:direct stocks?|equity(?:-labelled)? holdings?|whole portfolio|all holdings)\b/.test(input))
@@ -854,6 +874,18 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer(`Holding #${number}, ${row.name}, is ${money(Number(row.value))} (${percent(Number(row.value), result.total)}) of entered investment value, labelled ${row.asset}, as of ${row.asOf || 'an unknown date'}. ${detail} ${dateCheck}`,
       `${money(Number(row.value))} ÷ ${money(result.total)} entered value; row #${number} is ${row.type}; ${row.asOf ? `supplied value date ${row.asOf}` : 'no supplied value date'}.`,
       `This is one supplied, dated row, not a verified current price, fund look-through, performance result or suitability verdict. ${coverageNote}`, '#holdings', 'Check this holding');
+  }
+  if (riskRankingQuestion) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const rows = goalScopeRequested ? valid.filter(row => goalShare(goal, row.id) > 0) : valid;
+    return answer(rows.length ?
+      `I cannot rank ${goalScopeRequested ? `the holdings assigned to ${goal.name}` : 'your entered holdings'} by risk from their current values. A large position is not automatically the riskiest. Check the exact fund or company, current asset mix, underlying holdings where available, value date and how a loss would affect your goal.` :
+      `No positive ${goalScopeRequested ? `holding value is assigned to ${goal.name}` : 'holding value is entered'} yet. Add and check a dated holding before comparing its exposures.`,
+      `${rows.length} ${goalScopeRequested ? 'assigned' : 'entered'} holding ${rows.length === 1 ? 'row' : 'rows'}; no comparable security-level risk measures or complete fund constituents were verified.`,
+      'Current rupee value and broad asset labels alone cannot establish relative risk, a maximum loss or personal suitability.', goalScopeRequested ? '#goals' : '#holdings', 'Check holding sources');
   }
   const riskReductionQuestion = /\bhow (?:can|do|should) i (?:reduce|lower|manage) (?:my )?risk\b/.test(input);
   const portfolioRiskQuestion = (/\b(?:risks?|risky|safe|safer|volatile|volatility|balanced?|aggressive|conservative)\b/.test(input) &&
