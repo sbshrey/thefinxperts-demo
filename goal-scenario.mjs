@@ -1,4 +1,4 @@
-import { goalMonths } from './goal-horizon.mjs?v=c02bf4998243';
+import { goalMonths } from './goal-horizon.mjs?v=b5c7a573c7cd';
 
 /** A future illustration needs the investor to check every starting assumption. */
 export function confirmedGoalAssumptions(goal) {

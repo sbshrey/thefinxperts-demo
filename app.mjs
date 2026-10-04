@@ -1,26 +1,26 @@
-import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=c02bf4998243';
-import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=c02bf4998243';
-import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=c02bf4998243';
+import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=b5c7a573c7cd';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=b5c7a573c7cd';
+import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=b5c7a573c7cd';
 import { validateImportReview, validateImportMerge, findImportMergeConflicts, possibleManualDuplicate, isRepeatedActiveStatement,
-  planActiveStatementRefresh, planDematCasRefresh } from './import-review.mjs?v=c02bf4998243';
-import { prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=c02bf4998243';
-import { findCrossAccountDrafts } from './assistant-save.mjs?v=c02bf4998243';
-import { validBrokerAccountLabel } from './broker-account.mjs?v=c02bf4998243';
-import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=c02bf4998243';
-import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=c02bf4998243';
-import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=c02bf4998243';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=c02bf4998243';
-import { buildReadableReport } from './readable-report.mjs?v=c02bf4998243';
-import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=c02bf4998243';
-import { validReserve, reserveMonths } from './reserve.mjs?v=c02bf4998243';
-import { contextNeedsReview, indiaToday, observeIndiaDateChange } from './market-context.mjs?v=c02bf4998243';
-import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=c02bf4998243';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=c02bf4998243';
-import { chooseNextReviewStep } from './next-step.mjs?v=c02bf4998243';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=c02bf4998243';
-import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=c02bf4998243';
-import { answerReviewQuestion, goalSubjectFollowUpQuestion } from './review-questions.mjs?v=c02bf4998243';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=c02bf4998243';
+  planActiveStatementRefresh, planDematCasRefresh } from './import-review.mjs?v=b5c7a573c7cd';
+import { prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=b5c7a573c7cd';
+import { findCrossAccountDrafts } from './assistant-save.mjs?v=b5c7a573c7cd';
+import { validBrokerAccountLabel } from './broker-account.mjs?v=b5c7a573c7cd';
+import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=b5c7a573c7cd';
+import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b5c7a573c7cd';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=b5c7a573c7cd';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=b5c7a573c7cd';
+import { buildReadableReport } from './readable-report.mjs?v=b5c7a573c7cd';
+import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=b5c7a573c7cd';
+import { validReserve, reserveMonths } from './reserve.mjs?v=b5c7a573c7cd';
+import { contextNeedsReview, indiaToday, observeIndiaDateChange } from './market-context.mjs?v=b5c7a573c7cd';
+import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=b5c7a573c7cd';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=b5c7a573c7cd';
+import { chooseNextReviewStep } from './next-step.mjs?v=b5c7a573c7cd';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=b5c7a573c7cd';
+import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=b5c7a573c7cd';
+import { answerReviewQuestion, goalSubjectFollowUpQuestion } from './review-questions.mjs?v=b5c7a573c7cd';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=b5c7a573c7cd';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -1414,7 +1414,7 @@ $('#broker-read').addEventListener('click', async () => {
       brokerRows = parseBrokerCsvRows(await file.text());
       brokerSource = 'Broker CSV';
     } else if (file.name.toLowerCase().endsWith('.xlsx')) {
-      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=c02bf4998243');
+      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=b5c7a573c7cd');
       brokerRows = await readBrokerWorkbook(file);
       brokerSource = 'Broker XLSX';
     } else throw new Error('Choose a broker holdings XLSX or CSV report.');
@@ -1797,7 +1797,7 @@ $('#preview-active').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Reading in this tab…';
   try {
-    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=c02bf4998243');
+    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=b5c7a573c7cd');
     const result = await previewActiveStatementFile(file, password);
     if (result.errors.length) {
       $('#active-error').textContent = result.errors.slice(0, 5).join(' ');
@@ -1851,7 +1851,7 @@ $('#preview-cas').addEventListener('click', async () => {
     let result;
     let responseOk = true;
     if (casMode === 'browser') {
-      const { previewBrowserCas } = await import('./cas-browser.mjs?v=c02bf4998243');
+      const { previewBrowserCas } = await import('./cas-browser.mjs?v=b5c7a573c7cd');
       result = await previewBrowserCas(file, password);
     } else {
       const bytes = new Uint8Array(await file.arrayBuffer());
