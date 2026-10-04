@@ -1,18 +1,18 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=979cff73e85b';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=979cff73e85b';
-import { reserveMonths } from './reserve.mjs?v=979cff73e85b';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=1cc2358cdb28';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=1cc2358cdb28';
+import { reserveMonths } from './reserve.mjs?v=1cc2358cdb28';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=979cff73e85b';
-import { asksForAdvice } from './question-scope.mjs?v=979cff73e85b';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=979cff73e85b';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=979cff73e85b';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=979cff73e85b';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=979cff73e85b';
-import { parseAmount } from './assistant-clarify.mjs?v=979cff73e85b';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=979cff73e85b';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=1cc2358cdb28';
+import { asksForAdvice } from './question-scope.mjs?v=1cc2358cdb28';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=1cc2358cdb28';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=1cc2358cdb28';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=1cc2358cdb28';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=1cc2358cdb28';
+import { parseAmount } from './assistant-clarify.mjs?v=1cc2358cdb28';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=1cc2358cdb28';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=979cff73e85b';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=1cc2358cdb28';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';

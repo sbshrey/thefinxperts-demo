@@ -1,6 +1,6 @@
-import { asVersionTwo } from './assistant-save.mjs?v=979cff73e85b';
-import { goalShare, setHoldingAllocations } from './goals.mjs?v=979cff73e85b';
-import { validMixPlan } from './mix-plan.mjs?v=979cff73e85b';
+import { asVersionTwo } from './assistant-save.mjs?v=1cc2358cdb28';
+import { goalShare, setHoldingAllocations } from './goals.mjs?v=1cc2358cdb28';
+import { validMixPlan } from './mix-plan.mjs?v=1cc2358cdb28';
 
 const LIMITS = { age: [18, 100], years: [1, 50], target: [1000, 1_000_000_000_000],
   monthlyContribution: [0, 100_000_000], returnPct: [-20, 13], inflationPct: [-5, 15],

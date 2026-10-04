@@ -1,6 +1,6 @@
 /** Validate the editable holdings preview before it replaces the current portfolio. */
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=979cff73e85b';
-import { validCostBasis } from './cost-basis.mjs?v=979cff73e85b';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=1cc2358cdb28';
+import { validCostBasis } from './cost-basis.mjs?v=1cc2358cdb28';
 
 export function validateImportReview(holdings) {
   if (!Array.isArray(holdings) || holdings.length === 0) return ['Keep at least one holding to import.'];
@@ -112,7 +112,7 @@ export function possibleManualDuplicate(existing, candidate) {
 /** Update only unambiguous positions from a newer report of the same account. */
 export function planBrokerReportRefresh(existing, incoming, origin) {
   if (!Array.isArray(existing) || !existing.length || !Array.isArray(incoming) ||
-      validateImportReview(incoming).length || !['broker_xlsx', 'broker_csv'].includes(origin)) return null;
+      validateImportReview(incoming).length || !['broker_xlsx', 'broker_csv', 'simple_csv'].includes(origin)) return null;
   const currentByIsin = new Map();
   for (const holding of existing) {
     if (!holding.isin) continue;

@@ -1,8 +1,8 @@
 import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh,
-  planDematCasRefresh } from './import-review.mjs?v=979cff73e85b';
-import { removeHoldingAllocation } from './goals.mjs?v=979cff73e85b';
-import { rupees } from './assistant-import-audit.mjs?v=979cff73e85b';
-import { npsTier } from './account-label.mjs?v=979cff73e85b';
+  planDematCasRefresh } from './import-review.mjs?v=1cc2358cdb28';
+import { removeHoldingAllocation } from './goals.mjs?v=1cc2358cdb28';
+import { rupees } from './assistant-import-audit.mjs?v=1cc2358cdb28';
+import { npsTier } from './account-label.mjs?v=1cc2358cdb28';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const paise = rows => rows.reduce((total, row) => total + Math.round(row.value * 100), 0);
@@ -148,6 +148,51 @@ export function prepareAssistantBrokerRefresh(saved, incoming, origin) {
   return { portfolio, errors: [], kind: 'broker', changes,
     description: `Newer broker report. Confirm this covers the same account and positions, not another account or an extra lot. ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'} will receive the newer dated value. ${plan.skipped} unmatched report ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out of this review. ${refreshValueCoverage(incoming, plan.matched)} No holding is removed; goal links stay. Prior units, shares, price estimates and checked invested amounts on matched rows clear because this report does not verify them. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
     result: `Broker report refresh applied to ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. Check saved units, invested amounts and the report source before relying on the newer values.` };
+}
+
+/** A newer copy of the user's simple CSV can revalue only unique positions first saved from that template. */
+export function prepareAssistantSimpleCsvRefresh(saved, incoming) {
+  if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) ||
+      !Array.isArray(saved.goals) || !Array.isArray(incoming) || !incoming.length ||
+      incoming.length > 200 || incoming.some(row => row.entryOrigin !== 'simple_csv')) return null;
+  const savedByIsin = new Map();
+  for (const row of saved.holdings) if (row.isin) {
+    savedByIsin.set(row.isin, [...(savedByIsin.get(row.isin) || []), row]);
+  }
+  const incomingByIsin = new Map();
+  for (const row of incoming) if (row.isin) {
+    incomingByIsin.set(row.isin, [...(incomingByIsin.get(row.isin) || []), row]);
+  }
+  const shared = [...incomingByIsin.keys()].filter(isin => savedByIsin.has(isin));
+  if (!shared.length) return null;
+  if (shared.some(isin => savedByIsin.get(isin).length !== 1 ||
+      incomingByIsin.get(isin).length !== 1 ||
+      savedByIsin.get(isin)[0].entryOrigin !== 'simple_csv'))
+    return { errors: ['A matching ISIN has another source or more than one position. Reconcile its account before refreshing; no value changed.'] };
+  const clean = value => typeof value === 'string' ?
+    value.trim().toLocaleLowerCase('en-IN').replace(/\s+/g, ' ') : '';
+  if (shared.some(isin => {
+    const current = savedByIsin.get(isin)[0], next = incomingByIsin.get(isin)[0];
+    return clean(current.name) !== clean(next.name) ||
+      current.amfi && next.amfi && current.amfi !== next.amfi ||
+      current.amc && next.amc && clean(current.amc) !== clean(next.amc);
+  })) return { errors: ['A matching ISIN has a different name, AMC or AMFI code. Check both files before refreshing; no value changed.'] };
+  const unchanged = shared.every(isin => {
+    const current = savedByIsin.get(isin)[0], next = incomingByIsin.get(isin)[0];
+    return current.type === next.type && current.asset === next.asset &&
+      current.value === next.value && current.asOf === next.asOf;
+  });
+  if (unchanged) return incoming.length === shared.length ?
+    { repeated: true, errors: [], description: 'These simple CSV positions already have the same ISINs, dates and values. No holding or goal link changed.' } : null;
+  const plan = planBrokerReportRefresh(saved.holdings, incoming, 'simple_csv');
+  if (!plan) return { errors: ['A matched CSV position is not an unambiguous newer value. Check the exact ISIN, investment type, asset label, account and valuation date in both files. No value changed.'] };
+  const portfolio = structuredClone({ ...saved, holdings: plan.holdings });
+  if (plan.skipped) delete portfolio.coverage;
+  return { portfolio, errors: [], kind: 'simple_csv',
+    changes: plan.matched.map(({ current, next }) =>
+      `${current.name} · ISIN ${current.isin}: ${money(current.value)} (${current.asOf}) → ${money(next.value)} (${next.asOf})`),
+    description: `Newer simple CSV. Confirm the matched ISINs describe the same account positions as the saved CSV, not holdings in another account. ${plan.matched.length} exact ${plan.matched.length === 1 ? 'position receives' : 'positions receive'} newer dated values; ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row stays' : 'rows stay'} outside this refresh. ${refreshValueCoverage(incoming, plan.matched)} No holding is removed; goal links stay. Previous share or unit counts, estimates and checked invested amounts on matched rows clear. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
+    result: `Simple CSV refresh applied to ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. Check the original account records and dated values.` };
 }
 
 /** Revalue only unique positions from a newer demat CAS after account confirmation. */
