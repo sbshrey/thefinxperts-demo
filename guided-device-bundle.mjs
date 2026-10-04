@@ -1,5 +1,5 @@
-import { disclosureSchemeKey, matchFundDisclosure } from './fund-disclosure.mjs?v=9dcd59b998f4';
-import { parseReviewBackup } from './review-backup.mjs?v=9dcd59b998f4';
+import { disclosureSchemeKey, matchFundDisclosure } from './fund-disclosure.mjs?v=93d1664a6c61';
+import { parseReviewBackup } from './review-backup.mjs?v=93d1664a6c61';
 
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
 const disclosureKeys = 'amc|asOf|coveredPct|notIncludedPct|scheme|scope|securities';
@@ -19,7 +19,7 @@ const percentValid = value => typeof value === 'number' && Number.isFinite(value
 
 function validDisclosure(item, holdings) {
   if (!exact(item, disclosureKeys) || !textValid(item.scheme, 110) ||
-      !['Motilal Oswal', 'PPFAS', 'Groww'].includes(item.amc) ||
+      !['Motilal Oswal', 'PPFAS', 'Groww', 'HDFC'].includes(item.amc) ||
       !dateValid(item.asOf) || item.scope !== 'listed_equity' ||
       !percentValid(item.coveredPct) || item.coveredPct <= 0 ||
       !percentValid(item.notIncludedPct) ||

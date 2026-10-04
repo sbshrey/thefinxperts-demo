@@ -199,8 +199,11 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
       coveredValue: roundPaise(coveredValue) });
     for (const security of disclosure.securities) {
       const exposure = byIsin.get(security.isin) || { isin: security.isin,
-        name: security.name, fundValue: 0, directValue: 0 };
-      exposure.fundValue += value * security.weightPct / 100;
+        name: security.name, fundValue: 0, directValue: 0, funds: [] };
+      const estimatedValue = value * security.weightPct / 100;
+      exposure.fundValue += estimatedValue;
+      exposure.funds.push({ scheme: disclosure.scheme, disclosureDate: disclosure.asOf,
+        weightPct: security.weightPct, estimatedValue: roundPaise(estimatedValue) });
       byIsin.set(security.isin, exposure);
     }
   }
@@ -210,7 +213,7 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
     if (row.type !== 'Stock' || datedSourceIssue(row.asOf, todayIso) ||
         !ISIN.test(row.isin || '')) continue;
     const exposure = byIsin.get(row.isin) || { isin: row.isin,
-      name: row.name, fundValue: 0, directValue: 0 };
+      name: row.name, fundValue: 0, directValue: 0, funds: [] };
     exposure.directValue += row.value;
     byIsin.set(row.isin, exposure);
     directCovered += row.value;
@@ -218,6 +221,7 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
   }
   const coveredValue = Math.min(total, fundCovered + directCovered);
   const issuers = [...byIsin.values()].map(row => ({ ...row,
+    fundCount: row.funds.length,
     fundValue: roundPaise(row.fundValue), directValue: roundPaise(row.directValue),
     visibleValue: roundPaise(row.fundValue + row.directValue),
     portfolioPct: total ? Math.round((row.fundValue + row.directValue) / total * 10000) / 100 : 0 }))
@@ -227,4 +231,11 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
     coveragePct: total ? Math.round(coveredValue / total * 10000) / 100 : 0,
     directCovered: roundPaise(directCovered), directDates: [...directDates].sort(),
     sources, issuers };
+}
+
+/** Repeated listed-share ISINs in distinct usable scheme disclosures, ranked by fund value. */
+export function sharedFundIssuers(exposure) {
+  return Array.isArray(exposure?.issuers) ? exposure.issuers
+    .filter(row => row.fundCount >= 2)
+    .sort((a, b) => b.fundValue - a.fundValue || a.isin.localeCompare(b.isin)) : [];
 }

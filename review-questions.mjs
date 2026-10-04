@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=9dcd59b998f4';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=9dcd59b998f4';
-import { reserveMonths } from './reserve.mjs?v=9dcd59b998f4';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=93d1664a6c61';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=93d1664a6c61';
+import { reserveMonths } from './reserve.mjs?v=93d1664a6c61';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=9dcd59b998f4';
-import { asksForAdvice } from './question-scope.mjs?v=9dcd59b998f4';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=9dcd59b998f4';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=9dcd59b998f4';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=9dcd59b998f4';
-import { parseAmount } from './assistant-clarify.mjs?v=9dcd59b998f4';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=9dcd59b998f4';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=93d1664a6c61';
+import { asksForAdvice } from './question-scope.mjs?v=93d1664a6c61';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=93d1664a6c61';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=93d1664a6c61';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=93d1664a6c61';
+import { parseAmount } from './assistant-clarify.mjs?v=93d1664a6c61';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=93d1664a6c61';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=9dcd59b998f4';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=93d1664a6c61';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -1222,6 +1222,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     /\b(?:one|single|same|largest|top)\s+compan(?:y|ies)\b/.test(input) &&
     /\b(?:funds?|mutual funds?|portfolio|money|investments?|exposure)\b/.test(input);
   const disclosureQuestion = fundSimilarityQuestion || companyExposureQuestion || /\b(?:overlaps?|same stocks?|underlying (?:stocks|shares|companies)|companies? (?:inside|through)|issuer exposure|inside (?:my|the) funds)\b/.test(input);
+  const fundOverlapQuestion = fundSimilarityQuestion || /\b(?:overlaps?|same stocks?)\b/.test(input);
   const checkedDisclosures = Array.isArray(disclosures) ? disclosures.filter(item =>
     matchFundDisclosure(item, valid)) : [];
   if (!goalScopeRequested && disclosureQuestion && checkedDisclosures.length) {
@@ -1237,10 +1238,25 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `The uploaded scheme sheets match entered funds, but their holding values need dates within the last 90 days before I can estimate fund issuer exposure. Check those value dates against your statements.${visible.directCovered ? ` ${money(visible.directCovered)} of dated, identified direct-stock value remains visible separately.` : ''}`,
       `${checkedDisclosures.length} checked scheme ${checkedDisclosures.length === 1 ? 'disclosure' : 'disclosures'} in this tab; no matching fund has a usable dated value.${visible.directCovered ? ` Identified direct stocks: ${money(visible.directCovered)}.` : ''}`,
       'A scheme disclosure date cannot substitute for a recent value date on your own holding. Missing, future and older values stay outside the estimate.', '#holdings', 'Check value dates');
+    const usableSchemes = new Set(visible.sources.map(item => item.scheme));
+    const usableDisclosures = recentDisclosures.filter(item => usableSchemes.has(item.scheme));
     const pairs = [];
-    for (let first = 0; first < recentDisclosures.length; first++) for (let second = first + 1; second < recentDisclosures.length; second++) {
-      const overlap = compareFundDisclosures(recentDisclosures[first], recentDisclosures[second]);
-      if (overlap) pairs.push(`${recentDisclosures[first].scheme} and ${recentDisclosures[second].scheme}: ${overlap.common.length} shared listed ${overlap.common.length === 1 ? 'ISIN' : 'ISINs'}, minimum observed shared weight ${overlap.sharedPct.toFixed(2)}% (${overlap.sameDate ? 'same date' : 'different dates'})`);
+    for (let first = 0; first < usableDisclosures.length; first++) for (let second = first + 1; second < usableDisclosures.length; second++) {
+      const overlap = compareFundDisclosures(usableDisclosures[first], usableDisclosures[second]);
+      if (overlap) pairs.push(`${usableDisclosures[first].scheme} and ${usableDisclosures[second].scheme}: ${overlap.common.length} shared listed ${overlap.common.length === 1 ? 'ISIN' : 'ISINs'}, minimum observed shared weight ${overlap.sharedPct.toFixed(2)}% (${overlap.sameDate ? 'same date' : 'different dates'})`);
+    }
+    if (fundOverlapQuestion) {
+      const repeated = sharedFundIssuers(visible);
+      const examples = repeated.slice(0, 3).map(row =>
+        `${row.name} (${row.isin}) appears in ${row.fundCount} checked funds: ${money(row.fundValue)} estimated through those funds${row.directValue ? ` plus ${money(row.directValue)} held directly` : ''}, ${money(row.visibleValue)} visible in total`).join('; ');
+      const lead = visible.sources.length < 2 ?
+        'Only one checked fund has both a usable scheme sheet and a recent entered holding value, so I cannot compare fund-to-fund overlap yet.' :
+        repeated.length ? `${repeated.length} listed share ${repeated.length === 1 ? 'ISIN recurs' : 'ISINs recur'} across usable checked funds. ${examples}.` :
+          `No listed share ISIN recurs across the ${visible.sources.length} usable checked fund sections.`;
+      return answer(
+        `${lead} ${money(visible.coveredValue)} (${visible.coveragePct.toFixed(2)}%) of ${money(visible.total)} entered value is identified here; ${money(visible.unknownValue)} remains outside this view.`,
+        `${visible.sources.map(item => `${item.scheme}: entered fund value ${money(item.value)}, value date ${item.holdingDates.join(', ')}, sheet ${item.disclosureDate}, listed section ${item.coveredPct.toFixed(2)}%`).join('; ')}${pairs.length ? `; fund-pair checks: ${pairs.slice(0, 3).join('; ')}` : ''}`,
+        `These are partial listed-equity sections and user-supplied values, not complete fund overlap or current account prices.${olderCount ? ` ${olderCount} old or undated scheme ${olderCount === 1 ? 'sheet was' : 'sheets were'} excluded.` : ''} Unseen fund assets, later trades and missing investments may add shared companies. This does not select a trade.`, '#fund-disclosure-card', 'Inspect dated fund sheets');
     }
     const top = visible.issuers.slice(0, 3).map(item =>
       `${item.name} (${item.isin}) ${money(item.visibleValue)}${item.directValue ?

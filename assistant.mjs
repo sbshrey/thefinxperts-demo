@@ -1,43 +1,43 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=9dcd59b998f4';
-import { previewBrowserCas } from './cas-browser.mjs?v=9dcd59b998f4';
-import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=9dcd59b998f4';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=9dcd59b998f4';
-import { goalShare } from './goals.mjs?v=9dcd59b998f4';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=93d1664a6c61';
+import { previewBrowserCas } from './cas-browser.mjs?v=93d1664a6c61';
+import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps } from './assistant-save.mjs?v=93d1664a6c61';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=93d1664a6c61';
+import { goalShare } from './goals.mjs?v=93d1664a6c61';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=9dcd59b998f4';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=9dcd59b998f4';
-import { previewAssistantImport } from './assistant-import.mjs?v=9dcd59b998f4';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=9dcd59b998f4';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=9dcd59b998f4';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=93d1664a6c61';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=93d1664a6c61';
+import { previewAssistantImport } from './assistant-import.mjs?v=93d1664a6c61';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=93d1664a6c61';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=93d1664a6c61';
 import { analyzePortfolio, freshFictionalHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=9dcd59b998f4';
-import { buildReadableReport } from './readable-report.mjs?v=9dcd59b998f4';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=9dcd59b998f4';
-import { parseReviewBackup } from './review-backup.mjs?v=9dcd59b998f4';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=9dcd59b998f4';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=9dcd59b998f4';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=9dcd59b998f4';
-import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=9dcd59b998f4';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=93d1664a6c61';
+import { buildReadableReport } from './readable-report.mjs?v=93d1664a6c61';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=93d1664a6c61';
+import { parseReviewBackup } from './review-backup.mjs?v=93d1664a6c61';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=93d1664a6c61';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=93d1664a6c61';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=93d1664a6c61';
+import { buildGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=93d1664a6c61';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalSetup, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=9dcd59b998f4';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=93d1664a6c61';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=9dcd59b998f4';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=9dcd59b998f4';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=93d1664a6c61';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=93d1664a6c61';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=9dcd59b998f4';
-import { validReserve, reserveMonths } from './reserve.mjs?v=9dcd59b998f4';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=93d1664a6c61';
+import { validReserve, reserveMonths } from './reserve.mjs?v=93d1664a6c61';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=9dcd59b998f4';
-import { validShares } from './stock-estimate.mjs?v=9dcd59b998f4';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=9dcd59b998f4';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=9dcd59b998f4';
-import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=9dcd59b998f4';
-import { inflationContext } from './market-context.mjs?v=9dcd59b998f4';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=9dcd59b998f4';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=93d1664a6c61';
+import { validShares } from './stock-estimate.mjs?v=93d1664a6c61';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=93d1664a6c61';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=93d1664a6c61';
+import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=93d1664a6c61';
+import { inflationContext } from './market-context.mjs?v=93d1664a6c61';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=93d1664a6c61';
 import { compareFundDisclosures, datedSourceIssue, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=9dcd59b998f4';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=93d1664a6c61';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -812,12 +812,18 @@ function renderDisclosureReview() {
     line.textContent = `${item.scheme} · disclosure ${item.asOf} · ${item.securities.length} listed shares covering ${item.coveredPct.toFixed(2)}% of fund net assets. ${item.notIncludedPct.toFixed(2)}% is outside this listed equity section.${old ? ' This sheet is over 90 days old or has an unusable date; add a newer one before comparing present exposure.' : ''}`;
     root.append(line);
   }
+  const pairDetails = document.createElement('details');
+  const pairSummary = document.createElement('summary');
+  pairSummary.textContent = 'Technical fund-pair comparison';
+  pairDetails.append(pairSummary);
+  let pairCount = 0;
   for (let first = 0; first < recent.length; first++) for (let second = first + 1; second < recent.length; second++) {
     const overlap = compareFundDisclosures(recent[first], recent[second]);
     if (!overlap) continue;
+    pairCount++;
     const line = document.createElement('p');
     line.textContent = `${recent[first].scheme} and ${recent[second].scheme}: ${overlap.common.length} shared listed security ISIN${overlap.common.length === 1 ? '' : 's'}; minimum observed shared listed equity weight ${overlap.sharedPct.toFixed(2)}%, using the smaller reported weight for each shared security. ${overlap.sameDate ? 'Same disclosure date.' : 'Disclosure dates differ.'} This is only the supplied listed equity sections, not full fund overlap, your rupee exposure, or a current price.`;
-    root.append(line);
+    pairDetails.append(line);
   }
   const exposure = estimateVisibleIssuerExposure(state.confirmed, matched);
   if (exposure?.sources.length || exposure?.directCovered) {
@@ -826,6 +832,14 @@ function renderDisclosureReview() {
     const coverage = document.createElement('p');
     coverage.textContent = `${money(exposure.coveredValue)} (${exposure.coveragePct.toFixed(2)}%) of ${money(exposure.total)} entered portfolio value is mapped to listed share ISINs. ${money(exposure.unknownValue)} remains outside this view, including unsupported funds, assets and holding values with missing or older than 90-day dates.`;
     root.append(heading, coverage);
+    if (exposure.sources.length >= 2) {
+      const repeated = sharedFundIssuers(exposure);
+      const line = document.createElement('p');
+      line.textContent = repeated.length ?
+        `${repeated.length} listed ${repeated.length === 1 ? 'company ISIN appears' : 'company ISINs appear'} in at least two usable checked fund sections. Largest repeated exposures: ${repeated.slice(0, 3).map(row => `${row.name} (${row.isin}) in ${row.fundCount} funds: ${money(row.fundValue)} estimated through those funds${row.directValue ? ` plus ${money(row.directValue)} held directly` : ''}`).join('; ')}.${repeated.length > 3 ? ` ${repeated.length - 3} further repeated ${repeated.length - 3 === 1 ? 'ISIN is' : 'ISINs are'} outside this short list.` : ''}` :
+        `No listed share ISIN repeats across the ${exposure.sources.length} usable checked fund sections. Unlisted assets, unsupported sections and later trades remain unknown.`;
+      root.append(line);
+    }
     for (const source of exposure.sources) {
       const line = document.createElement('p');
       line.textContent = `${source.scheme}: ${money(source.value)} entered fund value dated ${source.holdingDates.join(', ')}; AMC listed shares dated ${source.disclosureDate} cover ${source.coveredPct.toFixed(2)}% (${money(source.coveredValue)} estimated).`;
@@ -844,6 +858,7 @@ function renderDisclosureReview() {
     }
     root.append(list);
   }
+  if (pairCount) root.append(pairDetails);
   const note = document.createElement('small');
   note.textContent = 'This uses user-supplied dated values and any usable AMC sheets. It is not current prices, full issuer exposure, or a buy or sell recommendation. The raw workbook is not saved; checked weights can be kept in an encrypted device copy or secure review file.';
   root.append(note);
@@ -1743,9 +1758,9 @@ $('#cas-preview').addEventListener('click', async () => {
       }
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=9dcd59b998f4');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=93d1664a6c61');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=9dcd59b998f4');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=93d1664a6c61');
       if (stageGoldResult(await previewGoldStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1781,7 +1796,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=9dcd59b998f4');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=93d1664a6c61');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -1844,7 +1859,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=9dcd59b998f4');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=93d1664a6c61');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1852,7 +1867,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=9dcd59b998f4');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=93d1664a6c61');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1860,7 +1875,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a digital-gold statement in this browser…');
     try {
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=9dcd59b998f4');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=93d1664a6c61');
       if (stageGoldResult(await previewGoldStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
