@@ -187,7 +187,6 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
       !datedSourceIssue(row.asOf, todayIso)) }] : [];
   }).filter(source => source.holdings.length);
   const byIsin = new Map();
-  const visibleIsins = new Set();
   const sources = [];
   let fundCovered = 0;
   for (const { disclosure, holdings: fundRows } of matched) {
@@ -199,7 +198,6 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
       value: roundPaise(value), coveredPct: disclosure.coveredPct,
       coveredValue: roundPaise(coveredValue) });
     for (const security of disclosure.securities) {
-      visibleIsins.add(security.isin);
       const exposure = byIsin.get(security.isin) || { isin: security.isin,
         name: security.name, fundValue: 0, directValue: 0 };
       exposure.fundValue += value * security.weightPct / 100;
@@ -210,9 +208,11 @@ export function estimateVisibleIssuerExposure(holdings, disclosures,
   const directDates = new Set();
   for (const row of rows) {
     if (row.type !== 'Stock' || datedSourceIssue(row.asOf, todayIso) ||
-        !visibleIsins.has(row.isin)) continue;
-    const exposure = byIsin.get(row.isin);
+        !ISIN.test(row.isin || '')) continue;
+    const exposure = byIsin.get(row.isin) || { isin: row.isin,
+      name: row.name, fundValue: 0, directValue: 0 };
     exposure.directValue += row.value;
+    byIsin.set(row.isin, exposure);
     directCovered += row.value;
     directDates.add(row.asOf);
   }
