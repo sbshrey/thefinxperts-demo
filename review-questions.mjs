@@ -1,20 +1,20 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=d2bd29e4ebd4';
-import { parseWhatIfMix } from './mix-plan.mjs?v=d2bd29e4ebd4';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=d2bd29e4ebd4';
-import { reserveMonths } from './reserve.mjs?v=d2bd29e4ebd4';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=74b6e9f575ba';
+import { parseWhatIfMix } from './mix-plan.mjs?v=74b6e9f575ba';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=74b6e9f575ba';
+import { reserveMonths } from './reserve.mjs?v=74b6e9f575ba';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=d2bd29e4ebd4';
-import { asksForAdvice } from './question-scope.mjs?v=d2bd29e4ebd4';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=d2bd29e4ebd4';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=d2bd29e4ebd4';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=d2bd29e4ebd4';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=d2bd29e4ebd4';
-import { parseAmount } from './assistant-clarify.mjs?v=d2bd29e4ebd4';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=d2bd29e4ebd4';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=74b6e9f575ba';
+import { asksForAdvice } from './question-scope.mjs?v=74b6e9f575ba';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=74b6e9f575ba';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=74b6e9f575ba';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=74b6e9f575ba';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=74b6e9f575ba';
+import { parseAmount } from './assistant-clarify.mjs?v=74b6e9f575ba';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=74b6e9f575ba';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=d2bd29e4ebd4';
-import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=d2bd29e4ebd4';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=74b6e9f575ba';
+import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=74b6e9f575ba';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -670,6 +670,25 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('I cannot check SIP purchase months from current holdings alone. Upload a supported detailed CAMS or KFintech CAS covering the period you want to inspect, then ask again.',
       `No validated month-by-month SIP purchase aggregate from a detailed CAS is available in this chat tab.`,
       `A holdings snapshot or goal contribution assumption cannot establish completed payments, missed instalments or an active mandate.`, '#holdings', 'Upload detailed CAS');
+  }
+  const childSavingQuestion = /^am i saving enough for (?:my|our) (?:child|children|kid|kids)(?:['’]s (?:education|college))?[?.!]*$/.test(input);
+  const collegeAffordQuestion = /^can i afford (?:college|university|school)(?: for (?:my|our) (?:child|children|kid|kids))? in (\d{1,3}) years?[?.!]*$/.exec(input);
+  if (childSavingQuestion || collegeAffordQuestion) {
+    const yearsAsked = collegeAffordQuestion ? Number(collegeAffordQuestion[1]) : null;
+    if (collegeAffordQuestion && (yearsAsked < 1 || yearsAsked > 50))
+      return answer('Choose a college time horizon from 1 to 50 whole years, then check which saved goal you mean.',
+        `Question horizon ${yearsAsked} years is outside this review's supported goal range.`,
+        'No saved goal, target or holding value was used for an invalid horizon.', '#goals', 'Check goal timing');
+    if (goal?.confirmed !== true)
+      return answer('Select or confirm the goal you mean, with its target in today’s rupees and time horizon, before I compare any saved holdings. I cannot decide whether a child’s education or college will be affordable from an unfinished goal.',
+        `Selected goal ${goal?.name || 'unnamed'} is unfinished; no goal arithmetic was used.`,
+        'A savings snapshot does not verify completed contributions, future costs or other resources.', '#goals', 'Confirm goal details');
+    const subject = childSavingQuestion ? 'saving for your child' : `college in ${yearsAsked} years`;
+    const reply = answer(`Does ${subject} mean your selected goal, ${goal.name}, saved for ${formatGoalHorizon(goal.years)}? Choose “Use selected goal” if it does. If this is a different goal, choose another goal. I have not used its target or holdings for this question yet.`,
+      `Selected goal ${goal.name} is saved for ${formatGoalHorizon(goal.years)}; the question did not name that goal. No gap or future illustration was calculated.`,
+      'Even after you choose the goal, current holdings cannot establish future affordability or verify an active saving schedule.', '#goals', 'Choose another goal');
+    return { ...reply, goalSubjectClarification: { goalId: goal.id,
+      kind: childSavingQuestion ? 'saving' : 'afford', yearsAsked } };
   }
   if (/^(?:is|are) (?:my|our) sips? enough[?.!]*$|^am i saving enough[?.!]*$/.test(input)) {
     if (goal?.confirmed !== true) return answer(
