@@ -1,4 +1,4 @@
-import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=1aa14dcc379e';
+import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=9d4a715cab26';
 
 const HEADER = 'Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date';
 const MONTHS = new Map(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -91,6 +91,7 @@ export function prepareNavReportRefresh(saved, report, now = new Date()) {
   }
   const portfolio = structuredClone(saved);
   const changes = [];
+  const updates = [];
   let eligible = 0, unmatched = 0, older = 0, invalidUnits = 0, nameMatched = 0;
   for (let index = 0; index < saved.holdings.length; index++) {
     const row = saved.holdings[index];
@@ -116,6 +117,7 @@ export function prepareNavReportRefresh(saved, report, now = new Date()) {
     portfolio.holdings[index] = { ...row, value, asOf: candidate.asOf,
       valuationOrigin: 'amfi_nav_report',
       navEstimate: { originalValue, originalAsOf, nav: candidate.nav, navAsOf: candidate.asOf } };
+    updates.push({ index, id: row.id, value: row.value, asOf: row.asOf, units: row.units });
     changes.push(`Holding ${index + 1}, saved ${row.name}; AMFI ${candidate.name} (code ${candidate.code}; ${!row.amfi && !row.isin ? 'unique full-name match' : 'identifier match'}): ${money(row.value)} (${row.asOf}) → ${money(value)} (${candidate.asOf}); ${row.units} saved units × NAV ${candidate.nav}`);
   }
   if (!changes.length) return { errors: [], repeated: true,
@@ -123,7 +125,33 @@ export function prepareNavReportRefresh(saved, report, now = new Date()) {
   const total = portfolio.holdings.reduce((sum, row) => sum + Number(row.value), 0);
   if (!Number.isFinite(total) || total > 1_000_000_000_000)
     return { errors: ['The estimated portfolio total would exceed the supported limit. No value changed.'] };
-  return { portfolio, errors: [], kind: 'nav_report', changes,
+  return { portfolio, errors: [], kind: 'nav_report', changes, updates,
     description: `${changes.length} mutual-fund values have a newer exact AMFI code, ISIN or unique full-name match in the uploaded text file; ${nameMatched} used a name because no identifier was saved. ${unmatched} eligible rows had no unique match; ${older} had no newer date; ${invalidUnits} lacked valid units or an existing date. Compare every saved name with the AMFI scheme, plan and option shown below, and check that each saved unit balance is still held after purchases, redemptions or switches. A name match is not an independently verified identity. This file was supplied by you and its origin was not authenticated. Values are estimates, not live account balances; stocks and goal links stay unchanged.`,
     result: `${changes.length} dated mutual-fund NAV ${changes.length === 1 ? 'estimate was' : 'estimates were'} applied using saved units. Verify current units against a newer statement. Goal links and direct stocks stayed unchanged.` };
+}
+
+/** Apply only checked preview rows against the unchanged saved review. */
+export function selectNavReportRefresh(saved, staged, selectedIndices) {
+  const invalid = { errors: ['The NAV selection no longer matches this review. Discard it and open the report again.'] };
+  if (staged?.kind !== 'nav_report' || !Array.isArray(staged.updates) ||
+      !Array.isArray(staged.portfolio?.holdings) || !Array.isArray(saved?.holdings) ||
+      !Array.isArray(selectedIndices) || !selectedIndices.length ||
+      new Set(selectedIndices).size !== selectedIndices.length) return invalid;
+  const updates = new Map(staged.updates.map(update => [update.index, update]));
+  if (updates.size !== staged.updates.length ||
+      selectedIndices.some(index => !Number.isInteger(index) || !updates.has(index))) return invalid;
+  const portfolio = structuredClone(saved);
+  for (const index of selectedIndices) {
+    const before = saved.holdings[index];
+    const update = updates.get(index);
+    const after = staged.portfolio.holdings[index];
+    if (!before || !after || before.id !== update.id || before.value !== update.value ||
+        before.asOf !== update.asOf || before.units !== update.units || after.id !== update.id ||
+        after.valuationOrigin !== 'amfi_nav_report' || !after.navEstimate) return invalid;
+    portfolio.holdings[index] = structuredClone(after);
+  }
+  const total = portfolio.holdings.reduce((sum, row) => sum + Number(row.value), 0);
+  if (!Number.isFinite(total) || total > 1_000_000_000_000) return invalid;
+  return { portfolio, count: selectedIndices.length, omitted: staged.updates.length - selectedIndices.length,
+    errors: [] };
 }
