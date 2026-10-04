@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=ce90d933d0ac';
-import { parseWhatIfMix } from './mix-plan.mjs?v=ce90d933d0ac';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=ce90d933d0ac';
-import { reserveMonths } from './reserve.mjs?v=ce90d933d0ac';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=0f663f94f7d0';
+import { parseWhatIfMix } from './mix-plan.mjs?v=0f663f94f7d0';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=0f663f94f7d0';
+import { reserveMonths } from './reserve.mjs?v=0f663f94f7d0';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=ce90d933d0ac';
-import { asksForAdvice } from './question-scope.mjs?v=ce90d933d0ac';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=ce90d933d0ac';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ce90d933d0ac';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ce90d933d0ac';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=ce90d933d0ac';
-import { parseAmount } from './assistant-clarify.mjs?v=ce90d933d0ac';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=ce90d933d0ac';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=0f663f94f7d0';
+import { asksForAdvice } from './question-scope.mjs?v=0f663f94f7d0';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=0f663f94f7d0';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=0f663f94f7d0';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=0f663f94f7d0';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=0f663f94f7d0';
+import { parseAmount } from './assistant-clarify.mjs?v=0f663f94f7d0';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=0f663f94f7d0';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=ce90d933d0ac';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=0f663f94f7d0';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -222,15 +222,22 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `The current calculation belongs to the selected goal ${goal?.name || 'unnamed'}; no value for ${otherNamedGoal.name} was used.`,
       'Goal totals and allocations must come from the goal you actually mean.', '#goals', 'Select the named goal');
 
-  const statedHorizon = /\b(?:in|within)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+years?\b/.exec(input);
+  const statedHorizon = /\b(?:in|within)\s+(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(months?|years?)\b/.exec(input);
+  const relativeHorizon = !statedHorizon && /\bnext year\b/.test(input) &&
+    /\b(?:need|use|due|goal|retire|retirement|money)\b/.test(input);
   const horizonWords = { one: 1, two: 2, three: 3, four: 4, five: 5,
-    six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
-  const statedYears = statedHorizon && (horizonWords[statedHorizon[1]] || Number(statedHorizon[1]));
-  if (goal?.confirmed === true && statedHorizon && !absoluteHorizonWhatIf &&
+    six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+    a: 1, an: 1 };
+  const statedQuantity = statedHorizon && (horizonWords[statedHorizon[1]] || Number(statedHorizon[1]));
+  const statedYears = relativeHorizon ? 1 : statedHorizon &&
+    (statedHorizon[2].startsWith('month') ? statedQuantity / 12 : statedQuantity);
+  const horizonLabel = relativeHorizon ? 'next year' : statedHorizon &&
+    `${statedHorizon[1]} ${statedHorizon[2]}`;
+  if (goal?.confirmed === true && horizonLabel && !absoluteHorizonWhatIf &&
       /\b(?:goal|money|portfolio|investments?|mix|allocation|retire|retirement|target|gap|future|monthly|sip)\b/.test(input) &&
       statedYears !== Number(goal.years))
-    return answer(`You mentioned ${statedHorizon[1]} years, but the selected goal, ${goal.name}, is saved for ${goal.years} years. Is this a separate goal, or has its date changed? Select or update the intended goal before I use its mix or target for this question.`,
-      `Question horizon ${statedHorizon[1]} years; selected goal horizon ${goal.years} years. No goal scenario or suitability conclusion was calculated.`,
+    return answer(`You mentioned ${horizonLabel}, but the selected goal, ${goal.name}, is saved for ${goal.years} years. Is this a separate goal, or has its date changed? Select or update the intended goal before I use its mix or target for this question.`,
+      `Question horizon ${horizonLabel}; selected goal horizon ${goal.years} years. No goal scenario or suitability conclusion was calculated.`,
       'A different date can change the target and which holdings belong to it. Age and horizon alone cannot establish a suitable mix.', '#goals', 'Review goal timing');
 
   if (goalScopeRequested && /\b(?:fees?|expense ratios?|ter|fund costs?)\b/.test(input)) {
