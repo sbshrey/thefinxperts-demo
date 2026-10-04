@@ -1,45 +1,45 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=cde9b0121382';
-import { previewBrowserCas } from './cas-browser.mjs?v=cde9b0121382';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=f01458183605';
+import { previewBrowserCas } from './cas-browser.mjs?v=f01458183605';
 import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps,
-  findDraftBatchOverlaps, findCrossAccountDrafts } from './assistant-save.mjs?v=cde9b0121382';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=cde9b0121382';
-import { goalShare } from './goals.mjs?v=cde9b0121382';
+  findDraftBatchOverlaps, findCrossAccountDrafts } from './assistant-save.mjs?v=f01458183605';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=f01458183605';
+import { goalShare } from './goals.mjs?v=f01458183605';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=cde9b0121382';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=cde9b0121382';
-import { previewAssistantImport } from './assistant-import.mjs?v=cde9b0121382';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=cde9b0121382';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=cde9b0121382';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=f01458183605';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=f01458183605';
+import { previewAssistantImport } from './assistant-import.mjs?v=f01458183605';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=f01458183605';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=f01458183605';
 import { analyzePortfolio, freshFictionalHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck, marketValueDateChecks } from './analysis.mjs?v=cde9b0121382';
-import { buildReadableReport } from './readable-report.mjs?v=cde9b0121382';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=cde9b0121382';
-import { parseReviewBackup } from './review-backup.mjs?v=cde9b0121382';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=cde9b0121382';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=cde9b0121382';
-import { brokerAccountKey, validBrokerAccountLabel } from './broker-account.mjs?v=cde9b0121382';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=cde9b0121382';
-import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=cde9b0121382';
+  valuationRowsNeedingCheck, marketValueDateChecks } from './analysis.mjs?v=f01458183605';
+import { buildReadableReport } from './readable-report.mjs?v=f01458183605';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=f01458183605';
+import { parseReviewBackup } from './review-backup.mjs?v=f01458183605';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=f01458183605';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f01458183605';
+import { brokerAccountKey, validBrokerAccountLabel } from './broker-account.mjs?v=f01458183605';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=f01458183605';
+import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=f01458183605';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalSetup, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=cde9b0121382';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=f01458183605';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=cde9b0121382';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=cde9b0121382';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=f01458183605';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=f01458183605';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=cde9b0121382';
-import { validReserve, reserveMonths } from './reserve.mjs?v=cde9b0121382';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=f01458183605';
+import { validReserve, reserveMonths } from './reserve.mjs?v=f01458183605';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantSimpleCsvRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=cde9b0121382';
-import { validShares } from './stock-estimate.mjs?v=cde9b0121382';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=cde9b0121382';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=cde9b0121382';
-import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=cde9b0121382';
-import { inflationContext, observeIndiaDateChange } from './market-context.mjs?v=cde9b0121382';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=cde9b0121382';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=f01458183605';
+import { validShares } from './stock-estimate.mjs?v=f01458183605';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=f01458183605';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=f01458183605';
+import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=f01458183605';
+import { inflationContext, observeIndiaDateChange } from './market-context.mjs?v=f01458183605';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=f01458183605';
 import { compareFundDisclosures, datedSourceIssue, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=cde9b0121382';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=f01458183605';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -1933,9 +1933,9 @@ $('#cas-preview').addEventListener('click', async () => {
       }
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=cde9b0121382');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=f01458183605');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=cde9b0121382');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=f01458183605');
       if (stageGoldResult(await previewGoldStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1971,7 +1971,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=cde9b0121382');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=f01458183605');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -2046,7 +2046,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=cde9b0121382');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=f01458183605');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2054,7 +2054,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=cde9b0121382');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=f01458183605');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2062,7 +2062,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a digital-gold statement in this browser…');
     try {
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=cde9b0121382');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=f01458183605');
       if (stageGoldResult(await previewGoldStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }

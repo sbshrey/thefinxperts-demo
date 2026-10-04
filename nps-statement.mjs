@@ -32,20 +32,24 @@ export async function parseNpsStatementPages(pages) {
   if (/\bTier\s*II\b/i.test(section.join(' ')) || /\bTier\s*II\b/i.test(text.slice(0, markers[0].index)))
     return fail('This statement may include Tier II. Check the tier balances separately; no holding was added.');
   const rows = section.slice(header + 1);
+  const isSchemeStart = cell => /^NPS TRUST-/i.test(cell) || /\bPension Funds?\b/i.test(cell);
+  const hasPensionFundRows = rows.some(cell => /\bPension Funds?\b/i.test(cell));
   const names = new Set();
   let totalPaise = 0;
   let count = 0;
   for (let index = 0; index < rows.length; index++) {
-    if (!/^NPS TRUST-/i.test(rows[index])) continue;
+    if (!isSchemeStart(rows[index])) continue;
     const nameParts = [rows[index]];
     let cursor = index + 1;
     while (cursor < rows.length && number(rows[cursor], 6) === null &&
-        !/^NPS TRUST-/i.test(rows[cursor]) && nameParts.length < 7)
+        !isSchemeStart(rows[cursor]) && nameParts.length < 7)
       nameParts.push(rows[cursor++]);
     const units = number(rows[cursor], 6);
     const nav = number(rows[cursor + 1], 6);
     const value = number(rows[cursor + 2], 2);
     const name = nameParts.join(' ').toLowerCase();
+    if (hasPensionFundRows && !/^nps trust-/i.test(name) && !/\btier\s*i\b/i.test(name))
+      return fail('The NPS scheme tier could not be established. No holding was added.');
     if (names.has(name) || units === null || nav === null || value === null ||
         units <= 0 || nav <= 0 || value <= 0 || value > 10_000_000_000 ||
         Math.abs(units * nav - value) > Math.max(2, value * 0.0001))
@@ -57,8 +61,14 @@ export async function parseNpsStatementPages(pages) {
       return fail('The NPS scheme table exceeds the supported review limit. No holding was added.');
     index = cursor + 2;
   }
-  if (!count || rows.filter(cell => /^NPS TRUST-/i.test(cell)).length !== count)
+  if (!count || rows.filter(isSchemeStart).length !== count)
     return fail('The NPS scheme table could not be fully reconciled. No holding was added.');
+  const totalMarkers = rows.flatMap((cell, index) => /^Total(?:\s+Value)?$/i.test(cell) ? [index] : []);
+  if (hasPensionFundRows || totalMarkers.length) {
+    const printedTotal = totalMarkers.length === 1 ? number(rows[totalMarkers[0] + 1], 2) : null;
+    if (printedTotal === null || Math.abs(totalPaise - Math.round(printedTotal * 100)) > 2)
+      return fail('The NPS scheme values did not match the printed total. No holding was added.');
+  }
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(
     `thefinxperts-nps-tier1-v1\0${accounts[0]}`));
   const code = [...new Uint8Array(digest).slice(0, 6)]
