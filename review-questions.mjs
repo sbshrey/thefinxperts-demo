@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=7ca0edc95dd1';
-import { parseWhatIfMix } from './mix-plan.mjs?v=7ca0edc95dd1';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=7ca0edc95dd1';
-import { reserveMonths } from './reserve.mjs?v=7ca0edc95dd1';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=2e6e32af7a9c';
+import { parseWhatIfMix } from './mix-plan.mjs?v=2e6e32af7a9c';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=2e6e32af7a9c';
+import { reserveMonths } from './reserve.mjs?v=2e6e32af7a9c';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=7ca0edc95dd1';
-import { asksForAdvice } from './question-scope.mjs?v=7ca0edc95dd1';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=7ca0edc95dd1';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=7ca0edc95dd1';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7ca0edc95dd1';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=7ca0edc95dd1';
-import { parseAmount } from './assistant-clarify.mjs?v=7ca0edc95dd1';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=7ca0edc95dd1';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=2e6e32af7a9c';
+import { asksForAdvice } from './question-scope.mjs?v=2e6e32af7a9c';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=2e6e32af7a9c';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=2e6e32af7a9c';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=2e6e32af7a9c';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=2e6e32af7a9c';
+import { parseAmount } from './assistant-clarify.mjs?v=2e6e32af7a9c';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=2e6e32af7a9c';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=7ca0edc95dd1';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=2e6e32af7a9c';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -668,13 +668,16 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const loss = movedValue * dropPct / 100;
     const after = total - loss;
     const gap = scoped ? ` The gap to ${goal.name}'s entered target in today's rupees would be ${money(Math.max(0, Number(goal.target) - after))}.` : '';
-    return answer(scoped ?
+    const response = answer(scoped ?
       `If ${directStockOnly ? 'the assigned direct-stock value' : equityOnly ? 'the assigned value labelled Equity' : 'every assigned holding value'} for ${goal.name} fell ${dropPct}% once${directStockOnly ? ' while all other holdings stayed fixed' : equityOnly ? ' while its other asset labels stayed fixed' : ''}, its assigned value would fall by ${money(loss)} to ${money(after)} (${percent(loss, total)} lower).${gap}` : directStockOnly ?
       `If only your entered directly held stocks fell ${dropPct}% once while all other holdings stayed fixed, this entered portfolio would fall by ${money(loss)} to ${money(after)} (${percent(loss, result.total)} lower).` : equityOnly ?
       `If all entered value labelled Equity fell ${dropPct}% once while Debt, Gold and Other values stayed fixed, this entered portfolio would fall by ${money(loss)} to ${money(after)} (${percent(loss, result.total)} lower).` :
       `If every entered holding value fell ${dropPct}% once, this entered portfolio would fall by ${money(loss)} to ${money(after)} (${percent(loss, result.total)} lower).`,
       `${money(movedValue)} ${directStockOnly ? 'in direct-stock rows' : equityOnly ? 'labelled Equity' : scoped ? 'across assigned holdings' : 'across all entered holdings'} × ${dropPct}% = ${money(loss)} hypothetical loss; ${money(total)} ${scoped ? 'assigned' : 'entered'} value − ${money(loss)} = ${money(after)}. ${result.asOfSummary}.`,
       `This is one-time arithmetic from supplied dated values${scoped ? " against your goal target in today's rupees" : ''}, not a forecast, stress limit, suitability verdict or trade instruction. ${equityOnly ? 'Other labels may conceal equity, and ' : ''}Fund constituents, other price moves, taxes and unentered holdings are unknown. ${coverageNote}`, scoped ? '#goals' : '#holdings', scoped ? 'Review selected goal' : 'Review entered mix');
+    return scoped ? { ...response, scenarioStress: { goalId: goal.id, scope: directStockOnly ? 'Direct stocks' : equityOnly ? 'Equity-labelled holdings' : 'All linked holdings',
+      dropPct, startingValue: total, affectedValue: movedValue, loss, after,
+      gap: Math.max(0, Number(goal.target) - after) } } : response;
   }
   const holdingDetail = /^(?:review|show|describe|inspect|check|tell me about)\s+holding\s*#?(\d{1,4})[?.!]*$/.exec(input);
   if (holdingDetail) {
@@ -1182,7 +1185,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'These are supplied dated values and your own chosen percentages. The rupee reference is not money to move or add. Fund constituents, taxes and transaction costs are not assessed. A difference is a review prompt, not an instruction to trade.', '#goals', 'Review chosen mix');
   }
   if (/\b(?:equity|stock market).{0,25}\b(?:fall(?:s|en)?|drop(?:s|ped)?)\b|\b(?:stress test|hypothetical loss)\b/.test(input)) {
-    if (goal?.equityDropPct === undefined) return answer('Choose a hypothetical equity fall first, such as “equity fall 25%”, then confirm it. I will apply it once to the entered Equity value linked to this goal.',
+    if (goal?.equityDropPct === undefined) return answer('Choose a hypothetical equity fall first. For a temporary view, ask “What if equity falls 25% for my goal?” using your own percentage. To keep the input with this goal, say “equity fall 25%” and confirm the draft. I will apply it once to the entered Equity value linked to this goal.',
       'No investor-chosen equity fall is saved for the selected goal.',
       'The example is not a market prediction, personal risk score or recommendation.', '#goals', 'Choose a hypothetical fall');
     const pause = { goal_details: 'the goal details are unfinished', no_holdings: 'no holdings are linked to this goal',

@@ -1,44 +1,44 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=7ca0edc95dd1';
-import { previewBrowserCas } from './cas-browser.mjs?v=7ca0edc95dd1';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=2e6e32af7a9c';
+import { previewBrowserCas } from './cas-browser.mjs?v=2e6e32af7a9c';
 import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps,
-  findDraftBatchOverlaps } from './assistant-save.mjs?v=7ca0edc95dd1';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=7ca0edc95dd1';
-import { goalShare } from './goals.mjs?v=7ca0edc95dd1';
+  findDraftBatchOverlaps } from './assistant-save.mjs?v=2e6e32af7a9c';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=2e6e32af7a9c';
+import { goalShare } from './goals.mjs?v=2e6e32af7a9c';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=7ca0edc95dd1';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=7ca0edc95dd1';
-import { previewAssistantImport } from './assistant-import.mjs?v=7ca0edc95dd1';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=7ca0edc95dd1';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=7ca0edc95dd1';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=2e6e32af7a9c';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=2e6e32af7a9c';
+import { previewAssistantImport } from './assistant-import.mjs?v=2e6e32af7a9c';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=2e6e32af7a9c';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=2e6e32af7a9c';
 import { analyzePortfolio, freshFictionalHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=7ca0edc95dd1';
-import { buildReadableReport } from './readable-report.mjs?v=7ca0edc95dd1';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=7ca0edc95dd1';
-import { parseReviewBackup } from './review-backup.mjs?v=7ca0edc95dd1';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=7ca0edc95dd1';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7ca0edc95dd1';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=7ca0edc95dd1';
-import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=7ca0edc95dd1';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=2e6e32af7a9c';
+import { buildReadableReport } from './readable-report.mjs?v=2e6e32af7a9c';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=2e6e32af7a9c';
+import { parseReviewBackup } from './review-backup.mjs?v=2e6e32af7a9c';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=2e6e32af7a9c';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=2e6e32af7a9c';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=2e6e32af7a9c';
+import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=2e6e32af7a9c';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalSetup, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=7ca0edc95dd1';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=2e6e32af7a9c';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=7ca0edc95dd1';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=7ca0edc95dd1';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=2e6e32af7a9c';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=2e6e32af7a9c';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=7ca0edc95dd1';
-import { validReserve, reserveMonths } from './reserve.mjs?v=7ca0edc95dd1';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=2e6e32af7a9c';
+import { validReserve, reserveMonths } from './reserve.mjs?v=2e6e32af7a9c';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantSimpleCsvRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=7ca0edc95dd1';
-import { validShares } from './stock-estimate.mjs?v=7ca0edc95dd1';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=7ca0edc95dd1';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=7ca0edc95dd1';
-import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=7ca0edc95dd1';
-import { inflationContext } from './market-context.mjs?v=7ca0edc95dd1';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=7ca0edc95dd1';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=2e6e32af7a9c';
+import { validShares } from './stock-estimate.mjs?v=2e6e32af7a9c';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=2e6e32af7a9c';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=2e6e32af7a9c';
+import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=2e6e32af7a9c';
+import { inflationContext } from './market-context.mjs?v=2e6e32af7a9c';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=2e6e32af7a9c';
 import { compareFundDisclosures, datedSourceIssue, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=7ca0edc95dd1';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=2e6e32af7a9c';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -96,7 +96,7 @@ async function saveDeviceReview(portfolio) {
 }
 const state = { confirmed: [], drafts: [], history: [], lastReviewQuestion: null,
   lastReviewAnswer: null, sipSummary: null, file: null, busy: false, available: false,
-  mixWhatIf: null,
+  mixWhatIf: null, stressWhatIf: null,
   hosted: false, credits: null, account: browserOnly ? { portfolio: null, revision: 0 } : null,
   demo: false,
   goalFacts: null, goalDraftGoalId: null, reserveFacts: null, reserveDraftRevision: null,
@@ -1178,6 +1178,15 @@ function renderGoalReview() {
     } else section.append(paragraph('Comparison paused while linked goal details need checking. Your saved mix has not changed.'));
     root.append(section);
   }
+  const stress = state.stressWhatIf;
+  if (browserOnly && stress && stress.goalId === state.account?.portfolio?.activeGoalId) {
+    const section = document.createElement('section'); section.className = 'mix-what-if stress-what-if';
+    const heading = document.createElement('h4'); heading.textContent = 'Your temporary fall preview'; section.append(heading);
+    section.append(paragraph(`${stress.scope} · ${stress.dropPct}% one-time fall`));
+    section.append(paragraph(`${money(stress.affectedValue)} affected value × ${stress.dropPct}% = ${money(stress.loss)} illustrated loss. ${money(stress.startingValue)} linked value would become ${money(stress.after)}; gap to your entered goal cost today would be ${money(stress.gap)}.`));
+    section.append(paragraph('Other values are held fixed. This is not a forecast, loss limit or trade instruction; your saved goal has not changed.'));
+    root.append(section);
+  }
   const portfolio = state.account?.portfolio;
   const selectedGoal = portfolio?.goals?.find(goal => goal.id === portfolio.activeGoalId);
   const shared = (portfolio?.holdings || []).flatMap(row => {
@@ -1265,7 +1274,7 @@ function renderGoalReview() {
   } else root.append(paragraph('Want to test your own percentages without saving? Ask “What if my goal mix were Equity 60%, Debt 30%, Gold 10%?” with your own numbers. To save a mix you have chosen, say “my chosen mix is” followed by your percentages; you will check a draft first.'));
   const stressHeading = document.createElement('h4'); stressHeading.textContent = 'What if equity fell?'; root.append(stressHeading);
   if (review.stressPause === 'no_assumption') {
-    root.append(paragraph('Choose a hypothetical fall by saying “equity fall 25%”. This is a one-time calculation, not a prediction.'));
+    root.append(paragraph('To test your own percentage without saving it, ask “What if equity falls 25% for my goal?” using your chosen number. To keep an equity-fall input with this goal, say “equity fall 25%” and confirm the draft. Neither is a prediction.'));
     if (review.lossInputs.affordable !== undefined || review.lossInputs.tolerable !== undefined)
       root.append(paragraph(`Your saved loss amounts: could cover ${review.lossInputs.affordable === undefined ? 'not entered' : money(review.lossInputs.affordable)}; could tolerate ${review.lossInputs.tolerable === undefined ? 'not entered' : money(review.lossInputs.tolerable)}. Choose a hypothetical fall to compare them.`));
   } else if (review.stressPause) {
@@ -1377,7 +1386,7 @@ function normalizedDraft(row, defaultOrigin = 'manual') {
 
 function acceptAccount(payload) {
   state.account = { portfolio: payload.portfolio, revision: payload.revision };
-  state.mixWhatIf = null;
+  state.mixWhatIf = null; state.stressWhatIf = null;
   state.quoteFollowUp = null;
   state.lastReviewQuestion = null; state.lastReviewAnswer = null;
   state.demo = browserOnly && payload.portfolio?.source === 'demo';
@@ -1461,6 +1470,7 @@ async function aiTurn(message, pdf = null) {
       reserve: portfolio?.reserve || null, result, sipSummary: state.sipSummary,
       disclosures: state.disclosures });
     state.mixWhatIf = response?.scenarioMix || null;
+    state.stressWhatIf = response?.scenarioStress || null;
     renderGoalReview();
     if (response) {
       const item = say('assistant', response.text);
@@ -1800,9 +1810,9 @@ $('#cas-preview').addEventListener('click', async () => {
       }
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=7ca0edc95dd1');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=2e6e32af7a9c');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=7ca0edc95dd1');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=2e6e32af7a9c');
       if (stageGoldResult(await previewGoldStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1838,7 +1848,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=7ca0edc95dd1');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=2e6e32af7a9c');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -1909,7 +1919,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=7ca0edc95dd1');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=2e6e32af7a9c');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1917,7 +1927,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=7ca0edc95dd1');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=2e6e32af7a9c');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1925,7 +1935,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a digital-gold statement in this browser…');
     try {
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=7ca0edc95dd1');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=2e6e32af7a9c');
       if (stageGoldResult(await previewGoldStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2020,6 +2030,9 @@ $('#composer').addEventListener('submit', async event => {
   if (state.busy) return;
   const message = $('#message').value.trim();
   if (!message && !state.file) return;
+  if (browserOnly && (state.mixWhatIf || state.stressWhatIf)) {
+    state.mixWhatIf = null; state.stressWhatIf = null; renderGoalReview();
+  }
   if (state.demo) {
     if (/^(?:start my review|use my own investments|clear example)[.!]?$/i.test(message)) {
       $('#clear-review').click(); return;
@@ -2599,7 +2612,7 @@ $('#new-chat').addEventListener('click', () => {
       !window.confirm('Start a new chat and discard the unconfirmed holdings, goal or reserve details, report change and selected file? Confirmed holdings and goals stay in your review.')) return;
   state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.quoteFollowUp = null; state.disclosureDraft = null; state.disclosureQueue = []; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
+  state.correction = null; state.refresh = null; state.quoteFollowUp = null; state.disclosureDraft = null; state.disclosureQueue = []; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.mixWhatIf = null; state.stressWhatIf = null; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
   $('#messages').replaceChildren();
   if (state.demo) sayFictionalIntro();
   else {
@@ -2629,7 +2642,7 @@ $('#clear-review').addEventListener('click', () => {
   }
   state.confirmed = []; state.drafts = []; state.sipSummary = null; state.goalFacts = null; state.goalDraftGoalId = null;
   state.reserveFacts = null; state.reserveDraftRevision = null;
-  state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosureQueue = []; state.disclosures = []; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.coveragePrompted = false; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
+  state.correction = null; state.refresh = null; state.disclosureDraft = null; state.disclosureQueue = []; state.disclosures = []; state.history = []; state.lastReviewQuestion = null; state.lastReviewAnswer = null; state.mixWhatIf = null; state.stressWhatIf = null; state.coveragePrompted = false; state.coverageQueue = null; state.pendingGoalName = false; state.awaitingHoldingName = false; clearFile();
   $('#messages').replaceChildren();
   say('assistant', browserOnly ? 'Choose Upload for a CAMS statement, supported CAS or broker report. I’ll show possible holdings to confirm before answering questions. You can also describe one holding.' :
     'Tell me what you own, upload a CAMS Active Statement, or ask a question about your portfolio.');
