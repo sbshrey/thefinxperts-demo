@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=b437158d2eec';
-import { parseWhatIfMix } from './mix-plan.mjs?v=b437158d2eec';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=b437158d2eec';
-import { reserveMonths } from './reserve.mjs?v=b437158d2eec';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=66b6f2dce5e7';
+import { parseWhatIfMix } from './mix-plan.mjs?v=66b6f2dce5e7';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=66b6f2dce5e7';
+import { reserveMonths } from './reserve.mjs?v=66b6f2dce5e7';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=b437158d2eec';
-import { asksForAdvice } from './question-scope.mjs?v=b437158d2eec';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=b437158d2eec';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=b437158d2eec';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b437158d2eec';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=b437158d2eec';
-import { parseAmount } from './assistant-clarify.mjs?v=b437158d2eec';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=b437158d2eec';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=66b6f2dce5e7';
+import { asksForAdvice } from './question-scope.mjs?v=66b6f2dce5e7';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=66b6f2dce5e7';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=66b6f2dce5e7';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=66b6f2dce5e7';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=66b6f2dce5e7';
+import { parseAmount } from './assistant-clarify.mjs?v=66b6f2dce5e7';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=66b6f2dce5e7';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=b437158d2eec';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=66b6f2dce5e7';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -346,7 +346,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
   }
 
-  const suitabilityWords = '(?:safe|safer|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match|too high|too much|excessive|overexposed)';
+  const suitabilityWords = '(?:safe|safer|risky|risk|suitable|appropriate|right|good|balance|balanced|aligned|fit|match|too high|too much|excessive|overexposed)';
   const goalRiskQuestion = new RegExp(`\\b${suitabilityWords}\\b`).test(input) &&
     (new RegExp(`\\b(?:goal|retirement)\\b.{0,65}\\b${suitabilityWords}\\b`).test(input) ||
       new RegExp(`\\b${suitabilityWords}\\b.{0,65}\\b(?:goal|retirement|my age|age and goal)\\b`).test(input));
@@ -1047,7 +1047,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Added only checked current-position costs paired with dated values; covered value ${rupeesWithPaise(cost.coveredValue)}. ${cost.missingCount} ${cost.missingCount === 1 ? 'row' : 'rows'} excluded${cost.costAfterValueCount ? `, including ${cost.costAfterValueCount} with cost checked after the value date` : ''}.`,
       'This is a partial cost total for holdings still entered here, not all money ever invested or lifetime profit. Sold units, other assets and unchecked costs are excluded.', '#holdings', 'Check covered holdings');
   }
-  if (/\b(profit|gains?|loss(?:es)?|invested|returns?)\b/.test(input)) {
+  if (/\b(?:profit|gains?|gained|lost|loss(?:es)?|invested|returns?)\b/.test(input)) {
     const change = result.unrealizedChange;
     if (!change?.coveredCount) return answer(change?.costAfterValueCount ?
       'The checked invested amount is dated after the holding value. Refresh the value for the same units or shares before calculating an unrealized gain or loss.' :
