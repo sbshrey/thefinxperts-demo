@@ -1,7 +1,7 @@
-import * as pdfjs from './vendor/pdfjs/pdf.mjs?v=1ec0f8b2d75e';
-import { parseEpfoPassbookPages } from './epfo-passbook.mjs?v=1ec0f8b2d75e';
+import * as pdfjs from './vendor/pdfjs/pdf.mjs?v=21be8df22fab';
+import { parseEpfoPassbookPages } from './epfo-passbook.mjs?v=21be8df22fab';
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=1ec0f8b2d75e', import.meta.url).href;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=21be8df22fab', import.meta.url).href;
 
 self.onmessage = async event => {
   const bytes = event.data?.bytes;

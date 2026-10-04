@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=1ec0f8b2d75e';
-import { parseWhatIfMix } from './mix-plan.mjs?v=1ec0f8b2d75e';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=1ec0f8b2d75e';
-import { reserveMonths } from './reserve.mjs?v=1ec0f8b2d75e';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=21be8df22fab';
+import { parseWhatIfMix } from './mix-plan.mjs?v=21be8df22fab';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=21be8df22fab';
+import { reserveMonths } from './reserve.mjs?v=21be8df22fab';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=1ec0f8b2d75e';
-import { asksForAdvice } from './question-scope.mjs?v=1ec0f8b2d75e';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=1ec0f8b2d75e';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=1ec0f8b2d75e';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=1ec0f8b2d75e';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=1ec0f8b2d75e';
-import { parseAmount } from './assistant-clarify.mjs?v=1ec0f8b2d75e';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=1ec0f8b2d75e';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=21be8df22fab';
+import { asksForAdvice } from './question-scope.mjs?v=21be8df22fab';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=21be8df22fab';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=21be8df22fab';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=21be8df22fab';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=21be8df22fab';
+import { parseAmount } from './assistant-clarify.mjs?v=21be8df22fab';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=21be8df22fab';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=1ec0f8b2d75e';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=21be8df22fab';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -237,7 +237,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       /\b(?:goal|money|portfolio|investments?|mix|allocation|retire|retirement|target|gap|future|monthly|sip)\b/.test(input) &&
       statedYears !== Number(goal.years))
     return answer(statedYears < 1 ?
-      `You mentioned ${horizonLabel}, but the selected goal, ${goal.name}, is saved for ${goal.years} years. This review only accepts goal dates at least 1 year away, so I cannot assess a ${horizonLabel} need here. Is this a separate near-term need, or has the selected goal's date changed? Check the date and access to the holdings before relying on them for it.` :
+      `You mentioned ${horizonLabel}, but the selected goal, ${goal.name}, is saved for ${goal.years} years. This review only accepts goal dates at least 1 year away, so I cannot assess a need in ${horizonLabel} here. Is this a separate near-term need, or has the selected goal's date changed? Check the date and access to the holdings before relying on them for it.` :
       `You mentioned ${horizonLabel}, but the selected goal, ${goal.name}, is saved for ${goal.years} years. Is this a separate goal, or has its date changed? Select or update the intended goal before I use its mix or target for this question.`,
       `Question horizon ${horizonLabel}; selected goal horizon ${goal.years} years. No goal scenario or suitability conclusion was calculated.`,
       `A different date can change the target and which holdings belong to it. Age and horizon alone cannot establish a suitable mix.${statedYears < 1 ? ' This review cannot save a sub-year goal.' : ''}`,
