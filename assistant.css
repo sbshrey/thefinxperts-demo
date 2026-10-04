@@ -214,6 +214,7 @@ body[data-mode="browser-only"] .starter-actions button{padding-block:8px}
 .goal-switch:hover{background:#edf6ee}
 .goal-switch:focus-visible{outline:3px solid #2b7960;outline-offset:2px}
 .goal-name{display:block;font-size:15px;margin-bottom:7px}
+.goal-timing-check{margin:9px 0;padding:10px 12px;border:1px solid #dec48a;border-radius:8px;background:#fff8e8;color:#604b18;font-size:12px;line-height:1.45}
 .goal-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0}
 .goal-stats div{background:#f4f8f4;border-radius:8px;padding:9px}
 .goal-stats span{display:block;color:#65776c;font-size:11px}

@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=21be8df22fab';
-import { parseWhatIfMix } from './mix-plan.mjs?v=21be8df22fab';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=21be8df22fab';
-import { reserveMonths } from './reserve.mjs?v=21be8df22fab';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=e78de913e294';
+import { parseWhatIfMix } from './mix-plan.mjs?v=e78de913e294';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=e78de913e294';
+import { reserveMonths } from './reserve.mjs?v=e78de913e294';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=21be8df22fab';
-import { asksForAdvice } from './question-scope.mjs?v=21be8df22fab';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=21be8df22fab';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=21be8df22fab';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=21be8df22fab';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=21be8df22fab';
-import { parseAmount } from './assistant-clarify.mjs?v=21be8df22fab';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=21be8df22fab';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=e78de913e294';
+import { asksForAdvice } from './question-scope.mjs?v=e78de913e294';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=e78de913e294';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=e78de913e294';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=e78de913e294';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=e78de913e294';
+import { parseAmount } from './assistant-clarify.mjs?v=e78de913e294';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=e78de913e294';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=21be8df22fab';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=e78de913e294';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -235,13 +235,17 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     `${statedHorizon[1]} ${statedHorizon[2]}`;
   if (goal?.confirmed === true && horizonLabel && !absoluteHorizonWhatIf &&
       /\b(?:goal|money|portfolio|investments?|mix|allocation|retire|retirement|target|gap|future|monthly|sip)\b/.test(input) &&
-      statedYears !== Number(goal.years))
-    return answer(statedYears < 1 ?
+      (relativeHorizon || statedYears !== Number(goal.years)))
+    return { ...answer(relativeHorizon ?
+      `You said next year, while the selected goal, ${goal.name}, is saved for ${goal.years} ${Number(goal.years) === 1 ? 'year' : 'years'}. Which month or date do you mean, and is this the same goal? I need that timing confirmed before using the selected goal's mix or target for your question.` : statedYears < 1 ?
       `You mentioned ${horizonLabel}, but the selected goal, ${goal.name}, is saved for ${goal.years} years. This review only accepts goal dates at least 1 year away, so I cannot assess a need in ${horizonLabel} here. Is this a separate near-term need, or has the selected goal's date changed? Check the date and access to the holdings before relying on them for it.` :
       `You mentioned ${horizonLabel}, but the selected goal, ${goal.name}, is saved for ${goal.years} years. Is this a separate goal, or has its date changed? Select or update the intended goal before I use its mix or target for this question.`,
       `Question horizon ${horizonLabel}; selected goal horizon ${goal.years} years. No goal scenario or suitability conclusion was calculated.`,
       `A different date can change the target and which holdings belong to it. Age and horizon alone cannot establish a suitable mix.${statedYears < 1 ? ' This review cannot save a sub-year goal.' : ''}`,
-      '#goals', 'Review goal timing');
+      '#goals', 'Review goal timing'), goalTimingClarification: {
+        goalId: goal.id, label: horizonLabel, selectedYears: Number(goal.years),
+        subYear: statedYears < 1, calendar: Boolean(relativeHorizon),
+      } };
 
   if (goalScopeRequested && /\b(?:fees?|expense ratios?|ter|fund costs?)\b/.test(input)) {
     const unavailable = unavailableGoalScope();
