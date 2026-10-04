@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=2e6e32af7a9c';
-import { parseWhatIfMix } from './mix-plan.mjs?v=2e6e32af7a9c';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=2e6e32af7a9c';
-import { reserveMonths } from './reserve.mjs?v=2e6e32af7a9c';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=dbfdcea9e474';
+import { parseWhatIfMix } from './mix-plan.mjs?v=dbfdcea9e474';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=dbfdcea9e474';
+import { reserveMonths } from './reserve.mjs?v=dbfdcea9e474';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=2e6e32af7a9c';
-import { asksForAdvice } from './question-scope.mjs?v=2e6e32af7a9c';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=2e6e32af7a9c';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=2e6e32af7a9c';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=2e6e32af7a9c';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=2e6e32af7a9c';
-import { parseAmount } from './assistant-clarify.mjs?v=2e6e32af7a9c';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=2e6e32af7a9c';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=dbfdcea9e474';
+import { asksForAdvice } from './question-scope.mjs?v=dbfdcea9e474';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=dbfdcea9e474';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=dbfdcea9e474';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=dbfdcea9e474';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=dbfdcea9e474';
+import { parseAmount } from './assistant-clarify.mjs?v=dbfdcea9e474';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=dbfdcea9e474';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=2e6e32af7a9c';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=dbfdcea9e474';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -1465,10 +1465,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const gapChange = changed.futureGap - base.futureGap;
     const gapDifference = Math.abs(gapChange) < 0.5 ? 'unchanged' :
       `${money(Math.abs(gapChange))} ${gapChange > 0 ? 'higher' : 'lower'}`;
-    return answer(`At your saved ${money(base.monthlyContribution)} per month, ${goal.name} illustrates ${money(base.projectedValue)} at the goal date and a ${money(base.futureGap)} gap. At your alternative ${money(alternative)} per month, the illustrated value is ${money(changed.projectedValue)} and the gap is ${money(changed.futureGap)} (${gapDifference}). The total mathematical monthly amount is ${money(Math.ceil(base.monthlyTotalNeeded))} under both assumptions; the amount above your entered plan changes from ${money(Math.ceil(base.monthlyAdditionalNeeded))} to ${money(Math.ceil(changed.monthlyAdditionalNeeded))}. This temporary comparison has not changed your saved goal.`,
+    return { ...answer(`At your saved ${money(base.monthlyContribution)} per month, ${goal.name} illustrates ${money(base.projectedValue)} at the goal date and a ${money(base.futureGap)} gap. At your alternative ${money(alternative)} per month, the illustrated value is ${money(changed.projectedValue)} and the gap is ${money(changed.futureGap)} (${gapDifference}). The total mathematical monthly amount is ${money(Math.ceil(base.monthlyTotalNeeded))} under both assumptions; the amount above your entered plan changes from ${money(Math.ceil(base.monthlyAdditionalNeeded))} to ${money(Math.ceil(changed.monthlyAdditionalNeeded))}. This temporary comparison has not changed your saved goal.`,
       `${money(result.goalTotal)} assigned now; ${goal.years} years; goal-date cost ${money(base.futureCost)} from a ${money(goal.target)} target in today's rupees. Only the monthly contribution changed from ${money(goal.monthlyContribution)} to ${money(alternative)}; annual growth stayed ${goal.returnPct}% and inflation stayed ${goal.inflationPct}%. Contributions are added at each month’s end.`,
       `Both results are fixed-assumption illustrations, not forecasts or monthly savings instructions. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
-      '#goals', 'Review monthly plan');
+      '#goals', 'Review monthly plan'), scenarioGoal: {
+        goalId: goal.id, label: 'Monthly contribution', savedInput: `${money(goal.monthlyContribution)} per month`,
+        alternativeInput: `${money(alternative)} per month`, base, alternative: changed } };
   }
   const monthlyGoalQuestion = /\b(?:per month|each month|every month|a month|monthly)\b/.test(input) &&
     (/\b(?:goal|target|gap|retirement)\b/.test(input) || namedGoal);
@@ -1540,10 +1542,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const resultText = kind === 'inflation' ?
       `At your saved ${base.inflationPct}% inflation rate, ${goal.name}’s ${money(goal.target)} target in today’s rupees illustrates ${money(base.futureCost)} at the goal date and a ${money(base.futureGap)} gap. At your alternative ${alternative}%, the illustrated goal-date cost is ${money(changed.futureCost)} and the gap is ${money(changed.futureGap)} (${gapDifference}).` :
       `At your saved ${base.returnPct}% growth rate, ${money(result.goalTotal)} assigned now with ${money(goal.monthlyContribution)} added at each month’s end illustrates ${money(base.projectedValue)} at the goal date and a ${money(base.futureGap)} gap. At your alternative ${alternative}%, the illustrated value is ${money(changed.projectedValue)} and the gap is ${money(changed.futureGap)} (${gapDifference}).`;
-    return answer(`${resultText} This temporary comparison has not changed your saved goal.`,
+    return { ...answer(`${resultText} This temporary comparison has not changed your saved goal.`,
       `${money(result.goalTotal)} assigned now; ${money(goal.target)} target in today's rupees; ${goal.years} years; ${money(goal.monthlyContribution)} added at each month’s end. Only annual ${kind} changed from ${goal[field]}% to ${alternative}%; ${kind === 'inflation' ? `growth stayed ${goal.returnPct}%` : `inflation stayed ${goal.inflationPct}%`}.`,
       `Both results are fixed-assumption illustrations, not forecasts, expected returns or a monthly investment instruction. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
-      'https://investor.sebi.gov.in/calculators/Visual_Gold_Planner.html', 'Read SEBI’s illustration');
+      'https://investor.sebi.gov.in/calculators/Visual_Gold_Planner.html', 'Read SEBI’s illustration'),
+      scenarioGoal: { goalId: goal.id, label: `Annual ${kind}`, savedInput: `${goal[field]}%`,
+        alternativeInput: `${alternative}%`, base, alternative: changed } };
   }
   const retirementTiming = /^(?:what if|test|compare)\s+i\s+retire\s+(?:in\s+\d{1,3}\s+years?|\d{1,3}\s+years?\s+(?:later|earlier))/.test(input);
   const alternateHorizonQuestion = /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in\b|i\s+(?:reach|hit|delay|postpone|bring|move)\s+(?:my|the)\s+goal\b)/.test(input) || retirementTiming;
@@ -1593,10 +1597,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const changedMonthly = Math.ceil(changed.monthlyTotalNeeded);
     const monthlyChange = changedMonthly - baseMonthly;
     const monthlyDifference = monthlyChange ? `${money(Math.abs(monthlyChange))} ${monthlyChange > 0 ? 'higher' : 'lower'}` : 'unchanged';
-    return answer(`At your saved ${savedYears}-year horizon, ${goal.name} illustrates a ${money(base.futureCost)} goal-date cost, ${money(base.projectedValue)} value, ${money(base.futureGap)} gap and ${money(baseMonthly)} total mathematical monthly amount. At your alternative ${alternative}-year horizon, those figures are ${money(changed.futureCost)}, ${money(changed.projectedValue)}, ${money(changed.futureGap)} and ${money(changedMonthly)} per month (${monthlyDifference}). This temporary comparison has not changed your saved goal.`,
+    return { ...answer(`At your saved ${savedYears}-year horizon, ${goal.name} illustrates a ${money(base.futureCost)} goal-date cost, ${money(base.projectedValue)} value, ${money(base.futureGap)} gap and ${money(baseMonthly)} total mathematical monthly amount. At your alternative ${alternative}-year horizon, those figures are ${money(changed.futureCost)}, ${money(changed.projectedValue)}, ${money(changed.futureGap)} and ${money(changedMonthly)} per month (${monthlyDifference}). This temporary comparison has not changed your saved goal.`,
       `${money(result.goalTotal)} assigned now; ${money(goal.target)} target in today's rupees; ${money(goal.monthlyContribution)} added at each month’s end. Only the horizon changed from ${savedYears} to ${alternative} years; annual growth stayed ${goal.returnPct}% and inflation stayed ${goal.inflationPct}%.`,
       `The two goal-date rupee amounts refer to different dates. Both results use fixed assumptions, not forecasts or savings instructions. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
-      '#goals', 'Review goal timing');
+      '#goals', 'Review goal timing'), scenarioGoal: {
+        goalId: goal.id, label: 'Time until goal', savedInput: `${savedYears} years`,
+        alternativeInput: `${alternative} years`, base, alternative: changed } };
   }
   const futureGoalQuestion = /\b(?:future|project(?:ion|ed)?|goal[ -]date|in \d+ years|per month|each month|every month|a month|monthly)\b/.test(input) &&
     /\b(?:goal|target|gap|need|cost|contribut(?:ion|e)|retirement)\b/.test(input);
