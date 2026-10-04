@@ -33,6 +33,9 @@ body[data-mode="browser-only"] .tools-items>.quiet:disabled{opacity:.5}
 .device-dialog-actions button:disabled{opacity:.55;cursor:wait}
 .device-dialog-actions .consent-continue{border:0;background:#235d42;color:#fff;border-radius:8px;padding:10px 13px;font:inherit;font-weight:700;cursor:pointer}
 .report-help-dialog{width:min(560px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto}
+.report-source-choices{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0 16px}
+.report-source-choices button{border:1px solid #b9ccbf;border-radius:999px;background:#fff;color:#235d42;padding:8px 11px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.report-source-choices button[aria-pressed=true]{border-color:#235d42;background:#235d42;color:#fff}
 .report-help-dialog ol{padding-left:21px;margin:0 0 15px;color:#38584a;font-size:13px;line-height:1.5}
 .report-help-dialog li+li{margin-top:10px}
 .report-help-dialog a{color:#176344}
