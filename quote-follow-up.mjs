@@ -1,5 +1,5 @@
-import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=aa985f93cc3e';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=aa985f93cc3e';
+import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=bc8025ec4ebd';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=bc8025ec4ebd';
 
 const indiaToday = now => new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
 

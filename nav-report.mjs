@@ -1,4 +1,4 @@
-import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=aa985f93cc3e';
+import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=bc8025ec4ebd';
 
 const HEADER = 'Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date';
 const MONTHS = new Map(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -7,6 +7,12 @@ const ISIN = /^INF[A-Z0-9]{9}$/;
 const NAV = /^(?:0|[1-9]\d{0,6})(?:\.\d{1,8})?$/;
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const indiaToday = now => new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+// AMFI separates Plan and Option into columns; statements may include those labels in one name.
+// This removes separator punctuation and only labels that directly follow an identity word.
+const schemeNameKey = name => typeof name === 'string' && name.length <= 600 ?
+  name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ')
+    .replace(/\b(direct|regular) plan\b/g, '$1')
+    .replace(/\b(growth|idcw) option\b/g, '$1') : '';
 
 function navDate(value) {
   const match = /^(\d{2})-([A-Za-z]{3})-(\d{4})$/.exec(value);
@@ -47,7 +53,7 @@ export function parseAmfiNavReport(text, now = new Date()) {
   return { rows, unavailableNav, errors: [] };
 }
 
-/** Stage only newer exact code/ISIN matches with the investor's unchanged unit counts. */
+/** Stage newer exact identifier or unique full-name matches using unchanged saved units. */
 export function prepareNavReportRefresh(saved, report, now = new Date()) {
   if (!saved || saved.version !== 2 || !Array.isArray(saved.holdings) || !Array.isArray(saved.goals))
     return { errors: ['Confirm mutual-fund holdings with units before using a NAV report.'] };
@@ -55,13 +61,18 @@ export function prepareNavReportRefresh(saved, report, now = new Date()) {
     return { errors: report?.errors?.length ? report.errors : ['Read a valid AMFI text NAV report first.'] };
   const byCode = new Map();
   const byIsin = new Map();
+  const byName = new Map();
   for (const row of report.rows) {
     if (!row || typeof row.code !== 'string' || !/^\d{1,9}$/.test(row.code) ||
-        byCode.has(row.code) || !Array.isArray(row.isins) ||
+        byCode.has(row.code) || !schemeNameKey(row.name) || !Array.isArray(row.isins) ||
         !row.isins.every(isin => ISIN.test(isin)) || !realDate(row.asOf) ||
         row.asOf > indiaToday(now) || !NAV.test(row.nav) || !/[1-9]/.test(row.nav))
       return { errors: ['The NAV rows could not be checked. No values changed.'] };
     byCode.set(row.code, row);
+    const nameKey = schemeNameKey(row.name);
+    const nameMatches = byName.get(nameKey) || [];
+    nameMatches.push(row);
+    byName.set(nameKey, nameMatches);
     for (const isin of row.isins) {
       const matches = byIsin.get(isin) || [];
       matches.push(row);
@@ -70,35 +81,37 @@ export function prepareNavReportRefresh(saved, report, now = new Date()) {
   }
   const portfolio = structuredClone(saved);
   const changes = [];
-  let eligible = 0, unmatched = 0, older = 0, invalidUnits = 0;
+  let eligible = 0, unmatched = 0, older = 0, invalidUnits = 0, nameMatched = 0;
   for (let index = 0; index < saved.holdings.length; index++) {
     const row = saved.holdings[index];
     if (row.type !== 'Mutual fund' || row.granularity === 'fund_house') continue;
     if (!validUnits(row.units) || !realDate(row.asOf)) { invalidUnits++; continue; }
-    if (!row.amfi && !ISIN.test(row.isin || '')) { unmatched++; continue; }
     eligible++;
     const codeMatch = row.amfi ? byCode.get(row.amfi) : null;
     const isinMatches = ISIN.test(row.isin || '') ? byIsin.get(row.isin) || [] : [];
+    const nameMatches = !row.amfi && !row.isin ? byName.get(schemeNameKey(row.name)) || [] : [];
     const candidate = row.amfi && row.isin ?
       codeMatch && isinMatches.length === 1 && isinMatches[0] === codeMatch ? codeMatch : null :
-      row.amfi ? codeMatch : isinMatches.length === 1 ? isinMatches[0] : null;
+      row.amfi ? codeMatch : row.isin ? isinMatches.length === 1 ? isinMatches[0] : null :
+        nameMatches.length === 1 ? nameMatches[0] : null;
     if (!candidate) { unmatched++; continue; }
     if (candidate.asOf <= row.asOf) { older++; continue; }
     const value = estimateNavValue(row.units, candidate.nav);
     if (value === null || value > 10_000_000_000) { unmatched++; continue; }
+    if (!row.amfi && !row.isin) nameMatched++;
     const originalValue = row.navEstimate?.originalValue ?? row.value;
     const originalAsOf = row.navEstimate?.originalAsOf ?? row.asOf;
     portfolio.holdings[index] = { ...row, value, asOf: candidate.asOf,
       navEstimate: { originalValue, originalAsOf, nav: candidate.nav, navAsOf: candidate.asOf } };
     delete portfolio.holdings[index].valuationOrigin;
-    changes.push(`Holding ${index + 1}, saved ${row.name}; AMFI ${candidate.name} (code ${candidate.code}): ${money(row.value)} (${row.asOf}) → ${money(value)} (${candidate.asOf}); ${row.units} saved units × NAV ${candidate.nav}`);
+    changes.push(`Holding ${index + 1}, saved ${row.name}; AMFI ${candidate.name} (code ${candidate.code}; ${!row.amfi && !row.isin ? 'unique full-name match' : 'identifier match'}): ${money(row.value)} (${row.asOf}) → ${money(value)} (${candidate.asOf}); ${row.units} saved units × NAV ${candidate.nav}`);
   }
   if (!changes.length) return { errors: [], repeated: true,
-    description: `No newer exact NAV match could update a saved fund. ${eligible} rows had units and an identifier; ${unmatched} lacked a unique exact match; ${older} matched NAV dates were not newer; ${invalidUnits} lacked valid units or an existing date. No value changed.` };
+    description: `No newer exact NAV match could update a saved fund. ${eligible} rows had units and a date; ${unmatched} lacked a unique identifier or full-name match; ${older} matched NAV dates were not newer; ${invalidUnits} lacked valid units or an existing date. No value changed.` };
   const total = portfolio.holdings.reduce((sum, row) => sum + Number(row.value), 0);
   if (!Number.isFinite(total) || total > 1_000_000_000_000)
     return { errors: ['The estimated portfolio total would exceed the supported limit. No value changed.'] };
   return { portfolio, errors: [], kind: 'nav_report', changes,
-    description: `${changes.length} mutual-fund values have a newer exact AMFI code or ISIN match in the uploaded text file. ${unmatched} eligible rows had no unique match; ${older} had no newer date; ${invalidUnits} lacked valid units or an existing date. Confirm the exact scheme, plan and option, and that each saved unit balance is still held after any purchases, redemptions or switches. This file was supplied by you and its origin was not authenticated. Values are estimates, not live account balances; stocks and goal links stay unchanged.`,
+    description: `${changes.length} mutual-fund values have a newer exact AMFI code, ISIN or unique full-name match in the uploaded text file; ${nameMatched} used a name because no identifier was saved. ${unmatched} eligible rows had no unique match; ${older} had no newer date; ${invalidUnits} lacked valid units or an existing date. Compare every saved name with the AMFI scheme, plan and option shown below, and check that each saved unit balance is still held after purchases, redemptions or switches. A name match is not an independently verified identity. This file was supplied by you and its origin was not authenticated. Values are estimates, not live account balances; stocks and goal links stay unchanged.`,
     result: `${changes.length} dated mutual-fund NAV ${changes.length === 1 ? 'estimate was' : 'estimates were'} applied using saved units. Verify current units against a newer statement. Goal links and direct stocks stayed unchanged.` };
 }
