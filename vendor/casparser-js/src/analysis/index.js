@@ -14,6 +14,6 @@ export {
   getFundType,
   quarterIndex,
   transferFlag,
-} from './gains.js?v=a3cc883568ab';
+} from './gains.js?v=b0ac5d61dac3';
 
-export { CII, CII_DATA, getFinYear, navSearch } from './utils.js?v=a3cc883568ab';
+export { CII, CII_DATA, getFinYear, navSearch } from './utils.js?v=b0ac5d61dac3';
