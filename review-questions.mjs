@@ -1,19 +1,19 @@
-import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=75f148da8032';
-import { parseWhatIfMix } from './mix-plan.mjs?v=75f148da8032';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=75f148da8032';
-import { reserveMonths } from './reserve.mjs?v=75f148da8032';
+import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
+  valuationRowsNeedingCheck } from './analysis.mjs?v=18432fb4d77f';
+import { parseWhatIfMix } from './mix-plan.mjs?v=18432fb4d77f';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=18432fb4d77f';
+import { reserveMonths } from './reserve.mjs?v=18432fb4d77f';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=75f148da8032';
-import { asksForAdvice } from './question-scope.mjs?v=75f148da8032';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=75f148da8032';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=75f148da8032';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=75f148da8032';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=75f148da8032';
-import { parseAmount } from './assistant-clarify.mjs?v=75f148da8032';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=75f148da8032';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=18432fb4d77f';
+import { asksForAdvice } from './question-scope.mjs?v=18432fb4d77f';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=18432fb4d77f';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=18432fb4d77f';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=18432fb4d77f';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=18432fb4d77f';
+import { parseAmount } from './assistant-clarify.mjs?v=18432fb4d77f';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=18432fb4d77f';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=75f148da8032';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=18432fb4d77f';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -220,6 +220,41 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer(`You named ${otherNamedGoal.name}, but ${goal?.name || 'another goal'} is selected. Say “select goal ${otherNamedGoal.name}”, then ask again so I use that goal’s assignments.`,
       `The current calculation belongs to the selected goal ${goal?.name || 'unnamed'}; no value for ${otherNamedGoal.name} was used.`,
       'Goal totals and allocations must come from the goal you actually mean.', '#goals', 'Select the named goal');
+
+  if (goalScopeRequested && /\b(?:fees?|expense ratios?|ter|fund costs?)\b/.test(input)) {
+    const unavailable = unavailableGoalScope();
+    if (unavailable) return unavailable;
+    const funds = valid.filter(row => row.type === 'Mutual fund').flatMap(row => {
+      const share = goalShare(goal, row.id);
+      return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+    });
+    const fundValue = funds.reduce((sum, row) => sum + row.value, 0);
+    if (!fundValue) return answer(`No entered mutual-fund value is assigned to ${goal.name}, so there is no goal fund-cost illustration yet.`,
+      'Only confirmed holdings linked to the selected goal are in scope; other funds are excluded.',
+      'A whole-portfolio fund-cost figure would not describe this goal.', '#goals', 'Check goal links');
+    const cost = summarizeFundCost(funds, today);
+    const checked = funds.filter(row => hasDatedFundTer(row, today));
+    if (/\b(?:highest|largest)\b/.test(input)) {
+      if (!checked.length) return answer(`No dated scheme TER is entered for funds assigned to ${goal.name}. Check each exact scheme and plan before comparing rates.`,
+        `${money(fundValue)} of entered fund value is assigned; 0 of ${funds.length} linked fund rows has a usable dated TER.`,
+        'A fund name or plan label does not establish its rate.', '#holdings', 'Check fund TERs');
+      const highest = checked.reduce((best, row) => row.expenseRatioPct > best.expenseRatioPct ? row : best);
+      return answer(`${highest.name} has the highest entered TER among the ${checked.length} dated fund rates assigned to ${goal.name}: ${highest.expenseRatioPct.toFixed(2)}% as of ${highest.expenseRatioAsOf}.`,
+        `Compared entered scheme TERs for linked funds only; ${funds.length - checked.length} linked fund rows had no usable dated rate. Goal shares affect assigned value, not a scheme's TER.`,
+        'Rates and scheme identities are investor-entered and unverified. Missing or later rates could change the ranking; this is not a fund-change recommendation.', '#holdings', 'Check fund TERs');
+    }
+    if (!cost.coveredValue) return answer(`No dated scheme TER is entered for the ${money(fundValue)} of mutual-fund value assigned to ${goal.name}. Use “Check fund TER” beside each individual fund to add a checked rate and source date.`,
+      `${funds.length} linked fund rows have no usable dated TER; unlinked funds are excluded.`,
+      'A scheme name or plan label alone cannot establish its current cost.', '#holdings', 'Check fund TERs');
+    const valueToCheck = funds.filter(row => valuationDateIssue(row.asOf, today))
+      .reduce((sum, row) => sum + row.value, 0);
+    const rateDates = cost.oldestTerDate === cost.newestTerDate ?
+      `Entered rate date: ${cost.oldestTerDate}.` :
+      `Entered rate dates: ${cost.oldestTerDate} to ${cost.newestTerDate}.`;
+    return answer(`For ${goal.name}, dated TERs cover ${money(cost.coveredValue)} of ${money(fundValue)} assigned fund value. At unchanged assigned values for one year, those entered rates give a ${money(cost.annualIllustration)} cost illustration and a ${percent(cost.annualIllustration, cost.coveredValue)} weighted rate. ${rateDates}${cost.oldTerValue ? ` Recheck rates on ${money(cost.oldTerValue)} of covered value that are over 90 days old.` : ''}${valueToCheck ? ` Check value dates on ${money(valueToCheck)} of assigned fund value before treating this as current.` : ''}`,
+      `Applied each linked fund's goal share to its entered value, then summed covered assigned value × investor-entered annual TER. ${money(cost.uncoveredValue)} assigned fund value has no usable dated TER. Unlinked fund value is excluded.`,
+      'This allocates an illustration across goal links, not an actual fee paid by the goal. TER is already reflected in NAV. Scheme identities, rates and goal shares are investor-entered; daily values and rates can change. This is not an allocation or trade recommendation.', '#goals', 'Review goal links');
+  }
 
   if (goalScopeRequested && /\b(?:invested|profit|gains?|loss(?:es)?|underperform\w*|outperform\w*|performance|returns?|ter|expense ratio|regular plans?|direct plans?|overlap)\b/.test(input))
     return answer(`I cannot calculate that metric separately for ${goal?.name || 'the selected goal'} from this review. Ask about the goal’s assigned value or asset mix, or ask for the whole-portfolio metric without naming a goal.`,

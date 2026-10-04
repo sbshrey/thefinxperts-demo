@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=75f148da8032';
-import { compareMixPlan } from './mix-plan.mjs?v=75f148da8032';
-import { goalShare } from './goals.mjs?v=75f148da8032';
-import { reserveMonths } from './reserve.mjs?v=75f148da8032';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=75f148da8032';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=18432fb4d77f';
+import { compareMixPlan } from './mix-plan.mjs?v=18432fb4d77f';
+import { goalShare } from './goals.mjs?v=18432fb4d77f';
+import { reserveMonths } from './reserve.mjs?v=18432fb4d77f';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=18432fb4d77f';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -48,6 +48,33 @@ export function summarizeFundHouses(holdings) {
     labelledHouseCount: groups.length, groups };
 }
 
+/** Apply entered scheme TERs to entered fund values; callers may pass goal-shared rows. */
+export function summarizeFundCost(holdings, today = new Date()) {
+  let fundValue = 0, coveredValue = 0, annualIllustration = 0;
+  let coveredCount = 0, oldTerValue = 0, oldTerCount = 0;
+  const dates = [];
+  for (const holding of holdings) {
+    const value = Number(holding.value);
+    if (holding.type !== 'Mutual fund' || !Number.isFinite(value) || value <= 0) continue;
+    fundValue += value;
+    if (!hasDatedFundTer(holding, today)) continue;
+    coveredValue += value;
+    annualIllustration += value * holding.expenseRatioPct / 100;
+    coveredCount++;
+    dates.push(holding.expenseRatioAsOf);
+    if (valuationDateIssue(holding.expenseRatioAsOf, today) === 'stale') {
+      oldTerValue += value;
+      oldTerCount++;
+    }
+  }
+  dates.sort();
+  return { coveredValue, uncoveredValue: fundValue - coveredValue,
+    coveredCount, annualIllustration,
+    weightedPct: coveredValue ? annualIllustration / coveredValue * 100 : null,
+    oldestTerDate: dates[0] || null, newestTerDate: dates.at(-1) || null,
+    oldTerValue, oldTerCount };
+}
+
 export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 }, today = new Date(), reserve = null, coverage = null) {
   const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
   const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
@@ -85,12 +112,6 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
         !stockLabelByIsin.has(holding.isin)) stockLabelByIsin.set(holding.isin, holding.name);
   }
   let classifiedValue = 0;
-  let costCoveredValue = 0;
-  let annualCostIllustration = 0;
-  let costCoveredCount = 0;
-  const fundTerDates = [];
-  let oldTerValue = 0;
-  let oldTerCount = 0;
   const fundPlans = { Direct: 0, Regular: 0, Unclear: 0 };
 
   for (const holding of valid) {
@@ -103,16 +124,6 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     assets[Object.hasOwn(assets, holding.asset) ? holding.asset : 'Other'] += value;
     if (holding.type === 'Mutual fund') {
       fundPlans[holding.granularity === 'fund_house' ? 'Unclear' : planFromName(holding.name)] += value;
-      if (hasDatedFundTer(holding, today)) {
-        costCoveredValue += value;
-        annualCostIllustration += value * holding.expenseRatioPct / 100;
-        costCoveredCount++;
-        fundTerDates.push(holding.expenseRatioAsOf);
-        if (valuationDateIssue(holding.expenseRatioAsOf, today) === 'stale') {
-          oldTerValue += value;
-          oldTerCount++;
-        }
-      }
     }
     if (holding.exposure) {
       const weights = Object.entries(holding.exposure).filter(([, weight]) => Number.isFinite(weight) && weight > 0);
@@ -132,12 +143,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   }
 
   const largestIssuer = [...issuers.entries()].sort((a, b) => b[1] - a[1])[0] || null;
-  const fundCost = { coveredValue: costCoveredValue, uncoveredValue: fundHouses.fundValue - costCoveredValue,
-    coveredCount: costCoveredCount, annualIllustration: annualCostIllustration,
-    weightedPct: costCoveredValue ? annualCostIllustration / costCoveredValue * 100 : null,
-    oldestTerDate: fundTerDates.length ? fundTerDates.sort()[0] : null,
-    newestTerDate: fundTerDates.length ? fundTerDates.at(-1) : null,
-    oldTerValue, oldTerCount };
+  const fundCost = summarizeFundCost(valid, today);
   const largestIssuerSources = largestIssuer ? issuerSources.get(largestIssuer[0]) : null;
   const largestAmc = fundHouses.largest;
   const dated = valid.map(h => h.asOf).filter(date => parseValuationDate(date));
@@ -367,7 +373,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
       detail: `${rupees(fundPlans.Regular)} of entered fund value has an explicit Regular Plan label. Check each scheme's current expense ratio and what service you receive before deciding whether its plan still fits.`,
       question: 'What is the current expense ratio for each labelled plan, and what guidance or service do you use?',
       basis: `Added ${rupees(fundPlans.Regular)} from mutual-fund names explicitly labelled Regular Plan; ${rupees(fundPlans.Direct)} is labelled Direct Plan and ${rupees(fundPlans.Unclear)} has no clear plan label.`,
-      limitation: `Labels and any entered expense ratios are not registry-verified. Expense ratios cover ${rupees(costCoveredValue)} of ${rupees(fundValue)} entered fund value. Exit loads, tax lots and switching costs are unknown, so savings and a switch decision cannot be calculated.` });
+      limitation: `Labels and any entered expense ratios are not registry-verified. Expense ratios cover ${rupees(fundCost.coveredValue)} of ${rupees(fundValue)} entered fund value. Exit loads, tax lots and switching costs are unknown, so savings and a switch decision cannot be calculated.` });
   }
   if (equityFundGroups.total >= 3) {
     findings.push({ key: 'funds', tone: 'blue', label: 'Fund roles', title: 'Check what each equity fund adds',
