@@ -80,6 +80,10 @@ body[data-mode="browser-only"] .tools-items>.quiet:disabled{opacity:.5}
 .import-details{margin-top:8px}
 .import-details summary{cursor:pointer;font-weight:700;color:#245d45}
 .import-details p{margin:7px 0 0;line-height:1.4}
+.review-answer-details{margin-top:10px;border-top:1px solid #cbded0;padding-top:8px;font-size:13px;white-space:normal}
+.review-answer-details summary{cursor:pointer;color:#245d45;font-weight:700}
+.review-answer-details summary:focus-visible{outline:3px solid #82bd98;outline-offset:2px}
+.review-answer-details p{margin:9px 0 0;line-height:1.45}
 .detailed-handoff{display:inline-block;margin-top:10px;padding:8px 11px;border-radius:9px;background:#174d3f;color:#fff;font-weight:700;text-decoration:none}
 .detailed-handoff:hover,.detailed-handoff:focus-visible{background:#246b50;color:#fff}
 .question{display:block;margin-top:10px;font-weight:700}
