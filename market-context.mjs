@@ -6,6 +6,38 @@ export function contextNeedsReview(nextReviewDate, indiaDate) {
   return !validDate(nextReviewDate) || !validDate(indiaDate) || indiaDate >= nextReviewDate;
 }
 
+const INDIA_OFFSET_MS = 330 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
+
+export function indiaToday(now = Date.now()) {
+  return new Date(now + INDIA_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** Refresh dated public facts at India midnight and after a sleeping tab resumes. */
+export function observeIndiaDateChange(onDate) {
+  let lastDate = '';
+  let timer;
+  const refresh = () => {
+    const now = Date.now();
+    const date = indiaToday(now);
+    if (date !== lastDate) {
+      lastDate = date;
+      onDate(date);
+    }
+    clearTimeout(timer);
+    timer = setTimeout(refresh, DAY_MS - ((now + INDIA_OFFSET_MS) % DAY_MS) + 50);
+  };
+  const onVisible = () => { if (!document.hidden) refresh(); };
+  document.addEventListener('visibilitychange', onVisible);
+  window.addEventListener('focus', refresh);
+  refresh();
+  return () => {
+    clearTimeout(timer);
+    document.removeEventListener('visibilitychange', onVisible);
+    window.removeEventListener('focus', refresh);
+  };
+}
+
 /** Keep a dated public fact out of the guided review once its next release is due. */
 export function inflationContext(indiaDate) {
   const links = [
