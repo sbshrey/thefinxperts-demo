@@ -1,8 +1,8 @@
-import { parseAmount } from './assistant-clarify.mjs?v=96df94f58ec8';
-import { validShares } from './stock-estimate.mjs?v=96df94f58ec8';
-import { validUnits } from './nav-estimate.mjs?v=96df94f58ec8';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=96df94f58ec8';
-import { parseMixPercentages } from './mix-plan.mjs?v=96df94f58ec8';
+import { parseAmount } from './assistant-clarify.mjs?v=852ae3825c78';
+import { validShares } from './stock-estimate.mjs?v=852ae3825c78';
+import { validUnits } from './nav-estimate.mjs?v=852ae3825c78';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=852ae3825c78';
+import { parseMixPercentages } from './mix-plan.mjs?v=852ae3825c78';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {

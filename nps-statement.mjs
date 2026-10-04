@@ -64,11 +64,9 @@ export async function parseNpsStatementPages(pages) {
   if (!count || rows.filter(isSchemeStart).length !== count)
     return fail('The NPS scheme table could not be fully reconciled. No holding was added.');
   const totalMarkers = rows.flatMap((cell, index) => /^Total(?:\s+Value)?$/i.test(cell) ? [index] : []);
-  if (hasPensionFundRows || totalMarkers.length) {
-    const printedTotal = totalMarkers.length === 1 ? number(rows[totalMarkers[0] + 1], 2) : null;
-    if (printedTotal === null || Math.abs(totalPaise - Math.round(printedTotal * 100)) > 2)
-      return fail('The NPS scheme values did not match the printed total. No holding was added.');
-  }
+  const printedTotal = totalMarkers.length === 1 ? number(rows[totalMarkers[0] + 1], 2) : null;
+  if (printedTotal === null || Math.abs(totalPaise - Math.round(printedTotal * 100)) > 2)
+    return fail('A single printed total was missing or did not match the NPS scheme values. No holding was added.');
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(
     `thefinxperts-nps-tier1-v1\0${accounts[0]}`));
   const code = [...new Uint8Array(digest).slice(0, 6)]
