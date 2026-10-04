@@ -1,5 +1,5 @@
-import { disclosureSchemeKey, matchFundDisclosure } from './fund-disclosure.mjs?v=93d1664a6c61';
-import { parseReviewBackup } from './review-backup.mjs?v=93d1664a6c61';
+import { disclosureSchemeKey, matchFundDisclosure } from './fund-disclosure.mjs?v=a57372f36b39';
+import { parseReviewBackup } from './review-backup.mjs?v=a57372f36b39';
 
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
 const disclosureKeys = 'amc|asOf|coveredPct|notIncludedPct|scheme|scope|securities';
@@ -48,6 +48,15 @@ export function buildGuidedDeviceBundle(portfolio, disclosures = []) {
         weightPct: row.weightPct })) }));
   return JSON.stringify({ kind: 'guided-device-review', version: 1, portfolio,
     disclosures: supported });
+}
+
+/** A user-requested encrypted save must never silently omit checked evidence. */
+export function buildCompleteGuidedDeviceBundle(portfolio, disclosures = []) {
+  const plain = buildGuidedDeviceBundle(portfolio, disclosures);
+  const parsed = parseGuidedDeviceBundle(plain);
+  if (parsed.errors.length || parsed.disclosures.length !== disclosures.length)
+    throw new Error('Some checked fund disclosures or review details could not be included. Check the review before saving again.');
+  return plain;
 }
 
 /** Accept older encrypted portfolio-only records and reject unrecognized private fields. */

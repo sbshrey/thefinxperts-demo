@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=93d1664a6c61';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=93d1664a6c61';
-import { reserveMonths } from './reserve.mjs?v=93d1664a6c61';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=a57372f36b39';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=a57372f36b39';
+import { reserveMonths } from './reserve.mjs?v=a57372f36b39';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=93d1664a6c61';
-import { asksForAdvice } from './question-scope.mjs?v=93d1664a6c61';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=93d1664a6c61';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=93d1664a6c61';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=93d1664a6c61';
-import { parseAmount } from './assistant-clarify.mjs?v=93d1664a6c61';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=93d1664a6c61';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=a57372f36b39';
+import { asksForAdvice } from './question-scope.mjs?v=a57372f36b39';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=a57372f36b39';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=a57372f36b39';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=a57372f36b39';
+import { parseAmount } from './assistant-clarify.mjs?v=a57372f36b39';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=a57372f36b39';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=93d1664a6c61';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=a57372f36b39';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
