@@ -1,7 +1,8 @@
-import { validShares } from './stock-estimate.mjs?v=ad38bb30adff';
-import { validUnits } from './nav-estimate.mjs?v=ad38bb30adff';
-import { validCostBasis } from './cost-basis.mjs?v=ad38bb30adff';
-import { npsTier } from './account-label.mjs?v=ad38bb30adff';
+import { validShares } from './stock-estimate.mjs?v=b437158d2eec';
+import { validUnits } from './nav-estimate.mjs?v=b437158d2eec';
+import { validCostBasis } from './cost-basis.mjs?v=b437158d2eec';
+import { npsTier } from './account-label.mjs?v=b437158d2eec';
+import { brokerAccountKey, validBrokerAccountLabel } from './broker-account.mjs?v=b437158d2eec';
 
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const SOURCES = new Set(['manual', 'active_statement', 'broker_csv', 'broker_xlsx', 'simple_csv', 'cas', 'demat_cas', 'epfo_passbook', 'nps_statement', 'digital_gold_statement']);
@@ -50,6 +51,10 @@ function findAssistantOverlapDetail(existing, draft, { allowComplementarySummary
   const isin = typeof draft.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(draft.isin) ? draft.isin : null;
   for (const row of existing) {
     if (!row || typeof row.name !== 'string') continue;
+    if (['broker_csv', 'broker_xlsx'].includes(row.entryOrigin) &&
+        ['broker_csv', 'broker_xlsx'].includes(draft.entryOrigin) &&
+        brokerAccountKey(row.accountLabel) && brokerAccountKey(draft.accountLabel) &&
+        brokerAccountKey(row.accountLabel) !== brokerAccountKey(draft.accountLabel)) continue;
     const evidence = reason => ({ existingName: row.name, reason,
       existingValue: row.value, existingAsOf: row.asOf, existingOrigin: row.entryOrigin,
       ...(row.shares ? { existingShares: row.shares } : {}),
@@ -104,6 +109,21 @@ export function findDraftBatchOverlaps(drafts) {
   });
 }
 
+/** Same security in two explicitly different broker accounts still needs investor confirmation. */
+export function findCrossAccountDrafts(existing, drafts) {
+  if (!Array.isArray(existing) || !Array.isArray(drafts)) return [];
+  return drafts.flatMap((draft, index) => {
+    const nextAccount = brokerAccountKey(draft?.accountLabel);
+    if (!nextAccount || !['broker_csv', 'broker_xlsx'].includes(draft.entryOrigin)) return [];
+    const other = existing.find(row => ['broker_csv', 'broker_xlsx'].includes(row.entryOrigin) &&
+      brokerAccountKey(row.accountLabel) && brokerAccountKey(row.accountLabel) !== nextAccount &&
+      (row.isin && draft.isin && row.isin === draft.isin ||
+        row.type === draft.type && key(row) === key(draft)));
+    return other ? [{ index, draftName: draft.name, savedName: other.name,
+      draftAccount: draft.accountLabel, savedAccount: other.accountLabel }] : [];
+  });
+}
+
 /** Prepare an append-only account save. Existing goals and holding rows stay unchanged. */
 export function prepareAssistantSave(saved, drafts, { newId = () => crypto.randomUUID(), maxDrafts = 30 } = {}) {
   const portfolio = asVersionTwo(saved, newId);
@@ -125,6 +145,8 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
           row.isin || row.amc || row.amfi || row.units || row.statementCategory || row.granularity)) ||
         !Number.isFinite(row.value) || row.value <= 0 || row.value > 10_000_000_000 ||
         !realDate(row.asOf) || !SOURCES.has(row.entryOrigin) ||
+        (row.accountLabel !== undefined && (!['broker_csv', 'broker_xlsx'].includes(row.entryOrigin) ||
+          !validBrokerAccountLabel(row.accountLabel))) ||
         (row.isin && (typeof row.isin !== 'string' || !/^[A-Z]{2}[A-Z0-9]{10}$/.test(row.isin))) ||
         (row.amc && (typeof row.amc !== 'string' || !row.amc.trim() || row.amc.length > 200)) ||
         (row.amfi && (typeof row.amfi !== 'string' || !/^\d{5,8}$/.test(row.amfi))) ||
@@ -147,6 +169,7 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
     }
     added.push({ id: newId(), name: row.name.trim(), type: row.type, asset: row.asset,
       value: row.value, asOf: row.asOf, entryOrigin: row.entryOrigin,
+      ...(row.accountLabel ? { accountLabel: row.accountLabel.trim().replace(/\s+/g, ' ') } : {}),
       ...(row.isin ? { isin: row.isin } : {}), ...(row.amc ? { amc: row.amc.trim() } : {}),
       ...(row.amfi ? { amfi: row.amfi } : {}), ...(row.units ? { units: row.units } : {}),
       ...(row.shares ? { shares: row.shares } : {}),

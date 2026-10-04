@@ -1,44 +1,45 @@
-import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=ad38bb30adff';
-import { previewBrowserCas } from './cas-browser.mjs?v=ad38bb30adff';
+import { previewActiveStatementFile } from './active-statement-pdf.mjs?v=b437158d2eec';
+import { previewBrowserCas } from './cas-browser.mjs?v=b437158d2eec';
 import { prepareAssistantSave, findAssistantOverlap, findSavedDraftOverlaps,
-  findDraftBatchOverlaps } from './assistant-save.mjs?v=ad38bb30adff';
-import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=ad38bb30adff';
-import { goalShare } from './goals.mjs?v=ad38bb30adff';
+  findDraftBatchOverlaps, findCrossAccountDrafts } from './assistant-save.mjs?v=b437158d2eec';
+import { buildAssistantGoalReview, buildAssistantReviewChecks, goalNextCheck } from './assistant-review.mjs?v=b437158d2eec';
+import { goalShare } from './goals.mjs?v=b437158d2eec';
 import { prepareAssistantGoalSave, prepareAssistantGoalAssignment,
   parseAssistantGoalCommand, prepareAssistantGoalCommand,
-  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=ad38bb30adff';
-import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=ad38bb30adff';
-import { previewAssistantImport } from './assistant-import.mjs?v=ad38bb30adff';
-import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=ad38bb30adff';
-import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=ad38bb30adff';
+  parseAssistantEmergencyFunding, namedGoalInQuestion } from './assistant-goal.mjs?v=b437158d2eec';
+import { clarifyDrafts, classifyDraftsByNumbers, dateDraftsByNumbers, nextDraftQuestion, mergeAssistantDrafts, skipDraftFromMessage } from './assistant-clarify.mjs?v=b437158d2eec';
+import { previewAssistantImport } from './assistant-import.mjs?v=b437158d2eec';
+import { importValueAndDates, rupees } from './assistant-import-audit.mjs?v=b437158d2eec';
+import { prepareAssistantCasDrafts } from './assistant-cas.mjs?v=b437158d2eec';
 import { analyzePortfolio, freshFictionalHoldings, valuationAgeSummary, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=ad38bb30adff';
-import { buildReadableReport } from './readable-report.mjs?v=ad38bb30adff';
-import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=ad38bb30adff';
-import { parseReviewBackup } from './review-backup.mjs?v=ad38bb30adff';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=ad38bb30adff';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ad38bb30adff';
-import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=ad38bb30adff';
-import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=ad38bb30adff';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=b437158d2eec';
+import { buildReadableReport } from './readable-report.mjs?v=b437158d2eec';
+import { answerReviewQuestion, isShortReviewFollowUp, resolveReviewFollowUp } from './review-questions.mjs?v=b437158d2eec';
+import { parseReviewBackup } from './review-backup.mjs?v=b437158d2eec';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=b437158d2eec';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b437158d2eec';
+import { brokerAccountKey, validBrokerAccountLabel } from './broker-account.mjs?v=b437158d2eec';
+import { encryptDeviceReview, decryptDeviceReview } from './device-review.mjs?v=b437158d2eec';
+import { buildCompleteGuidedDeviceBundle, parseGuidedDeviceBundle } from './guided-device-bundle.mjs?v=b437158d2eec';
 import { parseBrowserGoalStart, parseBrowserGoalNameReply, parseBrowserGoalSetup, parseBrowserGoalFact, parseBrowserHoldingStatement, parseBrowserHoldingList,
   parseGuidedHoldingReply,
-  nextBrowserGoalQuestion } from './assistant-local.mjs?v=ad38bb30adff';
+  nextBrowserGoalQuestion } from './assistant-local.mjs?v=b437158d2eec';
 import { parseHoldingCorrection, prepareHoldingCorrection,
-  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=ad38bb30adff';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=ad38bb30adff';
+  parseCoverageAnswer, prepareCoverageAnswer } from './assistant-correction.mjs?v=b437158d2eec';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=b437158d2eec';
 import { parseAssistantReserveFact, nextAssistantReserveQuestion,
-  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=ad38bb30adff';
-import { validReserve, reserveMonths } from './reserve.mjs?v=ad38bb30adff';
+  prepareAssistantReserveSave } from './assistant-reserve.mjs?v=b437158d2eec';
+import { validReserve, reserveMonths } from './reserve.mjs?v=b437158d2eec';
 import { prepareAssistantActiveRefresh, prepareAssistantBrokerRefresh, prepareAssistantSimpleCsvRefresh, prepareAssistantCasRefresh,
-  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=ad38bb30adff';
-import { validShares } from './stock-estimate.mjs?v=ad38bb30adff';
-import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=ad38bb30adff';
-import { fundNavLookupUrl } from './nav-estimate.mjs?v=ad38bb30adff';
-import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=ad38bb30adff';
-import { inflationContext } from './market-context.mjs?v=ad38bb30adff';
-import { unsupportedPdfGuidance } from './document-hint.mjs?v=ad38bb30adff';
+  prepareAssistantDematRefresh, prepareAssistantEpfoRefresh, prepareAssistantNpsRefresh } from './assistant-refresh.mjs?v=b437158d2eec';
+import { validShares } from './stock-estimate.mjs?v=b437158d2eec';
+import { rupeesWithPaise, validCostBasis } from './cost-basis.mjs?v=b437158d2eec';
+import { fundNavLookupUrl } from './nav-estimate.mjs?v=b437158d2eec';
+import { beginQuoteFollowUp, advanceQuoteFollowUp } from './quote-follow-up.mjs?v=b437158d2eec';
+import { inflationContext } from './market-context.mjs?v=b437158d2eec';
+import { unsupportedPdfGuidance } from './document-hint.mjs?v=b437158d2eec';
 import { compareFundDisclosures, datedSourceIssue, disclosureSchemeKey, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=ad38bb30adff';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=b437158d2eec';
 
 const $ = selector => document.querySelector(selector);
 const money = amount => `₹${Math.round(amount).toLocaleString('en-IN')}`;
@@ -589,10 +590,28 @@ function renderDrafts() {
   $('#draft-title').textContent = state.drafts.length ? `Possible holdings (${state.drafts.length})` : 'Possible holdings';
   $('#draft-list').replaceChildren();
   const matches = previewDraftOverlaps();
+  const brokerDrafts = state.drafts.filter(row => ['broker_csv', 'broker_xlsx'].includes(row.entryOrigin));
+  const needsBrokerLabel = brokerDrafts.some(row => !brokerAccountKey(row.accountLabel) ||
+    brokerAccountKey(row.accountLabel) !== brokerAccountKey($('#broker-account-name').value));
+  const accountChoice = $('#broker-account-choice');
+  accountChoice.hidden = !brokerDrafts.length;
+  box.classList.toggle('has-account-choice', brokerDrafts.length > 0);
+  if (brokerDrafts.length) {
+    const choices = $('#broker-account-options'); choices.replaceChildren();
+    const seen = new Set();
+    for (const row of state.account?.portfolio?.holdings || []) {
+      const label = row.accountLabel, key = brokerAccountKey(label);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const option = document.createElement('option'); option.value = label; choices.append(option);
+    }
+  }
+  const crossAccount = findCrossAccountDrafts(state.account?.portfolio?.holdings || state.confirmed,
+    state.drafts);
   box.classList.toggle('has-overlaps', matches.length > 0);
   const preview = $('#draft-preview');
-  preview.hidden = !state.drafts.length;
-  if (state.drafts.length) {
+  if (preview) preview.hidden = !state.drafts.length;
+  if (preview && state.drafts.length) {
     const valued = state.drafts.filter(row => Number.isFinite(row.value) && row.value > 0);
     const missingValue = state.drafts.length - valued.length;
     const unknownType = state.drafts.filter(row => row.type === 'Other').length;
@@ -605,7 +624,9 @@ function renderDrafts() {
       missingValue && `${missingValue} ${missingValue === 1 ? 'value' : 'values'} missing`,
       unknownType && `${unknownType} ${unknownType === 1 ? 'type' : 'types'} to classify`,
       dateChecks && `${dateChecks} ${dateChecks === 1 ? 'date' : 'dates'} to check`,
-      matches.length && `${matches.length} possible ${matches.length === 1 ? 'overlap' : 'overlaps'}`
+      matches.length && `${matches.length} possible ${matches.length === 1 ? 'overlap' : 'overlaps'}`,
+      needsBrokerLabel && 'broker account nickname needed',
+      crossAccount.length && `${crossAccount.length} same-security ${crossAccount.length === 1 ? 'row' : 'rows'} in another labelled account`
     ].filter(Boolean);
     $('#draft-preview-checks').textContent = checks.length ? `Check before using: ${checks.join(' · ')}.` : 'Check every row against its source before using it.';
   }
@@ -633,7 +654,7 @@ function renderDrafts() {
     const item = document.createElement('li');
     const match = matchesByIndex.get(index);
     const rate = casPreviewPerformance.get(row);
-    item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}${row.units ? ` · ${row.units} ${row.entryOrigin === 'manual' ? 'entered' : 'statement'} units; check current balance` : ''}${row.shares ? ` · ${row.shares} ${row.entryOrigin === 'manual' ? 'entered' : 'report'} shares; check current balance` : ''}${rate == null ? '' : ` · Indicative CAS statement-period XIRR ${rate.toFixed(2)}%/yr (preview only)`}${match ? ` · May overlap ${match.existingName} (${match.reason} match)` : ''}`;
+    item.textContent = `#${index + 1} ${row.name} · ${row.granularity === 'fund_house' ? 'fund-house summary; schemes unknown' : row.type} · ${row.asset === 'Other' ? 'asset category unknown' : row.asset} · ${row.value == null ? 'value missing' : money(row.value)}${row.asOf ? ` · ${row.asOf}` : ' · date missing'}${row.accountLabel ? ` · broker account ${row.accountLabel}` : ''}${row.units ? ` · ${row.units} ${row.entryOrigin === 'manual' ? 'entered' : 'statement'} units; check current balance` : ''}${row.shares ? ` · ${row.shares} ${row.entryOrigin === 'manual' ? 'entered' : 'report'} shares; check current balance` : ''}${rate == null ? '' : ` · Indicative CAS statement-period XIRR ${rate.toFixed(2)}%/yr (preview only)`}${match ? ` · May overlap ${match.existingName} (${match.reason} match)` : ''}`;
     if (match) {
       const details = document.createElement('details');
       details.className = 'overlap-evidence';
@@ -671,14 +692,16 @@ function renderDrafts() {
     list.append(item);
   }
   $('#draft-list').append(list);
-  $('#draft-help').textContent = matches.length ?
+  $('#draft-help').textContent = needsBrokerLabel ?
+    'Name this broker account before using or comparing its report. Use letters and spaces, not an account number or PAN.' : matches.length ?
     `${matches.length} ${matches.length === 1 ? 'row may' : 'rows may'} already be counted in saved holdings or another draft. Check the source and leave out matching rows before using this batch. Separate account positions need source-aware reconciliation. ${nextDraftQuestion(state.drafts) || ''}` :
-    nextDraftQuestion(state.drafts) || 'Check these against your source before using them in the dashboard.';
+    `${crossAccount.length ? `${crossAccount.length} ${crossAccount.length === 1 ? 'security also appears' : 'securities also appear'} in another labelled broker account. Confirm these really are separate accounts before saving. ` : ''}${nextDraftQuestion(state.drafts) || 'Check these against your source before using them in the dashboard.'}`;
   if (unclassifiedDemat.length)
     $('#draft-help').textContent += ' If every unclassified demat row is an ordinary company share, use the checked-rows button after checking the original statement.';
   if (unclassifiedBroker.length)
     $('#draft-help').textContent += ' If every unclassified broker row is an ordinary company share, use the checked-rows button after checking the report.';
-  $('#confirm-drafts').disabled = state.busy || matches.length > 0 || state.drafts.some(row =>
+  $('#confirm-drafts').textContent = needsBrokerLabel ? 'Name account first' : 'Use these holdings';
+  $('#confirm-drafts').disabled = state.busy || matches.length > 0 || needsBrokerLabel || state.drafts.some(row =>
     !Number.isFinite(row.value) || row.value <= 0 || row.type === 'Other' ||
     (row.type === 'Stock' && row.asset !== 'Equity'));
 }
@@ -1063,7 +1086,7 @@ function renderReview() {
     const savedRow = state.account?.portfolio?.holdings?.[index];
     const item = document.createElement('div'); item.className = 'holding-item';
     const name = document.createElement('strong'); name.textContent = `#${index + 1} ${row.name}`;
-    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.units ? ` · ${row.units} ${row.entryOrigin === 'manual' ? 'entered' : 'statement'} units; verify current balance` : ''}${row.shares ? ` · ${row.shares} ${row.entryOrigin === 'manual' ? 'entered' : 'reported'} shares; verify current balance` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${savedRow?.stockEstimate ? ' · user-entered stock-price estimate; shares assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
+    const meta = document.createElement('span'); meta.textContent = `${row.granularity === 'fund_house' ? 'Fund-house summary; schemes unknown' : row.type} · ${row.asset} · ${money(row.value)} · ${row.asOf || 'date unknown'} · originally from ${entryOriginText(row.entryOrigin)}${row.accountLabel ? ` · broker account ${row.accountLabel}` : ''}${row.valuationOrigin ? ` · latest value from ${valuationOriginText(row.valuationOrigin)}` : ''}${row.units ? ` · ${row.units} ${row.entryOrigin === 'manual' ? 'entered' : 'statement'} units; verify current balance` : ''}${row.shares ? ` · ${row.shares} ${row.entryOrigin === 'manual' ? 'entered' : 'reported'} shares; verify current balance` : ''}${savedRow?.navEstimate ? ' · user-entered NAV estimate; units assumed unchanged' : ''}${savedRow?.stockEstimate ? ' · user-entered stock-price estimate; shares assumed unchanged' : ''}${row.costBasis !== undefined ? ` · invested ${money(row.costBasis)} checked ${row.costBasisAsOf}` : ''}`;
     item.append(name, meta);
     const ask = document.createElement('button'); ask.className = 'holding-review-action'; ask.type = 'button';
     ask.textContent = 'Review this holding';
@@ -1379,6 +1402,8 @@ function normalizedDraft(row, defaultOrigin = 'manual') {
     value: row.value == null || !Number.isFinite(value) ? null : value,
     asOf: /^\d{4}-\d{2}-\d{2}$/.test(row.asOf || '') ? row.asOf : null,
     entryOrigin: row.entryOrigin || defaultOrigin,
+    ...(row.accountLabel && validBrokerAccountLabel(row.accountLabel) ?
+      { accountLabel: row.accountLabel.trim().replace(/\s+/g, ' ') } : {}),
     ...(row.valuationOrigin && ['manual', 'broker_xlsx', 'broker_csv'].includes(row.valuationOrigin) ?
       { valuationOrigin: row.valuationOrigin } : {}),
     ...(row.isin ? { isin: row.isin } : {}),
@@ -1825,9 +1850,9 @@ $('#cas-preview').addEventListener('click', async () => {
       }
       if (stageActiveStatement(active)) return;
       unsupportedHint = active.documentHint;
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=ad38bb30adff');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=b437158d2eec');
       if (stageNpsResult(await previewNpsStatement(state.file, password))) return;
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=ad38bb30adff');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=b437158d2eec');
       if (stageGoldResult(await previewGoldStatement(state.file, password))) return;
       result = await previewBrowserCas(state.file, password);
     }
@@ -1863,7 +1888,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.xlsx$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a dated fund disclosure in this browser…');
     try {
-      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=ad38bb30adff');
+      const { previewFundDisclosures } = await import('./fund-disclosure-browser.mjs?v=b437158d2eec');
       const disclosures = await previewFundDisclosures(file, state.confirmed);
       state.disclosureQueue = disclosures.slice(1);
       stageFundDisclosure(disclosures[0]);
@@ -1896,21 +1921,25 @@ $('#upload').addEventListener('change', async event => {
         if (drafts.some(row => !row)) say('note', 'A report row could not be staged safely. No rows were added. Use the detailed review to inspect the report.');
         else {
           const origin = drafts[0]?.entryOrigin;
-          const prepared = origin === 'simple_csv' ?
-            prepareAssistantSimpleCsvRefresh(state.account?.portfolio, drafts) :
-            prepareAssistantBrokerRefresh(state.account?.portfolio, drafts, origin);
-          if (prepared?.errors?.length && origin === 'simple_csv') {
-            state.drafts = drafts; renderDrafts();
-            say('note', `${prepared.errors.join(' ')} The file remains unconfirmed. Compare matching rows and leave out any already counted before using unrelated positions.`);
+          if (['broker_csv', 'broker_xlsx'].includes(origin)) {
+            state.drafts = drafts;
+            $('#broker-account-name').value = '';
+            renderDrafts();
             sayImportNote(result.message, '', result.audit);
+            say('assistant', 'Which broker account is this report from? Give it a short nickname in the review, and reuse that nickname for future reports from the same account.');
+          } else {
+            const prepared = prepareAssistantSimpleCsvRefresh(state.account?.portfolio, drafts);
+            if (prepared?.errors?.length) {
+              state.drafts = drafts; renderDrafts();
+              say('note', `${prepared.errors.join(' ')} The file remains unconfirmed. Compare matching rows and leave out any already counted before using unrelated positions.`);
+              sayImportNote(result.message, '', result.audit);
+            } else if (prepared?.repeated) say('note', prepared.description);
+            else if (prepared) {
+              state.refresh = { ...prepared, revision: state.account.revision };
+              renderRefresh();
+              say('assistant', 'I found newer values for saved positions with exact ISIN matches. Review the changes before applying them. The dashboard has not changed yet.');
+            } else { state.drafts = drafts; renderDrafts(); sayImportNote(result.message, '', result.audit); }
           }
-          else if (prepared?.errors?.length) say('note', prepared.errors.join(' '));
-          else if (prepared?.repeated) say('note', prepared.description);
-          else if (prepared) {
-            state.refresh = { ...prepared, revision: state.account.revision };
-            renderRefresh();
-            say('assistant', 'I found newer values for saved positions with exact ISIN matches. Review the changes before applying them. The dashboard has not changed yet.');
-          } else { state.drafts = drafts; renderDrafts(); sayImportNote(result.message, '', result.audit); }
         }
       }
     } finally { state.busy = false; clearFile(); renderCredits(); renderDrafts(); }
@@ -1934,7 +1963,7 @@ $('#upload').addEventListener('change', async event => {
   if (/\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an EPF passbook in this browser…');
     try {
-      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=ad38bb30adff');
+      const { previewEpfoPassbook } = await import('./epfo-browser.mjs?v=b437158d2eec');
       if (stageEpfoResult(await previewEpfoPassbook(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1942,7 +1971,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for an NPS statement in this browser…');
     try {
-      const { previewNpsStatement } = await import('./nps-browser.mjs?v=ad38bb30adff');
+      const { previewNpsStatement } = await import('./nps-browser.mjs?v=b437158d2eec');
       if (stageNpsResult(await previewNpsStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -1950,7 +1979,7 @@ $('#upload').addEventListener('change', async event => {
   if (browserOnly && /\.pdf$/i.test(file.name)) {
     state.busy = true; renderCredits(); setFileLabel('Checking for a digital-gold statement in this browser…');
     try {
-      const { previewGoldStatement } = await import('./gold-browser.mjs?v=ad38bb30adff');
+      const { previewGoldStatement } = await import('./gold-browser.mjs?v=b437158d2eec');
       if (stageGoldResult(await previewGoldStatement(file))) return;
     } catch { /* Other supported readers may still recognize the PDF. */ }
     finally { state.busy = false; renderCredits(); renderDrafts(); }
@@ -2387,6 +2416,33 @@ for (const prompt of document.querySelectorAll('[data-guided-question]')) {
   });
 }
 
+$('#broker-account-name').addEventListener('input', renderDrafts);
+$('#broker-account-apply').addEventListener('click', () => {
+  if (state.busy || !state.drafts.length ||
+      !state.drafts.every(row => ['broker_csv', 'broker_xlsx'].includes(row.entryOrigin))) return;
+  const label = $('#broker-account-name').value.trim().replace(/\s+/g, ' ');
+  if (!validBrokerAccountLabel(label)) {
+    say('note', 'Use a 2–40 character nickname with letters, spaces or hyphens. Do not enter an account number, PAN or password.');
+    return;
+  }
+  state.drafts = state.drafts.map(row => ({ ...row, accountLabel: label }));
+  const origin = state.drafts[0].entryOrigin;
+  const prepared = prepareAssistantBrokerRefresh(state.account?.portfolio, state.drafts, origin);
+  if (prepared?.errors?.length) {
+    renderDrafts();
+    say('note', `${prepared.errors.join(' ')} The report remains unconfirmed.`);
+  } else if (prepared?.repeated) {
+    state.drafts = []; renderDrafts(); say('note', prepared.description);
+  } else if (prepared) {
+    state.refresh = { ...prepared, revision: state.account.revision };
+    state.drafts = []; renderDrafts(); renderRefresh();
+    say('assistant', `I found newer values for positions in broker account “${label}”. Review each dated change before applying it; other account positions stay as they are.`);
+  } else {
+    renderDrafts();
+    say('note', `Broker account “${label}” is set for these drafts. Check the rows and choose Use these holdings when ready.`);
+  }
+});
+
 $('#confirm-drafts').addEventListener('click', async () => {
   if (state.busy || !state.drafts.length) return;
   if (previewDraftOverlaps().length) {
@@ -2396,6 +2452,8 @@ $('#confirm-drafts').addEventListener('click', async () => {
     say('note', 'The saved account has not loaded. Your drafts remain in this tab; try again after the account is available.'); return;
   }
   if (state.account) {
+    const crossAccount = findCrossAccountDrafts(state.account.portfolio?.holdings || [], state.drafts);
+    if (crossAccount.length && !window.confirm(`${crossAccount.length} ${crossAccount.length === 1 ? 'security also appears' : 'securities also appear'} in another labelled broker account. Confirm these are separate accounts and that both positions belong in your portfolio. The values will be counted separately.`)) return;
     const prepared = prepareAssistantSave(state.account.portfolio, state.drafts,
       { maxDrafts: browserOnly ? 200 : 30 });
     if (prepared.errors.length) { say('note', prepared.errors.join(' ')); return; }

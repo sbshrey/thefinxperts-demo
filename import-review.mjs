@@ -1,6 +1,7 @@
 /** Validate the editable holdings preview before it replaces the current portfolio. */
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=ad38bb30adff';
-import { validCostBasis } from './cost-basis.mjs?v=ad38bb30adff';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=b437158d2eec';
+import { validCostBasis } from './cost-basis.mjs?v=b437158d2eec';
+import { sameBrokerAccount, validBrokerAccountLabel } from './broker-account.mjs?v=b437158d2eec';
 
 export function validateImportReview(holdings) {
   if (!Array.isArray(holdings) || holdings.length === 0) return ['Keep at least one holding to import.'];
@@ -24,6 +25,10 @@ export function validateImportReview(holdings) {
       errors.push(`Holding ${row}: check the invested amount and its source-check date.`);
     if (holding.entryOrigin !== undefined && !Object.hasOwn(ENTRY_ORIGINS, holding.entryOrigin))
       errors.push(`Holding ${row}: check the entry source.`);
+    if (holding.accountLabel !== undefined &&
+        (!['broker_csv', 'broker_xlsx'].includes(holding.entryOrigin) ||
+          !validBrokerAccountLabel(holding.accountLabel)))
+      errors.push(`Holding ${row}: check the broker account nickname; do not enter an account number.`);
     if (holding.amc != null && (typeof holding.amc !== 'string' || !holding.amc.trim() || holding.amc.length > 200))
       errors.push(`Holding ${row}: check the fund-house name.`);
     if (holding.isin != null && (typeof holding.isin !== 'string' || !/^[A-Z]{2}[A-Z0-9]{10}$/.test(holding.isin)))
@@ -132,7 +137,8 @@ export function planBrokerReportRefresh(existing, incoming, origin) {
   for (const [isin, next] of incomingByIsin) {
     if (!currentByIsin.has(isin)) continue;
     const current = currentByIsin.get(isin);
-    if (!current || !next || !nameKey(current.name) || nameKey(current.name) !== nameKey(next.name) ||
+    if (!current || !next || current.accountLabel && !sameBrokerAccount(current.accountLabel, next.accountLabel) ||
+        !nameKey(current.name) || nameKey(current.name) !== nameKey(next.name) ||
         current.type !== next.type || current.asset !== next.asset ||
         current.granularity || next.granularity || !isRealIsoDate(current.asOf) ||
         !isRealIsoDate(next.asOf) || next.asOf <= current.asOf || next.asOf > today) return null;

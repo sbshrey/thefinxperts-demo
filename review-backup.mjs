@@ -1,9 +1,10 @@
-import { validMixPlan } from './mix-plan.mjs?v=ad38bb30adff';
-import { validReserve } from './reserve.mjs?v=ad38bb30adff';
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=ad38bb30adff';
-import { validNavEstimate } from './nav-estimate.mjs?v=ad38bb30adff';
-import { validShares, validStockEstimate } from './stock-estimate.mjs?v=ad38bb30adff';
-import { validCostBasis } from './cost-basis.mjs?v=ad38bb30adff';
+import { validMixPlan } from './mix-plan.mjs?v=b437158d2eec';
+import { validReserve } from './reserve.mjs?v=b437158d2eec';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=b437158d2eec';
+import { validNavEstimate } from './nav-estimate.mjs?v=b437158d2eec';
+import { validShares, validStockEstimate } from './stock-estimate.mjs?v=b437158d2eec';
+import { validCostBasis } from './cost-basis.mjs?v=b437158d2eec';
+import { validBrokerAccountLabel } from './broker-account.mjs?v=b437158d2eec';
 const MAX_BYTES = 2_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
@@ -17,7 +18,7 @@ function validCoverage(value) {
     Object.keys(value).every(key => ['mutualFunds', 'directStocks', 'otherInvestments'].includes(key)) &&
     Object.values(value).every(answer => COVERAGE.has(answer));
 }
-const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin', 'valuationOrigin', 'navEstimate', 'shares', 'stockEstimate', 'costBasis', 'costBasisAsOf'];
+const HOLDING_KEYS = ['id', 'name', 'type', 'asset', 'value', 'asOf', 'amc', 'isin', 'amfi', 'granularity', 'units', 'statementCategory', 'expenseRatioPct', 'expenseRatioAsOf', 'entryOrigin', 'accountLabel', 'valuationOrigin', 'navEstimate', 'shares', 'stockEstimate', 'costBasis', 'costBasisAsOf'];
 const GOAL_KEYS = ['id', 'name', 'age', 'years', 'target', 'monthlyContribution', 'returnPct', 'inflationPct', 'assumptionsChecked', 'equityDropPct', 'affordableLoss', 'tolerableLoss', 'emergencyFunding', 'linkedIds', 'allocationPct', 'targetMix', 'confirmed'];
 
 /** The same normalized portfolio shape accepted by the account API, without derived exposures. */
@@ -29,6 +30,7 @@ export function buildReviewBackup(state) {
       asOf: holding.asOf || null, amc: holding.amc || null, isin: holding.isin || null, amfi: holding.amfi || null,
       granularity: holding.granularity || null, units: holding.units || null,
       ...(holding.entryOrigin ? { entryOrigin: holding.entryOrigin } : {}),
+      ...(holding.accountLabel ? { accountLabel: holding.accountLabel } : {}),
       ...(holding.valuationOrigin ? { valuationOrigin: holding.valuationOrigin } : {}),
       ...(holding.statementCategory ? { statementCategory: holding.statementCategory } : {}),
       ...(holding.expenseRatioPct !== undefined ? { expenseRatioPct: holding.expenseRatioPct,
@@ -73,6 +75,8 @@ export function parseReviewBackup(text) {
         !boundedNumber(holding.value, Number.MIN_VALUE, 10_000_000_000) ||
         (holding.asOf != null && !isRealIsoDate(holding.asOf)) ||
         (holding.entryOrigin !== undefined && !Object.hasOwn(ENTRY_ORIGINS, holding.entryOrigin)) ||
+        (holding.accountLabel !== undefined && (!['broker_csv', 'broker_xlsx'].includes(holding.entryOrigin) ||
+          !validBrokerAccountLabel(holding.accountLabel))) ||
         (holding.valuationOrigin !== undefined && !['manual', 'broker_xlsx', 'broker_csv'].includes(holding.valuationOrigin)) ||
         (holding.amc != null && !isName(holding.amc, 200)) ||
         (holding.isin != null && (typeof holding.isin !== 'string' || !ISIN.test(holding.isin))) ||

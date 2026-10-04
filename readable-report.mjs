@@ -1,10 +1,10 @@
-import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=ad38bb30adff';
-import { MIX_ASSETS } from './mix-plan.mjs?v=ad38bb30adff';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=ad38bb30adff';
-import { reserveMonths } from './reserve.mjs?v=ad38bb30adff';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=ad38bb30adff';
-import { rupeesWithPaise } from './cost-basis.mjs?v=ad38bb30adff';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=ad38bb30adff';
+import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=b437158d2eec';
+import { MIX_ASSETS } from './mix-plan.mjs?v=b437158d2eec';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=b437158d2eec';
+import { reserveMonths } from './reserve.mjs?v=b437158d2eec';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b437158d2eec';
+import { rupeesWithPaise } from './cost-basis.mjs?v=b437158d2eec';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=b437158d2eec';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -212,7 +212,7 @@ function appendHoldings(lines, holdings, goal = null) {
     const share = goal ? goalShare(goal, holding.id) : 0;
     const label = goal ? (share ? `${share}% (${rupees(Number(holding.value) * share / 100)}) linked to selected goal` : 'not linked to selected goal') : 'goal allocation not yet confirmed';
     const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
-    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` | latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
+    lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | originally added from ${entryOriginText(holding.entryOrigin)}${holding.accountLabel ? ` | broker account nickname ${clean(holding.accountLabel)}` : ''}${holding.valuationOrigin ? ` | latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
     if (holding.navEstimate) lines.push(`  User-entered NAV estimate: ${holding.units} statement units × ₹${holding.navEstimate.nav} on ${holding.navEstimate.navAsOf}; original statement value ${rupees(holding.navEstimate.originalValue)} on ${holding.navEstimate.originalAsOf || 'unknown'}. Units and exact scheme were confirmed by the investor, not independently verified here.`);
     if (holding.shares) lines.push(`  Entered direct-stock shares: ${holding.shares}. Check trades and corporate actions against a current broker report.`);
     if (holding.costBasis !== undefined) lines.push(`  Entered invested amount for current units or shares: ${rupeesWithPaise(holding.costBasis)} checked ${holding.costBasisAsOf}. This is investor-supplied, not a verified transaction history.`);

@@ -1,8 +1,9 @@
 import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh,
-  planDematCasRefresh } from './import-review.mjs?v=ad38bb30adff';
-import { removeHoldingAllocation } from './goals.mjs?v=ad38bb30adff';
-import { rupees } from './assistant-import-audit.mjs?v=ad38bb30adff';
-import { npsTier } from './account-label.mjs?v=ad38bb30adff';
+  planDematCasRefresh } from './import-review.mjs?v=b437158d2eec';
+import { removeHoldingAllocation } from './goals.mjs?v=b437158d2eec';
+import { rupees } from './assistant-import-audit.mjs?v=b437158d2eec';
+import { npsTier } from './account-label.mjs?v=b437158d2eec';
+import { brokerAccountKey, sameBrokerAccount } from './broker-account.mjs?v=b437158d2eec';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const paise = rows => rows.reduce((total, row) => total + Math.round(row.value * 100), 0);
@@ -139,18 +140,39 @@ export function prepareAssistantBrokerRefresh(saved, incoming, origin) {
       !['broker_csv', 'broker_xlsx'].includes(origin)) return null;
   const known = new Set(saved.holdings.map(row => row.isin).filter(Boolean));
   if (!incoming.some(row => row.isin && known.has(row.isin))) return null;
-  const plan = planBrokerReportRefresh(saved.holdings, incoming, origin);
+  const accountKeys = new Set(incoming.map(row => brokerAccountKey(row.accountLabel)));
+  if (accountKeys.size > 1) return { errors: ['A broker report must use one checked account nickname. No value changed.'] };
+  const accountKey = [...accountKeys][0];
+  const shared = saved.holdings.filter(row => row.isin && incoming.some(next => next.isin === row.isin));
+  const unlabelled = accountKey ? shared.filter(row => !brokerAccountKey(row.accountLabel)) : [];
+  if (unlabelled.some(row => !['broker_csv', 'broker_xlsx'].includes(row.entryOrigin) ||
+      shared.filter(other => other.isin === row.isin).length !== 1))
+    return { errors: ['A matching older holding has no broker account nickname or shares its ISIN with another saved row. Reconcile the original account positions before refreshing; no value changed.'] };
+  const scoped = accountKey ? saved.holdings.filter(row =>
+    sameBrokerAccount(row.accountLabel, incoming[0].accountLabel) || unlabelled.includes(row)) : saved.holdings;
+  if (accountKey && !shared.some(row =>
+    sameBrokerAccount(row.accountLabel, incoming[0].accountLabel) || unlabelled.includes(row)))
+    return null;
+  const plan = planBrokerReportRefresh(scoped, incoming, origin);
   if (!plan) return { errors: ['This report matches a saved ISIN, but it is not a safe newer valuation for that position. Check that it is the same account and holding, with a matching security name, later ISO valuation date, type and asset class. Use the detailed review if the report needs manual reconciliation.'] };
-  const portfolio = structuredClone({ ...saved, holdings: plan.holdings });
+  const adoptedIds = new Set(plan.matched.filter(({ current }) => unlabelled.includes(current))
+    .map(({ current }) => current.id));
+  const updatedById = new Map(plan.holdings.map(row => [row.id, adoptedIds.has(row.id) ?
+    { ...row, accountLabel: incoming[0].accountLabel } : row]));
+  const portfolio = structuredClone({ ...saved, holdings: accountKey ?
+    saved.holdings.map(row => updatedById.get(row.id) || row) : plan.holdings });
+  if (portfolio.holdings.reduce((sum, row) => sum + row.value, 0) > 1_000_000_000_000)
+    return { errors: ['The combined review value is too large after this refresh. No value changed.'] };
   if (plan.skipped) delete portfolio.coverage;
   const newShareCounts = plan.matched.filter(({ next }) => next.type === 'Stock' && next.shares).length;
   const changes = plan.matched.map(({ current, next }) =>
     `${current.name} · ISIN ${current.isin}: ${money(current.value)} (${current.asOf}) → ${money(next.value)} (${next.asOf})${next.type === 'Stock' && next.shares ?
       `; shares ${current.shares || 'unknown'} → ${next.shares} (report)` : current.shares ?
-      `; prior ${current.shares} shares clear because the report has no checked count` : ''}`);
+      `; prior ${current.shares} shares clear because the report has no checked count` : ''}${adoptedIds.has(current.id) ?
+      `; add account nickname ${next.accountLabel}` : ''}`);
   return { portfolio, errors: [], kind: 'broker', changes,
-    description: `Newer broker report. Confirm this covers the same account and positions, not another account or an extra lot. ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'} will receive the newer dated value. ${plan.skipped} unmatched report ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out of this review. ${refreshValueCoverage(incoming, plan.matched)} No holding is removed; goal links stay. Prior units, share counts, price estimates and checked invested amounts on matched rows clear; ${newShareCounts} checked stock share ${newShareCounts === 1 ? 'count replaces' : 'counts replace'} the old count from this report. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
-    result: `Broker report refresh applied to ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. ${newShareCounts} checked stock share ${newShareCounts === 1 ? 'count was' : 'counts were'} retained from the report. Check saved units, invested amounts and the report source before relying on the newer values.` };
+    description: `Newer broker report. Confirm this covers the same account and positions, not another account or an extra lot. ${adoptedIds.size ? `${adoptedIds.size} older unlabelled broker ${adoptedIds.size === 1 ? 'row will receive' : 'rows will receive'} the nickname “${incoming[0].accountLabel}” only if you confirm both reports cover the same account. ` : ''}${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'} will receive the newer dated value. ${plan.skipped} unmatched report ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out of this review. ${refreshValueCoverage(incoming, plan.matched)} No holding is removed; goal links stay. Prior units, share counts, price estimates and checked invested amounts on matched rows clear; ${newShareCounts} checked stock share ${newShareCounts === 1 ? 'count replaces' : 'counts replace'} the old count from this report. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
+    result: `Broker report refresh applied to ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'}. ${adoptedIds.size ? `${adoptedIds.size} older broker ${adoptedIds.size === 1 ? 'row now has' : 'rows now have'} the account nickname. ` : ''}${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. ${newShareCounts} checked stock share ${newShareCounts === 1 ? 'count was' : 'counts were'} retained from the report. Check saved units, invested amounts and the report source before relying on the newer values.` };
 }
 
 /** A newer copy of the user's simple CSV can revalue only unique positions first saved from that template. */
