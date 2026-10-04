@@ -1,6 +1,6 @@
 /** Validate the editable holdings preview before it replaces the current portfolio. */
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=3121c68facaa';
-import { validCostBasis } from './cost-basis.mjs?v=3121c68facaa';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=af41952190ce';
+import { validCostBasis } from './cost-basis.mjs?v=af41952190ce';
 
 export function validateImportReview(holdings) {
   if (!Array.isArray(holdings) || holdings.length === 0) return ['Keep at least one holding to import.'];
@@ -126,11 +126,14 @@ export function planBrokerReportRefresh(existing, incoming, origin) {
     else incomingByIsin.set(holding.isin, holding);
   }
   const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+  const nameKey = value => typeof value === 'string' ?
+    value.trim().toLocaleLowerCase('en-IN').replace(/\s+/g, ' ') : '';
   const matched = [];
   for (const [isin, next] of incomingByIsin) {
     if (!currentByIsin.has(isin)) continue;
     const current = currentByIsin.get(isin);
-    if (!current || !next || current.type !== next.type || current.asset !== next.asset ||
+    if (!current || !next || !nameKey(current.name) || nameKey(current.name) !== nameKey(next.name) ||
+        current.type !== next.type || current.asset !== next.asset ||
         current.granularity || next.granularity || !isRealIsoDate(current.asOf) ||
         !isRealIsoDate(next.asOf) || next.asOf <= current.asOf || next.asOf > today) return null;
     matched.push({ current, next });

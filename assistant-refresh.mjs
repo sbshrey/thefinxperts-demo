@@ -1,8 +1,8 @@
 import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh,
-  planDematCasRefresh } from './import-review.mjs?v=3121c68facaa';
-import { removeHoldingAllocation } from './goals.mjs?v=3121c68facaa';
-import { rupees } from './assistant-import-audit.mjs?v=3121c68facaa';
-import { npsTier } from './account-label.mjs?v=3121c68facaa';
+  planDematCasRefresh } from './import-review.mjs?v=af41952190ce';
+import { removeHoldingAllocation } from './goals.mjs?v=af41952190ce';
+import { rupees } from './assistant-import-audit.mjs?v=af41952190ce';
+import { npsTier } from './account-label.mjs?v=af41952190ce';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const paise = rows => rows.reduce((total, row) => total + Math.round(row.value * 100), 0);
@@ -140,7 +140,7 @@ export function prepareAssistantBrokerRefresh(saved, incoming, origin) {
   const known = new Set(saved.holdings.map(row => row.isin).filter(Boolean));
   if (!incoming.some(row => row.isin && known.has(row.isin))) return null;
   const plan = planBrokerReportRefresh(saved.holdings, incoming, origin);
-  if (!plan) return { errors: ['This report matches a saved ISIN, but it is not a safe newer valuation for that position. Check that it is the same account and holding, with a later ISO valuation date and matching type and asset class. Use the detailed review if the report needs manual reconciliation.'] };
+  if (!plan) return { errors: ['This report matches a saved ISIN, but it is not a safe newer valuation for that position. Check that it is the same account and holding, with a matching security name, later ISO valuation date, type and asset class. Use the detailed review if the report needs manual reconciliation.'] };
   const portfolio = structuredClone({ ...saved, holdings: plan.holdings });
   if (plan.skipped) delete portfolio.coverage;
   const changes = plan.matched.map(({ current, next }) =>
