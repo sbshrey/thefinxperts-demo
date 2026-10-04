@@ -27,7 +27,7 @@ function schemeTitle(value) {
   const raw = cell(value);
   if (/^Groww\b/i.test(raw) || (/^IB\d{2}-/i.test(raw) && !/^IB\d{2}-Groww\b/i.test(raw))) return null;
   const title = raw.replace(/^IB\d{2}-/i, '').split(/\s*\(/, 1)[0].trim();
-  return /^(?:Motilal Oswal|Parag Parikh|Groww)\s+[A-Za-z0-9 &.'/-]{3,100}\s+(?:Fund|ETF)$/i.test(title) ? title : null;
+  return /^(?:Motilal Oswal|Parag Parikh|Groww|HDFC)\s+[A-Za-z0-9 &.'/-]{3,100}\s+(?:Fund|ETF)$/i.test(title) ? title : null;
 }
 
 /** Read one user-supplied AMC sheet as dated, listed equity weights only. No investor holding changes. */
@@ -40,20 +40,23 @@ export function parseFundDisclosureRows(rows,
     const headings = row.map(label);
     const name = headings.findIndex(text => /^(?:name of the instrument|name of instrument)$/.test(text));
     const isin = headings.indexOf('isin');
-    const weight = headings.findIndex(text => /^%\s*to\s*net\s*assets$/.test(text));
+    const weight = headings.findIndex(text => /^%\s*to\s*(?:net\s*assets|nav)$/.test(text));
     return name >= 0 && isin >= 0 && weight >= 0 && new Set([name, isin, weight]).size === 3 ?
       [{ index, name, isin, weight }] : [];
   });
-  if (headerCandidates.length !== 1) return failed('The sheet needs one unambiguous instrument, ISIN and % to Net Assets header.');
+  if (headerCandidates.length !== 1) return failed('The sheet needs one unambiguous instrument, ISIN and percentage-to-assets header.');
   const header = headerCandidates[0];
-  const dates = rows.slice(0, header.index).flatMap(row => row.map(value => statementDate(value, todayIso))
-    .filter(value => value !== null));
+  const dates = [...new Set(rows.slice(0, header.index).flatMap(row => row.map(value => statementDate(value, todayIso))
+    .filter(value => value !== null)))];
   if (dates.length !== 1 || !dates[0]) return failed('The scheme disclosure date is missing, invalid, future or conflicting.');
-  const titles = rows.slice(0, header.index).flatMap(row => row.map(schemeTitle).filter(Boolean));
+  const titles = [...new Set(rows.slice(0, header.index).flatMap(row => row.map(schemeTitle).filter(Boolean)))];
   if (titles.length !== 1) return failed('The sheet needs one identifiable scheme title before its holdings table.');
   const scheme = titles[0];
   const amc = scheme.startsWith('Motilal Oswal ') ? 'Motilal Oswal' :
-    scheme.startsWith('Groww ') ? 'Groww' : 'PPFAS';
+    scheme.startsWith('Groww ') ? 'Groww' : scheme.startsWith('HDFC ') ? 'HDFC' : 'PPFAS';
+  const hdfcLayout = amc === 'HDFC';
+  if (hdfcLayout !== (label(rows[header.index][header.weight]) === '% to nav'))
+    return failed('The printed fund-house identity does not match the holdings layout.');
   if (amc === 'Motilal Oswal' && !rows.slice(0, header.index).some(row =>
     row.some(value => /Motilal Oswal Asset Management Company Limited/i.test(cell(value)))))
     return failed('The printed fund-house identity does not match the scheme.');
@@ -64,12 +67,15 @@ export function parseFundDisclosureRows(rows,
   const listedIndex = rows.slice(sectionStart + 1, sectionStart + 5)
     .findIndex(row => row.some(value => /listed\s*\/\s*awaiting listing on (?:the\s+)?stock exchanges/i.test(cell(value))));
   if (listedIndex < 0) return failed('The listed equity subsection was not found.');
-  const first = sectionStart + 2 + listedIndex;
+  let first = sectionStart + 2 + listedIndex;
+  if (hdfcLayout && label(rows[first]?.[header.isin]) === 'equity' &&
+      !cell(rows[first]?.[header.name]) && finite(rows[first]?.[header.weight]) === null) first++;
   const subtotal = rows.findIndex((row, index) => index >= first && index < first + 500 &&
-    label(row[header.name]) === 'sub total');
+    label(row[hdfcLayout ? header.isin : header.name]) === 'sub total');
   if (subtotal < 0 || subtotal - first < 1 || subtotal - first > 400)
     return failed('The listed equity subsection has no bounded subtotal.');
-  const grandTotals = rows.flatMap((row, index) => label(row[header.name]) === 'grand total' ? [index] : []);
+  const grandTotals = rows.flatMap((row, index) =>
+    label(row[hdfcLayout ? header.isin : header.name]) === 'grand total' ? [index] : []);
   if (grandTotals.length !== 1 || grandTotals[0] <= subtotal)
     return failed('The sheet needs one grand total after the listed equity section.');
   const grand = finite(rows[grandTotals[0]][header.weight]);
@@ -141,7 +147,8 @@ export function matchFundDisclosure(disclosure, holdings) {
     row.granularity !== 'fund_house' && baseScheme(row.name) === name &&
     (!row.amc || (disclosure.amc === 'Motilal Oswal' ?
       /motilal\s+oswal/i.test(row.amc) : disclosure.amc === 'Groww' ?
-        /groww/i.test(row.amc) : /ppfas|parag\s+parikh/i.test(row.amc))));
+        /groww/i.test(row.amc) : disclosure.amc === 'HDFC' ?
+          /\bhdfc\b/i.test(row.amc) : /ppfas|parag\s+parikh/i.test(row.amc))));
   return matches.length ? { matches, count: matches.length,
     value: matches.reduce((sum, row) => sum + Number(row.value || 0), 0) } : null;
 }
