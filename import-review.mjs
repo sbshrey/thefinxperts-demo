@@ -1,6 +1,6 @@
 /** Validate the editable holdings preview before it replaces the current portfolio. */
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=af41952190ce';
-import { validCostBasis } from './cost-basis.mjs?v=af41952190ce';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=ad38bb30adff';
+import { validCostBasis } from './cost-basis.mjs?v=ad38bb30adff';
 
 export function validateImportReview(holdings) {
   if (!Array.isArray(holdings) || holdings.length === 0) return ['Keep at least one holding to import.'];
@@ -147,6 +147,7 @@ export function planBrokerReportRefresh(existing, incoming, origin) {
       costBasis: _costBasis, costBasisAsOf: _costBasisAsOf,
       units: _units, shares: _shares, ...prior } = holding;
     return { ...prior, value: next.value, asOf: next.asOf, valuationOrigin: origin,
+      ...(origin !== 'simple_csv' && next.type === 'Stock' && next.shares ? { shares: next.shares } : {}),
       ...(next.costBasis !== undefined ? { costBasis: next.costBasis,
         costBasisAsOf: next.costBasisAsOf } : {}) };
   });

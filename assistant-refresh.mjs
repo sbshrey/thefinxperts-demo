@@ -1,8 +1,8 @@
 import { isRepeatedActiveStatement, planActiveStatementRefresh, planBrokerReportRefresh,
-  planDematCasRefresh } from './import-review.mjs?v=af41952190ce';
-import { removeHoldingAllocation } from './goals.mjs?v=af41952190ce';
-import { rupees } from './assistant-import-audit.mjs?v=af41952190ce';
-import { npsTier } from './account-label.mjs?v=af41952190ce';
+  planDematCasRefresh } from './import-review.mjs?v=ad38bb30adff';
+import { removeHoldingAllocation } from './goals.mjs?v=ad38bb30adff';
+import { rupees } from './assistant-import-audit.mjs?v=ad38bb30adff';
+import { npsTier } from './account-label.mjs?v=ad38bb30adff';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const paise = rows => rows.reduce((total, row) => total + Math.round(row.value * 100), 0);
@@ -143,11 +143,14 @@ export function prepareAssistantBrokerRefresh(saved, incoming, origin) {
   if (!plan) return { errors: ['This report matches a saved ISIN, but it is not a safe newer valuation for that position. Check that it is the same account and holding, with a matching security name, later ISO valuation date, type and asset class. Use the detailed review if the report needs manual reconciliation.'] };
   const portfolio = structuredClone({ ...saved, holdings: plan.holdings });
   if (plan.skipped) delete portfolio.coverage;
+  const newShareCounts = plan.matched.filter(({ next }) => next.type === 'Stock' && next.shares).length;
   const changes = plan.matched.map(({ current, next }) =>
-    `${current.name} · ISIN ${current.isin}: ${money(current.value)} (${current.asOf}) → ${money(next.value)} (${next.asOf})`);
+    `${current.name} · ISIN ${current.isin}: ${money(current.value)} (${current.asOf}) → ${money(next.value)} (${next.asOf})${next.type === 'Stock' && next.shares ?
+      `; shares ${current.shares || 'unknown'} → ${next.shares} (report)` : current.shares ?
+      `; prior ${current.shares} shares clear because the report has no checked count` : ''}`);
   return { portfolio, errors: [], kind: 'broker', changes,
-    description: `Newer broker report. Confirm this covers the same account and positions, not another account or an extra lot. ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'} will receive the newer dated value. ${plan.skipped} unmatched report ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out of this review. ${refreshValueCoverage(incoming, plan.matched)} No holding is removed; goal links stay. Prior units, shares, price estimates and checked invested amounts on matched rows clear because this report does not verify them. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
-    result: `Broker report refresh applied to ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. Check saved units, invested amounts and the report source before relying on the newer values.` };
+    description: `Newer broker report. Confirm this covers the same account and positions, not another account or an extra lot. ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'} will receive the newer dated value. ${plan.skipped} unmatched report ${plan.skipped === 1 ? 'row stays' : 'rows stay'} out of this review. ${refreshValueCoverage(incoming, plan.matched)} No holding is removed; goal links stay. Prior units, share counts, price estimates and checked invested amounts on matched rows clear; ${newShareCounts} checked stock share ${newShareCounts === 1 ? 'count replaces' : 'counts replace'} the old count from this report. ${plan.skipped ? 'Recheck your self-reported portfolio coverage. ' : ''}No trade is placed.`,
+    result: `Broker report refresh applied to ${plan.matched.length} exact ISIN ${plan.matched.length === 1 ? 'match' : 'matches'}. ${plan.skipped} unmatched ${plan.skipped === 1 ? 'row was' : 'rows were'} not added. ${newShareCounts} checked stock share ${newShareCounts === 1 ? 'count was' : 'counts were'} retained from the report. Check saved units, invested amounts and the report source before relying on the newer values.` };
 }
 
 /** A newer copy of the user's simple CSV can revalue only unique positions first saved from that template. */
