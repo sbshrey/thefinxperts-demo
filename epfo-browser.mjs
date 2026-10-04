@@ -4,7 +4,7 @@ export async function previewEpfoPassbook(file) {
     return { holding: null, errors: ['Choose an EPF passbook PDF smaller than 15 MB.'] };
   const bytes = await file.arrayBuffer();
   return new Promise(resolve => {
-    const worker = new Worker(new URL('./epfo-browser-worker.mjs?v=28a942c6f80e', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./epfo-browser-worker.mjs?v=61e42e7696c1', import.meta.url), { type: 'module' });
     let settled = false;
     const finish = result => {
       if (settled) return;

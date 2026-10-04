@@ -1,11 +1,11 @@
-import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=28a942c6f80e';
-import { MIX_ASSETS } from './mix-plan.mjs?v=28a942c6f80e';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=28a942c6f80e';
-import { reserveMonths } from './reserve.mjs?v=28a942c6f80e';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=28a942c6f80e';
-import { rupeesWithPaise } from './cost-basis.mjs?v=28a942c6f80e';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=28a942c6f80e';
-import { formatGoalHorizon } from './goal-horizon.mjs?v=28a942c6f80e';
+import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=61e42e7696c1';
+import { MIX_ASSETS } from './mix-plan.mjs?v=61e42e7696c1';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=61e42e7696c1';
+import { reserveMonths } from './reserve.mjs?v=61e42e7696c1';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=61e42e7696c1';
+import { rupeesWithPaise } from './cost-basis.mjs?v=61e42e7696c1';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=61e42e7696c1';
+import { formatGoalHorizon } from './goal-horizon.mjs?v=61e42e7696c1';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
