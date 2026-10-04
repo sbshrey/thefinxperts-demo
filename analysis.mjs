@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=cab369302727';
-import { compareMixPlan } from './mix-plan.mjs?v=cab369302727';
-import { goalShare } from './goals.mjs?v=cab369302727';
-import { reserveMonths } from './reserve.mjs?v=cab369302727';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=cab369302727';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=cdff52dfa79f';
+import { compareMixPlan } from './mix-plan.mjs?v=cdff52dfa79f';
+import { goalShare } from './goals.mjs?v=cdff52dfa79f';
+import { reserveMonths } from './reserve.mjs?v=cdff52dfa79f';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=cdff52dfa79f';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -509,6 +509,20 @@ export function valuationRowsNeedingCheck(holdings, today = new Date()) {
     if (!Number.isFinite(value) || value <= 0) return [];
     const issue = valuationDateIssue(row.asOf, today);
     return issue ? [{ row, index, issue }] : [];
+  }).sort((a, b) => Number(b.row.value) - Number(a.row.value) || a.index - b.index);
+}
+
+/** Market holding values without a checked date in the last seven India calendar days. */
+export function marketValueDateChecks(holdings, today = new Date()) {
+  if (!Array.isArray(holdings)) return [];
+  const indiaToday = new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  const cutoff = new Date(`${indiaToday}T00:00:00Z`);
+  cutoff.setUTCDate(cutoff.getUTCDate() - 7);
+  return holdings.flatMap((row, index) => {
+    const value = Number(row?.value);
+    if (!['Mutual fund', 'Stock'].includes(row?.type) || !Number.isFinite(value) || value <= 0) return [];
+    const date = parseValuationDate(row.asOf);
+    return !date || row.asOf > indiaToday || date < cutoff ? [{ row, index }] : [];
   }).sort((a, b) => Number(b.row.value) - Number(a.row.value) || a.index - b.index);
 }
 

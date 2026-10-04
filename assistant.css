@@ -157,6 +157,11 @@ body[data-mode="browser-only"] .tools-items>.quiet:disabled{opacity:.5}
 .hero-card span{font-size:10px;letter-spacing:.12em;opacity:.75}
 .hero-card strong{font-size:38px;letter-spacing:-.05em}
 .hero-card small{font-size:12px;opacity:.76}
+.freshness-check{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px;padding-top:11px;border-top:1px solid rgba(255,255,255,.25)}
+.freshness-check[hidden]{display:none}
+.freshness-check strong{font-size:12px;line-height:1.4;letter-spacing:normal;font-weight:600}
+.freshness-check button{flex:none;border:1px solid rgba(255,255,255,.65);border-radius:8px;background:transparent;color:#fff;padding:7px 9px;font:700 11px Arial,Helvetica,sans-serif;cursor:pointer}
+.freshness-check button:hover,.freshness-check button:focus-visible{background:rgba(255,255,255,.14)}
 .draft-preview{background:#fff9e9;border:1px solid #e9d89f;border-radius:14px;padding:15px 17px;display:flex;flex-direction:column;gap:5px}
 .draft-preview[hidden]{display:none!important}
 .draft-preview-label{font-size:10px;letter-spacing:.1em;font-weight:800;color:#856624}
