@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=47e0c91c56d9';
-import { parseWhatIfMix } from './mix-plan.mjs?v=47e0c91c56d9';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=47e0c91c56d9';
-import { reserveMonths } from './reserve.mjs?v=47e0c91c56d9';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=957ef7c03747';
+import { parseWhatIfMix } from './mix-plan.mjs?v=957ef7c03747';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=957ef7c03747';
+import { reserveMonths } from './reserve.mjs?v=957ef7c03747';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=47e0c91c56d9';
-import { asksForAdvice } from './question-scope.mjs?v=47e0c91c56d9';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=47e0c91c56d9';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=47e0c91c56d9';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=47e0c91c56d9';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=47e0c91c56d9';
-import { parseAmount } from './assistant-clarify.mjs?v=47e0c91c56d9';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=47e0c91c56d9';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=957ef7c03747';
+import { asksForAdvice } from './question-scope.mjs?v=957ef7c03747';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=957ef7c03747';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=957ef7c03747';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=957ef7c03747';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=957ef7c03747';
+import { parseAmount } from './assistant-clarify.mjs?v=957ef7c03747';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=957ef7c03747';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=47e0c91c56d9';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=957ef7c03747';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -364,14 +364,33 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'I cannot choose investments or trades; an import remains a draft until you confirm it.', '#holdings', 'Add a holding');
     const first = result.findings?.[0];
     if (stepByStepQuestion) {
-      const checks = (result.findings || []).slice(0, 3);
-      const steps = checks.map((item, index) => `${index + 1}. ${item.title}: ${item.question}`).join(' ');
-      const next = checks.length < 3 ? `${checks.length + 1}. ${goal?.confirmed === true ?
+      const visible = [...(result.findings || []), ...(result.additionalFindings || [])];
+      const goalStep = !Array.isArray(goals) || !goals.length ?
+        'Create one goal with your age, target in today’s rupees and years until it is due; then choose which holdings count toward it.' :
+        goal?.confirmed !== true ?
+          `Confirm your age, target and time horizon for ${goal?.name || 'the selected goal'}; then choose which holdings count toward it.` :
+          !result.goalTotal ?
+            `Choose which confirmed holdings count toward ${goal.name}; the whole portfolio total is not automatically assigned to that goal.` : null;
+      const steps = [];
+      const used = new Set();
+      const firstSource = visible.find(item => ['scope', 'identity', 'valuation', 'summary', 'classification'].includes(item.key));
+      if (firstSource) {
+        steps.push(`${firstSource.title}: ${firstSource.question}`);
+        used.add(firstSource.key);
+      }
+      if (goalStep) steps.push(goalStep);
+      for (const item of visible) {
+        if (steps.length >= 3) break;
+        if (!used.has(item.key)) { steps.push(`${item.title}: ${item.question}`); used.add(item.key); }
+      }
+      if (steps.length < 3) steps.push(goal?.confirmed === true && result.goalTotal ?
         `Check which holdings you assigned to ${goal.name} and compare their dates and entered asset labels.` :
-        'Confirm one goal with your age, horizon and target amount, then choose which holdings count toward it.'}` : '';
-      return answer(`Here is a source-check plan for this entered snapshot. ${steps} ${next}`.trim(),
-        `Ordered the first ${checks.length} visible review ${checks.length === 1 ? 'finding' : 'findings'} from ${valid.length} positive entered holding ${valid.length === 1 ? 'row' : 'rows'} and the selected goal.`,
-        `These steps check data and exposure; they do not choose a fund, allocation or trade. ${coverageNote}`, '#review', 'Open review checks');
+        'Check the values and dates against your most recent statements before interpreting this snapshot.');
+      const numbered = steps.map((item, index) => `${index + 1}. ${item}`).join(' ');
+      return answer(`Here is a source-check plan for this entered snapshot. ${numbered}`,
+        `Used ${valid.length} positive entered holding ${valid.length === 1 ? 'row' : 'rows'}, ${used.size} visible review ${used.size === 1 ? 'finding' : 'findings'}, and ${goalStep ? 'the missing selected-goal step' : 'the selected goal'}.`,
+        `These steps check data and exposure; they do not choose a fund, allocation or trade. ${coverageNote}`, goalStep ? '#goals' : '#review',
+        goalStep ? 'Open selected goal' : 'Open review checks');
     }
     const goalSnapshotReady = goal?.confirmed === true && result.goalTotal > 0 &&
       result.goalDateCheck?.count === 0 && result.goalAccessCheck?.count === 0 &&
