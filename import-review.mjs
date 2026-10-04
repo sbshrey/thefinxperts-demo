@@ -1,6 +1,6 @@
 /** Validate the editable holdings preview before it replaces the current portfolio. */
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=3799ac6c37fe';
-import { validCostBasis } from './cost-basis.mjs?v=3799ac6c37fe';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=6658b2017f9d';
+import { validCostBasis } from './cost-basis.mjs?v=6658b2017f9d';
 
 export function validateImportReview(holdings) {
   if (!Array.isArray(holdings) || holdings.length === 0) return ['Keep at least one holding to import.'];

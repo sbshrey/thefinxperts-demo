@@ -1,8 +1,8 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=3799ac6c37fe';
-import { compareMixPlan } from './mix-plan.mjs?v=3799ac6c37fe';
-import { goalShare } from './goals.mjs?v=3799ac6c37fe';
-import { reserveMonths } from './reserve.mjs?v=3799ac6c37fe';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=3799ac6c37fe';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=6658b2017f9d';
+import { compareMixPlan } from './mix-plan.mjs?v=6658b2017f9d';
+import { goalShare } from './goals.mjs?v=6658b2017f9d';
+import { reserveMonths } from './reserve.mjs?v=6658b2017f9d';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=6658b2017f9d';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -197,15 +197,16 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
     ['direct stocks', coverage?.directStocks],
     ['other investments', coverage?.otherInvestments],
   ].filter(([, answer]) => answer === 'some' || answer === 'unsure' || answer == null);
-  if (coverage && total > 0 && incompleteTypes.length) {
+  if (total > 0 && incompleteTypes.length) {
     const answers = incompleteTypes.map(([type, answer]) =>
       `${type}: ${answer === 'some' ? 'you reported missing holdings' : answer === 'unsure' ?
         'you are unsure whether all are included' : 'you have not answered yet'}`).join('; ');
     findings.push({ key: 'scope', tone: 'amber', label: 'Complete your snapshot',
       title: 'Check what this review leaves out',
-      detail: `Your coverage check shows ${answers}. Compare current fund, broker and other investment statements with the entered rows before treating these figures as your full portfolio.`,
-      question: 'Which current statement would help you complete or confirm the missing holdings?',
-      basis: `Used your self reported coverage answer: mutual funds ${coverage.mutualFunds || 'not answered'}; direct stocks ${coverage.directStocks || 'not answered'}; other investments ${coverage.otherInvestments || 'not answered'}. Calculations use only ${rupees(total)} of entered value.`,
+      detail: `${coverage ? 'Your coverage check shows' : 'You have not checked portfolio coverage yet:'} ${answers}. Compare current fund, broker and other investment statements with the entered rows before treating these figures as your full portfolio.`,
+      question: coverage ? 'Which current statement would help you complete or confirm the missing holdings?' :
+        'Have you included all your mutual funds, direct stocks and other investments?',
+      basis: `Self reported coverage: mutual funds ${coverage?.mutualFunds || 'not answered'}; direct stocks ${coverage?.directStocks || 'not answered'}; other investments ${coverage?.otherInvestments || 'not answered'}. Calculations use only ${rupees(total)} of entered value.`,
       limitation: 'Your coverage answer and entered values have not been independently verified. Other investments count only if you entered them.' });
   }
   const fundHouseSummaries = new Set(valid.filter(holding => holding.granularity === 'fund_house')
