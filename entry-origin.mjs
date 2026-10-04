@@ -8,6 +8,7 @@ export const ENTRY_ORIGINS = Object.freeze({
   demat_cas: 'demat CAS',
   epfo_passbook: 'EPFO member passbook',
   nps_statement: 'NPS transaction statement',
+  digital_gold_statement: 'digital-gold statement',
 });
 
 export function entryOriginFromImport(label) {

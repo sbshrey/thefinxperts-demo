@@ -1,10 +1,10 @@
-import { validShares } from './stock-estimate.mjs?v=03fe4f2cff52';
-import { validUnits } from './nav-estimate.mjs?v=03fe4f2cff52';
-import { validCostBasis } from './cost-basis.mjs?v=03fe4f2cff52';
-import { npsTier } from './account-label.mjs?v=03fe4f2cff52';
+import { validShares } from './stock-estimate.mjs?v=d375de8febb6';
+import { validUnits } from './nav-estimate.mjs?v=d375de8febb6';
+import { validCostBasis } from './cost-basis.mjs?v=d375de8febb6';
+import { npsTier } from './account-label.mjs?v=d375de8febb6';
 
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
-const SOURCES = new Set(['manual', 'active_statement', 'broker_csv', 'broker_xlsx', 'simple_csv', 'cas', 'demat_cas', 'epfo_passbook', 'nps_statement']);
+const SOURCES = new Set(['manual', 'active_statement', 'broker_csv', 'broker_xlsx', 'simple_csv', 'cas', 'demat_cas', 'epfo_passbook', 'nps_statement', 'digital_gold_statement']);
 
 function realDate(value) {
   if (value === null) return true;
@@ -97,10 +97,11 @@ export function prepareAssistantSave(saved, drafts, { newId = () => crypto.rando
     if (!row || typeof row.name !== 'string' || row.name.trim().length < 2 || row.name.trim().length > 80 ||
         !['Mutual fund', 'Stock', 'Other investment'].includes(row.type) || !ASSETS.has(row.asset) ||
         (row.type === 'Stock' && row.asset !== 'Equity') ||
-        (row.type === 'Other investment' && (!['manual', 'epfo_passbook', 'nps_statement'].includes(row.entryOrigin) ||
+        (row.type === 'Other investment' && (!['manual', 'epfo_passbook', 'nps_statement', 'digital_gold_statement'].includes(row.entryOrigin) ||
           !['Other', 'Gold'].includes(row.asset) ||
           (row.entryOrigin === 'epfo_passbook' && (row.asset !== 'Other' || !/^EPF account [A-F0-9]{12}$/.test(row.name))) ||
           (row.entryOrigin === 'nps_statement' && (row.asset !== 'Other' || !/^NPS Tier I account [A-F0-9]{12}$/.test(row.name))) ||
+          (row.entryOrigin === 'digital_gold_statement' && (row.asset !== 'Gold' || row.name !== 'Jar digital gold')) ||
           (row.asset === 'Gold' && !/\bgold\b/i.test(row.name)) ||
           row.isin || row.amc || row.amfi || row.units || row.statementCategory || row.granularity)) ||
         !Number.isFinite(row.value) || row.value <= 0 || row.value > 10_000_000_000 ||

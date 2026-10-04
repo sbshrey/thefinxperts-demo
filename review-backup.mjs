@@ -1,9 +1,9 @@
-import { validMixPlan } from './mix-plan.mjs?v=03fe4f2cff52';
-import { validReserve } from './reserve.mjs?v=03fe4f2cff52';
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=03fe4f2cff52';
-import { validNavEstimate } from './nav-estimate.mjs?v=03fe4f2cff52';
-import { validShares, validStockEstimate } from './stock-estimate.mjs?v=03fe4f2cff52';
-import { validCostBasis } from './cost-basis.mjs?v=03fe4f2cff52';
+import { validMixPlan } from './mix-plan.mjs?v=d375de8febb6';
+import { validReserve } from './reserve.mjs?v=d375de8febb6';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=d375de8febb6';
+import { validNavEstimate } from './nav-estimate.mjs?v=d375de8febb6';
+import { validShares, validStockEstimate } from './stock-estimate.mjs?v=d375de8febb6';
+import { validCostBasis } from './cost-basis.mjs?v=d375de8febb6';
 const MAX_BYTES = 2_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
@@ -95,10 +95,11 @@ export function parseReviewBackup(text) {
         ((holding.costBasis !== undefined || holding.costBasisAsOf !== undefined) &&
           (holding.granularity === 'fund_house' || !validCostBasis(holding.costBasis, holding.costBasisAsOf))) ||
         (holding.type === 'Stock' && (holding.asset !== 'Equity' || holding.amc || holding.amfi)) ||
-        (holding.type === 'Other investment' && (!['manual', 'epfo_passbook', 'nps_statement'].includes(holding.entryOrigin) ||
+        (holding.type === 'Other investment' && (!['manual', 'epfo_passbook', 'nps_statement', 'digital_gold_statement'].includes(holding.entryOrigin) ||
           !['Other', 'Gold'].includes(holding.asset) ||
           (holding.entryOrigin === 'epfo_passbook' && (holding.asset !== 'Other' || !/^EPF account [A-F0-9]{12}$/.test(holding.name))) ||
           (holding.entryOrigin === 'nps_statement' && (holding.asset !== 'Other' || !/^NPS Tier I account [A-F0-9]{12}$/.test(holding.name))) ||
+          (holding.entryOrigin === 'digital_gold_statement' && (holding.asset !== 'Gold' || holding.name !== 'Jar digital gold')) ||
           (holding.asset === 'Gold' && !/\bgold\b/i.test(holding.name)) ||
           holding.amc || holding.amfi || holding.isin || holding.units || holding.statementCategory ||
           holding.expenseRatioPct !== undefined || holding.navEstimate || holding.shares ||

@@ -1,0 +1,35 @@
+import * as pdfjs from './vendor/pdfjs/pdf.mjs?v=d375de8febb6';
+import { parseGoldStatementPages } from './gold-statement.mjs?v=d375de8febb6';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs?v=d375de8febb6', import.meta.url).href;
+
+self.onmessage = async event => {
+  const bytes = event.data?.bytes;
+  if (!(bytes instanceof ArrayBuffer) || bytes.byteLength < 5 || bytes.byteLength > 15_000_000) {
+    self.postMessage({ kind: 'gold-result', holding: null,
+      errors: ['Choose a digital-gold statement PDF smaller than 15 MB.'] });
+    return;
+  }
+  let document;
+  try {
+    document = await pdfjs.getDocument({ data: new Uint8Array(bytes),
+      password: typeof event.data?.password === 'string' ? event.data.password : '',
+      isEvalSupported: false, disableFontFace: true, useSystemFonts: true }).promise;
+    if (document.numPages > 50) {
+      self.postMessage({ kind: 'gold-result', holding: null,
+        errors: ['This gold statement is too long to review. No holding was added.'] });
+      return;
+    }
+    const pages = [];
+    for (let number = 1; number <= document.numPages; number++) {
+      const page = await document.getPage(number);
+      pages.push((await page.getTextContent()).items.filter(item => 'str' in item).map(item => item.str));
+    }
+    self.postMessage({ kind: 'gold-result', ...parseGoldStatementPages(pages) });
+  } catch {
+    self.postMessage({ kind: 'gold-result', holding: null,
+      errors: ['This gold statement could not be read safely. No holding was added.'] });
+  } finally {
+    try { await document?.destroy(); } catch { /* Preview result is final. */ }
+  }
+};
