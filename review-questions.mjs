@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=da200429ed44';
-import { parseWhatIfMix } from './mix-plan.mjs?v=da200429ed44';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=da200429ed44';
-import { reserveMonths } from './reserve.mjs?v=da200429ed44';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=9ef67c98f183';
+import { parseWhatIfMix } from './mix-plan.mjs?v=9ef67c98f183';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=9ef67c98f183';
+import { reserveMonths } from './reserve.mjs?v=9ef67c98f183';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=da200429ed44';
-import { asksForAdvice } from './question-scope.mjs?v=da200429ed44';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=da200429ed44';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=da200429ed44';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=da200429ed44';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=da200429ed44';
-import { parseAmount } from './assistant-clarify.mjs?v=da200429ed44';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=da200429ed44';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=9ef67c98f183';
+import { asksForAdvice } from './question-scope.mjs?v=9ef67c98f183';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=9ef67c98f183';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=9ef67c98f183';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=9ef67c98f183';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=9ef67c98f183';
+import { parseAmount } from './assistant-clarify.mjs?v=9ef67c98f183';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=9ef67c98f183';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=da200429ed44';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=9ef67c98f183';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -256,6 +256,31 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return { ...answer(`If the mix for ${preview.goalName} were the percentages you proposed, ${parts.join('; ')}. This is a temporary comparison; your saved goal mix has not changed.`,
       `${money(scenario.goalTotal)} of entered value is linked to this goal. Each entered percentage is its labelled asset value divided by that total. Proposed rupee references apply your percentages to the same total.`,
       'These are your dated values and proposed percentages. The rupee references are not amounts to move or add. Fund constituents, tax and transaction costs are not assessed; no suitability or trade conclusion follows.', '#goals', 'Review selected goal'), scenarioMix: preview };
+  }
+
+  const nearerExpense = /^what if (?:i|we) (?:use|used|spend|spent) (.+?) (?:from|out of) (?:my |the )?(?:selected )?goal(?: holdings| investments| portfolio)? (?:for|on) (?:an? )?(?:emergency|unexpected expense|nearer expense)[?.!]*$/.exec(input);
+  if (nearerExpense) {
+    const amount = parseAmount(nearerExpense[1]);
+    if (amount === null) return answer('Give the amount you want to test in rupees, for example “What if I use ₹[my amount] from my goal for an emergency?”',
+      'The what-if amount was not a valid positive rupee amount.',
+      'No holding or goal was changed.', '#goals', 'Check selected goal');
+    if (goal?.confirmed !== true || result.goalGap === null) return answer('Confirm the selected goal’s age, target amount and time horizon before testing an earlier expense against it.',
+      `Selected goal ${goal?.name || 'unnamed'} is unfinished.`,
+      'A whole-portfolio total is not the amount assigned to a goal.', '#goals', 'Confirm goal details');
+    if (!result.goalTotal) return answer(`No entered holdings are assigned to ${goal.name} yet. Link holdings before testing an earlier expense against this goal.`,
+      `Selected goal ${goal.name}; assigned value ₹0.`,
+      'The review cannot assume that unassigned investments are intended for this goal.', '#holdings', 'Link a holding');
+    if (result.goalDateCheck.count || result.goalAccessCheck.count) return answer(`For ${goal.name}, first check ${result.goalDateCheck.count ? 'the missing, future or old value dates' : 'when the linked other investments can be used'} before testing an earlier expense.`,
+      `${money(result.goalTotal)} is assigned; ${result.goalDateCheck.count} assigned value ${result.goalDateCheck.count === 1 ? 'date needs' : 'dates need'} checking; ${result.goalAccessCheck.count} linked other ${result.goalAccessCheck.count === 1 ? 'investment has' : 'investments have'} uncertain access.`,
+      'An old balance or unavailable investment could make the subtraction misleading.', '#holdings', 'Check goal holdings');
+    if (amount > result.goalTotal) return answer(`The ${money(amount)} amount you chose is greater than the ${money(result.goalTotal)} currently assigned to ${goal.name}. Choose an amount no greater than that assigned value to compare this goal’s current gap.`,
+      `Compared a visitor-chosen ${money(amount)} with ${money(result.goalTotal)} of entered value linked to ${goal.name}.`,
+      'This does not establish that any holding can be withdrawn or sold for that amount.', '#goals', 'Review selected goal');
+    const after = result.goalTotal - amount;
+    const gapAfter = Math.max(0, Number(goal.target) - after);
+    return answer(`If ${money(amount)} of the entered value assigned to ${goal.name} were used for an earlier expense instead, the assigned value left would be ${money(after)} (from ${money(result.goalTotal)}). The gap to your ${money(goal.target)} target in today’s rupees would be ${money(gapAfter)}, versus ${money(result.goalGap)} before. This temporary comparison has not changed your holdings or goal.`,
+      `${money(result.goalTotal)} assigned value − ${money(amount)} visitor-chosen expense = ${money(after)} left assigned; max(₹0, ${money(goal.target)} target − ${money(after)}) = ${money(gapAfter)} current gap. ${result.asOfSummary}.`,
+      `This is gross current-value arithmetic, not a withdrawal recommendation, a forecast or a check that the money is accessible. It excludes future growth, inflation, taxes, fees and unentered holdings. ${coverageNote}`, '#goals', 'Review selected goal');
   }
 
   if (isChoosingMixQuestion(input)) {
