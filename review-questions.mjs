@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=9d4a715cab26';
-import { parseWhatIfMix } from './mix-plan.mjs?v=9d4a715cab26';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=9d4a715cab26';
-import { reserveMonths } from './reserve.mjs?v=9d4a715cab26';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=a5371f1602a3';
+import { parseWhatIfMix } from './mix-plan.mjs?v=a5371f1602a3';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=a5371f1602a3';
+import { reserveMonths } from './reserve.mjs?v=a5371f1602a3';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=9d4a715cab26';
-import { asksForAdvice } from './question-scope.mjs?v=9d4a715cab26';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=9d4a715cab26';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=9d4a715cab26';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=9d4a715cab26';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=9d4a715cab26';
-import { parseAmount } from './assistant-clarify.mjs?v=9d4a715cab26';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=9d4a715cab26';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=a5371f1602a3';
+import { asksForAdvice } from './question-scope.mjs?v=a5371f1602a3';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=a5371f1602a3';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=a5371f1602a3';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=a5371f1602a3';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=a5371f1602a3';
+import { parseAmount } from './assistant-clarify.mjs?v=a5371f1602a3';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=a5371f1602a3';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=9d4a715cab26';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=a5371f1602a3';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -482,6 +482,33 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `This describes entered exposure, not whether it is safe or suitable for your age or goal. It does not choose an allocation or trade, and fund constituents, other risks and unentered holdings are unknown. ${coverageNote}`, '#goals', 'Review goal exposure');
   }
 
+  const monthlyAmountAdvice = /^(?:how much|what(?: sip)? amount)\b/.test(input) &&
+    /\b(?:should|need)\b/.test(input) &&
+    (/\b(?:sips?|systematic investment plans?)\b/.test(input) ||
+      !goalScopeRequested && !/\b(?:education|school|college|university)\b/.test(input) &&
+        /\b(?:invest|save|contribute|put aside)\b.{0,30}\b(?:monthly|per month|each month)\b/.test(input));
+  if (monthlyAmountAdvice) {
+    if (otherNamedGoal) return answer(
+      `You asked about ${otherNamedGoal.name}, but ${goal?.name || 'another goal'} is selected. Select ${otherNamedGoal.name} first so I use its target, horizon and assigned holdings. I cannot choose a SIP amount.`,
+      `No current gap or monthly amount was calculated for ${otherNamedGoal.name}; the selected goal is ${goal?.name || 'unfinished'}.`,
+      'Different goals can have different targets, dates and assigned investments.', '#goals', 'Select the named goal');
+    if (goal?.confirmed !== true) return answer(
+      'I cannot choose a SIP or monthly savings amount for you. First select one goal and confirm your age, its target in today’s rupees and the years until it is due. Then I can show the entered current gap and a monthly what-if using assumptions you choose.',
+      'No confirmed selected-goal target and horizon were used; no monthly amount was calculated.',
+      'A suitable monthly commitment also depends on your income, essential expenses, other goals and ability to bear losses.', '#goals', 'Set up a goal');
+    if (!result.goalTotal) return answer(
+      `I cannot choose a SIP amount. Link the holdings you intend to count toward ${goal.name} first; then I can compare their entered value with your goal target.`,
+      `Selected goal ${goal.name} has no assigned entered holding value.`,
+      'A whole-portfolio total cannot be treated as money set aside for this goal.', '#goals', 'Link goal holdings');
+    if (result.goalDateCheck.count || result.goalAccessCheck.count) return answer(
+      `Before using a monthly gap for ${goal.name}, check ${result.goalDateCheck.count ? 'the dates of its linked holding values' : 'when its linked other investments can be used'}. I cannot choose a SIP amount from an unchecked starting value.`,
+      `${money(result.goalTotal)} of entered value is assigned; ${result.goalDateCheck.count} linked value dates and ${result.goalAccessCheck.count} linked other-investment access terms need checking.`,
+      'A stale balance or inaccessible investment could distort a monthly illustration.', '#holdings', 'Check goal holdings');
+    return answer(
+      `For ${goal.name}, ${money(result.goalTotal)} of entered value is assigned toward your ${money(goal.target)} target in today’s rupees, leaving a current gap of ${money(result.goalGap)} over ${goal.years} years. I cannot decide what you should put into a SIP. Ask “simple monthly gap for my goal” for division of today’s gap, or confirm your own monthly contribution, growth and inflation assumptions to explore a separate future what-if.`,
+      `${money(goal.target)} target today less ${money(result.goalTotal)} assigned entered value gives a nonnegative ${money(result.goalGap)} current gap; ${goal.years}-year confirmed horizon. No monthly amount was chosen.`,
+      `This is a dated holdings comparison, not a savings instruction, forecast or suitability assessment. ${coverageNote}`, '#goals', 'Explore monthly gap');
+  }
   if (asksForAdvice(input))
     return answer(`I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check your dated holdings and goal facts first. If you want a personal recommendation, check an investment adviser’s registration through SEBI. ${valid.length ? 'Options lets you download a private readable report to check and share only if you choose. ' : ''}For a self-directed checklist, ask “How do I choose a target mix?”`,
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
