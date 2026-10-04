@@ -190,6 +190,14 @@ body[data-mode="browser-only"] .tools-items>.quiet:disabled{opacity:.5}
 .review-check details{margin-top:7px;font-size:11px;color:#65776c}
 .review-check summary{cursor:pointer;font-weight:700}
 .review-check details p{font-size:11px}
+.goal-switcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:0 0 13px}
+.goal-switch{min-width:0;padding:8px 9px;text-align:left;border:1px solid #c4d7c9;border-radius:9px;background:#f6faf6;color:#234935;cursor:pointer;overflow-wrap:anywhere}
+.goal-switch strong,.goal-switch small{display:block}
+.goal-switch strong{font-size:12px;line-height:1.3}
+.goal-switch small{margin-top:3px;color:#526b5b;font-size:10px;line-height:1.35}
+.goal-switch[aria-pressed="true"]{border-color:#2c7953;background:#e4f2e7;box-shadow:inset 0 0 0 1px #2c7953}
+.goal-switch:hover{background:#edf6ee}
+.goal-switch:focus-visible{outline:3px solid #2b7960;outline-offset:2px}
 .goal-name{display:block;font-size:15px;margin-bottom:7px}
 .goal-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0}
 .goal-stats div{background:#f4f8f4;border-radius:8px;padding:9px}

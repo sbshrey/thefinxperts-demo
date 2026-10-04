@@ -21,10 +21,10 @@
 
 export const VERSION = '1.1.0';
 
-export { readCasPdf } from './parsers/index.js?v=dd38125e8da5';
-export { cas2csv, cas2csvSummary, cas2json, isClose } from './parsers/utils.js?v=dd38125e8da5';
+export { readCasPdf } from './parsers/index.js?v=a3cc883568ab';
+export { cas2csv, cas2csvSummary, cas2json, isClose } from './parsers/utils.js?v=a3cc883568ab';
 
-export { CASFileType, FileType, FundType, GainType, TransactionType } from './enums.js?v=dd38125e8da5';
+export { CASFileType, FileType, FundType, GainType, TransactionType } from './enums.js?v=a3cc883568ab';
 
 export {
   CASIntegrityError,
@@ -34,7 +34,7 @@ export {
   IncompleteCASError,
   IncorrectPasswordError,
   ParserException,
-} from './exceptions.js?v=dd38125e8da5';
+} from './exceptions.js?v=a3cc883568ab';
 
 export {
   Bond,
@@ -53,13 +53,13 @@ export {
   SchemeValuation,
   StatementPeriod,
   TransactionData,
-} from './types.js?v=dd38125e8da5';
+} from './types.js?v=a3cc883568ab';
 
-export { D, Decimal, DecimalError } from './decimal.js?v=dd38125e8da5';
-export { CasDate } from './dates.js?v=dd38125e8da5';
+export { D, Decimal, DecimalError } from './decimal.js?v=a3cc883568ab';
+export { CasDate } from './dates.js?v=a3cc883568ab';
 
-export { getPdfBackend, setPdfBackend } from './pdf/backend.js?v=dd38125e8da5';
-export { createPdfjsBackend } from './pdf/pdfjs.js?v=dd38125e8da5';
+export { getPdfBackend, setPdfBackend } from './pdf/backend.js?v=a3cc883568ab';
+export { createPdfjsBackend } from './pdf/pdfjs.js?v=a3cc883568ab';
 
 export {
   MemoryIsinDb,
@@ -69,12 +69,12 @@ export {
   isinSearch,
   navSearch,
   setIsinProvider,
-} from './isin.js?v=dd38125e8da5';
+} from './isin.js?v=a3cc883568ab';
 
 export {
   SchemeNotFoundError,
   SqlIsinDb,
-} from './isin-db.js?v=dd38125e8da5';
+} from './isin-db.js?v=a3cc883568ab';
 
 export {
   CII,
@@ -87,7 +87,7 @@ export {
   QUARTER_LABELS,
   getFinYear,
   getFundType,
-} from './analysis/index.js?v=dd38125e8da5';
+} from './analysis/index.js?v=a3cc883568ab';
 
-export { extractGiftFolio, getParsedSchemeName, getTransactionType } from './parsers/classify.js?v=dd38125e8da5';
-export { detectCasType, detectFileType } from './parsers/detect.js?v=dd38125e8da5';
+export { extractGiftFolio, getParsedSchemeName, getTransactionType } from './parsers/classify.js?v=a3cc883568ab';
+export { detectCasType, detectFileType } from './parsers/detect.js?v=a3cc883568ab';
