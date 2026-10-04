@@ -1,7 +1,8 @@
-import { parseAmount } from './assistant-clarify.mjs?v=8d60bcc172bb';
-import { validShares } from './stock-estimate.mjs?v=8d60bcc172bb';
-import { validUnits } from './nav-estimate.mjs?v=8d60bcc172bb';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=8d60bcc172bb';
+import { parseAmount } from './assistant-clarify.mjs?v=7ca0edc95dd1';
+import { validShares } from './stock-estimate.mjs?v=7ca0edc95dd1';
+import { validUnits } from './nav-estimate.mjs?v=7ca0edc95dd1';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=7ca0edc95dd1';
+import { parseMixPercentages } from './mix-plan.mjs?v=7ca0edc95dd1';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -225,24 +226,8 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
   if (/^clear goal mix[.!]?$/i.test(input)) return { facts: { targetMix: null } };
   const mixRequest = /^(?:(?:my )?(?:goal|target) mix|my chosen(?: goal)? mix)(?: is)?\s+(.+?)[.!]?$/i.exec(input);
   if (mixRequest) {
-    const parts = mixRequest[1].split(/\s*(?:,|\band\b)\s*/i).filter(Boolean);
-    const mix = { Equity: 0, Debt: 0, Gold: 0, Other: 0 };
-    const seen = new Set();
-    for (const part of parts) {
-      const pctFirst = /^(\d{1,3})%\s+(equity|debt|gold|other)$/i.exec(part.trim());
-      const assetFirst = /^(equity|debt|gold|other)\s+(\d{1,3})%$/i.exec(part.trim());
-      if (!pctFirst && !assetFirst) return { error: 'Name each asset and its percentage, such as “my chosen mix is Equity <percent>%, Debt <percent>%”. Use your own numbers.' };
-      const label = pctFirst?.[2] || assetFirst[1];
-      const asset = label[0].toUpperCase() + label.slice(1).toLowerCase();
-      const share = Number(pctFirst?.[1] || assetFirst[2]);
-      if (seen.has(asset) || share > 100)
-        return { error: 'Give each asset category once, with a percentage from 0 to 100.' };
-      seen.add(asset);
-      mix[asset] = share;
-    }
-    if (!parts.length || Object.values(mix).reduce((sum, share) => sum + share, 0) !== 100)
-      return { error: 'Your chosen goal mix must total 100%. The site cannot choose a mix for you.' };
-    return { facts: { targetMix: mix } };
+    const parsed = parseMixPercentages(mixRequest[1]);
+    return parsed.error ? parsed : { facts: { targetMix: parsed.mix } };
   }
   const fallRequest = /^(?:test )?(?:equity fall|equity drop)(?: of)?\s+(.+?)[.!]?$/i.exec(input);
   if (fallRequest) {

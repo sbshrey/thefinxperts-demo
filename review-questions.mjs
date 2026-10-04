@@ -1,18 +1,19 @@
-import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=8d60bcc172bb';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=8d60bcc172bb';
-import { reserveMonths } from './reserve.mjs?v=8d60bcc172bb';
+import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
+  valuationRowsNeedingCheck } from './analysis.mjs?v=7ca0edc95dd1';
+import { parseWhatIfMix } from './mix-plan.mjs?v=7ca0edc95dd1';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=7ca0edc95dd1';
+import { reserveMonths } from './reserve.mjs?v=7ca0edc95dd1';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=8d60bcc172bb';
-import { asksForAdvice } from './question-scope.mjs?v=8d60bcc172bb';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=8d60bcc172bb';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=8d60bcc172bb';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=8d60bcc172bb';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=8d60bcc172bb';
-import { parseAmount } from './assistant-clarify.mjs?v=8d60bcc172bb';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=8d60bcc172bb';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=7ca0edc95dd1';
+import { asksForAdvice } from './question-scope.mjs?v=7ca0edc95dd1';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=7ca0edc95dd1';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=7ca0edc95dd1';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=7ca0edc95dd1';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=7ca0edc95dd1';
+import { parseAmount } from './assistant-clarify.mjs?v=7ca0edc95dd1';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=7ca0edc95dd1';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=8d60bcc172bb';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=7ca0edc95dd1';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -229,6 +230,33 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   if (definition) return answer(definition.text,
     'Plain-language term explanation from SEBI investor education; no personal holding value was calculated.',
     definition.limitation, definition.href, 'Read the SEBI explanation');
+
+  const whatIfMix = parseWhatIfMix(question);
+  if (whatIfMix) {
+    if (whatIfMix.error) return answer(whatIfMix.error,
+      'The proposed mix could not be read as four asset percentages totalling 100%.',
+      'No goal or holding was changed.', '#goals', 'Review selected goal');
+    const scenario = analyzePortfolio(holdings, { ...goal, targetMix: whatIfMix.mix }, today, reserve, coverage);
+    const preview = { goalId: goal?.id, goalName: goal?.name || 'the selected goal',
+      mix: whatIfMix.mix, rows: scenario.mixComparison, pause: scenario.mixPause,
+      total: scenario.goalTotal };
+    if (!scenario.mixComparison) {
+      const reason = { goal_details: 'confirm the selected goal details', no_holdings: 'link at least one holding to the selected goal',
+        other_investment: 'check the asset split of linked other investments',
+        unclassified: 'classify linked holdings labelled Other',
+        valuation_dates: 'check missing, future or old valuation dates on linked holdings',
+        conflicting_identity: 'resolve conflicting labels for a linked instrument',
+        fund_house: 'check scheme detail for linked fund-house totals' }[scenario.mixPause] || 'check the selected goal and linked holdings';
+      return { ...answer(`I can preview your proposed mix, but the comparison is paused. First ${reason}. Your saved goal mix has not changed.`,
+        `Proposed percentages: ${Object.entries(whatIfMix.mix).map(([asset, share]) => `${asset} ${share}%`).join(', ')}. Comparison status: ${scenario.mixPause || 'unavailable'}.`,
+        'This uses only your proposed percentages. It does not assess suitability or suggest a trade.', '#goals', 'Review selected goal'), scenarioMix: preview };
+    }
+    const parts = scenario.mixComparison.map(row =>
+      `${row.asset} ${row.currentPct.toFixed(1)}% entered versus ${row.plannedPct.toFixed(1)}% proposed (${Math.abs(row.differencePct).toFixed(1)} percentage points ${row.differencePct >= 0 ? 'above' : 'below'})`);
+    return { ...answer(`If the mix for ${preview.goalName} were the percentages you proposed, ${parts.join('; ')}. This is a temporary comparison; your saved goal mix has not changed.`,
+      `${money(scenario.goalTotal)} of entered value is linked to this goal. Each entered percentage is its labelled asset value divided by that total. Proposed rupee references apply your percentages to the same total.`,
+      'These are your dated values and proposed percentages. The rupee references are not amounts to move or add. Fund constituents, tax and transaction costs are not assessed; no suitability or trade conclusion follows.', '#goals', 'Review selected goal'), scenarioMix: preview };
+  }
 
   if (isChoosingMixQuestion(input)) {
     const next = goal?.confirmed !== true ?

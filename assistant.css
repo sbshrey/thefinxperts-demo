@@ -188,6 +188,9 @@ body[data-mode="browser-only"] .tools-items>.quiet:disabled{opacity:.5}
 .goal-stats span{display:block;color:#65776c;font-size:11px}
 .goal-stats strong{font-size:16px}
 .goal-mix-headline{margin:8px 0;padding:9px 11px;border:1px solid #d3e5d7;border-radius:8px;background:#f4f9f4;color:#265b41;font-size:12px;line-height:1.45}
+.mix-what-if{margin:10px 0;padding:10px 12px;border:1px solid #9dc5ac;border-radius:9px;background:#f0f8f2;color:#214b37;font-size:12px}
+.mix-what-if h4{margin:0 0 6px;font-size:13px}
+.mix-what-if p{margin:5px 0}
 .section-card .goal-next{margin:10px 0;padding:10px 12px;border-left:3px solid #62a879;border-radius:6px;background:#f2f8f3;color:#245743;font-weight:700}
 .goal-review-details{font-size:12px;color:#607168}
 .goal-review-details summary{cursor:pointer;color:#285d43;font-weight:700;padding:7px 0}
