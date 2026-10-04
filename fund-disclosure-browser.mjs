@@ -1,5 +1,5 @@
-import { checkXlsxArchive } from './broker-xlsx.mjs?v=61e42e7696c1';
-import { parseFundDisclosureRows } from './fund-disclosure.mjs?v=61e42e7696c1';
+import { checkXlsxArchive } from './broker-xlsx.mjs?v=d2bd29e4ebd4';
+import { parseFundDisclosureRows } from './fund-disclosure.mjs?v=d2bd29e4ebd4';
 
 const hdfcFlexiName = /^Monthly HDFC Flexi Cap Fund - \d{1,2} [A-Za-z]+ 20\d{2}\.xlsx$/i;
 const flexiFailure = message => Object.assign(new Error(message), { disclosureWorkbook: true });
@@ -8,7 +8,7 @@ async function previewHdfcFlexi(file) {
   // The bundled browser reader runs its parser in its own disposable worker.
   // This route selects only the holdings tab, leaving the large derivative tab unread.
   try {
-    await import('./vendor/read-excel-file/read-excel-file.min.js?v=61e42e7696c1');
+    await import('./vendor/read-excel-file/read-excel-file.min.js?v=d2bd29e4ebd4');
     const reader = globalThis.readXlsxFile;
     if (typeof reader !== 'function') throw new Error('Workbook reader unavailable');
     let timer;
@@ -41,7 +41,7 @@ export async function previewFundDisclosures(file, confirmed = []) {
   checkXlsxArchive(await file.arrayBuffer(), hdfcFlexi ? 'hdfc-flexi-disclosure' : 'disclosure');
   if (hdfcFlexi) return previewHdfcFlexi(file);
   const workbook = await new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./fund-disclosure-worker.js?v=61e42e7696c1', import.meta.url));
+    const worker = new Worker(new URL('./fund-disclosure-worker.js?v=d2bd29e4ebd4', import.meta.url));
     let finished = false;
     const timer = setTimeout(() => finish(new Error('The scheme disclosure preview timed out.')), 25_000);
     function finish(error, value) {

@@ -1,20 +1,20 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=61e42e7696c1';
-import { parseWhatIfMix } from './mix-plan.mjs?v=61e42e7696c1';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=61e42e7696c1';
-import { reserveMonths } from './reserve.mjs?v=61e42e7696c1';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=d2bd29e4ebd4';
+import { parseWhatIfMix } from './mix-plan.mjs?v=d2bd29e4ebd4';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=d2bd29e4ebd4';
+import { reserveMonths } from './reserve.mjs?v=d2bd29e4ebd4';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=61e42e7696c1';
-import { asksForAdvice } from './question-scope.mjs?v=61e42e7696c1';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=61e42e7696c1';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=61e42e7696c1';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=61e42e7696c1';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=61e42e7696c1';
-import { parseAmount } from './assistant-clarify.mjs?v=61e42e7696c1';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=61e42e7696c1';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=d2bd29e4ebd4';
+import { asksForAdvice } from './question-scope.mjs?v=d2bd29e4ebd4';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=d2bd29e4ebd4';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=d2bd29e4ebd4';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=d2bd29e4ebd4';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=d2bd29e4ebd4';
+import { parseAmount } from './assistant-clarify.mjs?v=d2bd29e4ebd4';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=d2bd29e4ebd4';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=61e42e7696c1';
-import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=61e42e7696c1';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=d2bd29e4ebd4';
+import { formatGoalHorizon, goalMonths, yearsForMonths } from './goal-horizon.mjs?v=d2bd29e4ebd4';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -534,6 +534,13 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(goal.target)} target today less ${money(result.goalTotal)} assigned entered value gives a nonnegative ${money(result.goalGap)} current gap; confirmed horizon ${formatGoalHorizon(goal.years)}. No monthly amount was chosen.`,
       `This is a dated holdings comparison, not a savings instruction, forecast or suitability assessment. ${coverageNote}`, '#goals', 'Explore monthly gap');
   }
+  if ((/\b(?:can|could)\s+(?:i|we)\s+withdraw\b|\b(?:when|how soon)\s+can\s+(?:i|we)\s+withdraw\b/.test(input)) &&
+      /\b(?:funds?|investments?|holdings?|goal|accounts?|money|epf|nps|ppf)\b/.test(input))
+    return answer(`I cannot tell from this holdings snapshot whether that money can be withdrawn, when it would arrive, or the net amount. Check the exact scheme or account, your current units or balance, its withdrawal or redemption terms, any lock-in or exit load where relevant, settlement timing, and applicable tax before counting it for a goal. ${/\bdebt\b/.test(input) ? 'A Debt label alone' : 'An entered balance alone'} does not establish immediate access.`,
+      'This review holds an entered gross value, broad asset label and valuation date; it has no checked account terms, redemption request or payout record.',
+      'This is a source-check list, not a recommendation to withdraw. A current holding value is not a guaranteed redemption amount or payment date.',
+      /\bfunds?\b/.test(input) ? 'https://investor.sebi.gov.in/exit_load.html' : '#holdings',
+      /\bfunds?\b/.test(input) ? 'Read SEBI exit-load basics' : 'Check the exact holding');
   if (asksForAdvice(input))
     return answer(`I can show what your entries say, but I cannot choose a trade, fund, or personal allocation for you. Check your dated holdings and goal facts first. If you want a personal recommendation, check an investment adviser’s registration through SEBI. ${valid.length ? 'Options lets you download a private readable report to check and share only if you choose. ' : ''}For a self-directed checklist, ask “How do I choose a target mix?”`,
       'This review uses your supplied holdings and goal inputs; it has no suitability assessment or verified current prices.',
@@ -791,6 +798,22 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(assets.Equity)} is labelled Equity and ${money(total)} is ${goalScopeRequested ? `assigned to ${goal.name}` : 'entered across all holdings'}; no crash percentage or group-specific change was applied.`,
       `Different funds and shares need not move by the same percentage, and the scale or timing of a market crash cannot be predicted here. ${coverageNote}`, goalScopeRequested ? '#goals' : '#holdings', 'Choose a hypothetical fall');
   }
+  if (/\b(?:crash(?:es|ed)?|plung(?:e|es|ed))\b/.test(input) &&
+      /\b(?:what if|if|would|could|happen|test|simulate)\b/.test(input)) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const total = goalScopeRequested ? result.goalTotal : result.total;
+    const chosen = input.match(/\d+(?:\.\d+)?\s*%/g) || [];
+    const dropPct = chosen.length === 1 ? Number.parseFloat(chosen[0]) : null;
+    const validPct = dropPct >= 1 && dropPct <= 60;
+    const reply = answer(`A crash does not say which holdings would change${goalScopeRequested ? ` for ${goal.name}` : ''}. ${validPct ? `You chose ${chosen[0]} as a hypothetical fall; now ` : ''}choose whether to apply a one-time fall to your directly held stocks, every holding labelled Equity, or all entered holdings${validPct ? '' : ', and choose one hypothetical percentage from 1% to 60%'}. For example, ask “What if my Equity holdings fell 30%${goalScopeRequested ? ' for my goal' : ''}?”`,
+      `${money(total)} of ${goalScopeRequested ? 'assigned' : 'entered'} value is in this review; no group-specific loss or goal gap after a fall was calculated.`,
+      `A market event does not move every fund or share by the same percentage. This asks for the missing scope rather than forecasting a crash or suggesting a trade. ${coverageNote}`, goalScopeRequested ? '#goals' : '#holdings', 'Choose a holding group');
+    return validPct ? { ...reply,
+      scenarioScopeClarification: { dropPct, goalId: goalScopeRequested ? goal.id : null } } : reply;
+  }
   if (/\bmarket\b.{0,35}\b(?:fall|falls|fell|drop|drops|dropped)\b|\b(?:fall|falls|fell|drop|drops|dropped)\b.{0,35}\bmarket\b/.test(input) &&
       !/\bstock market\b/.test(input) &&
       !/\b(?:direct stocks?|equity(?:-labelled)? holdings?|whole portfolio|all holdings)\b/.test(input))
@@ -912,7 +935,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   const riskReductionQuestion = /\bhow (?:can|do|should) i (?:reduce|lower|manage) (?:my )?risk\b/.test(input);
   const portfolioRiskQuestion = (/\b(?:risks?|risky|safe|safer|volatile|volatility|balanced?|aggressive|conservative)\b/.test(input) &&
     (/\b(?:portfolio|holdings|investments|asset mix|allocation)\b/.test(input) ||
-      /\bam i taking too much risk\b|\bmy money\b/.test(input))) || riskReductionQuestion ||
+      /\bam i taking too much risk\b|\bmy money\b|^what (?:is|are) my risks?[?.!]*$/.test(input))) || riskReductionQuestion ||
     /\b(?:biggest|main|top) risk\b/.test(input);
   const descriptiveRiskQuestion = portfolioRiskQuestion && !/\b(?:fall|falls|drop|drops|stress|what if)\b/.test(input);
   if (descriptiveRiskQuestion) {
@@ -1506,7 +1529,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   const companyDiversificationQuestion = /\bdiversif\w*\b.{0,25}\bcompan(?:y|ies)\b|\bcompan(?:y|ies)\b.{0,25}\bdiversif\w*\b/.test(input);
   const companyExposureQuestion = companyDiversificationQuestion ||
     /\b(?:one|single|same|largest|top)\s+compan(?:y|ies)\b/.test(input) &&
-    /\b(?:funds?|mutual funds?|portfolio|money|investments?|exposure)\b/.test(input);
+    /\b(?:funds?|mutual funds?|portfolio|money|investments?|expos\w*)\b/.test(input);
   const disclosureQuestion = fundSimilarityQuestion || companyExposureQuestion || /\b(?:overlaps?|same stocks?|underlying (?:stocks|shares|companies)|companies? (?:inside|through)|issuer exposure|inside (?:my|the) funds)\b/.test(input);
   const fundOverlapQuestion = fundSimilarityQuestion || /\b(?:overlaps?|same stocks?)\b/.test(input);
   const checkedDisclosures = Array.isArray(disclosures) ? disclosures.filter(item =>
