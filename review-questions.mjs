@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=a5371f1602a3';
-import { parseWhatIfMix } from './mix-plan.mjs?v=a5371f1602a3';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=a5371f1602a3';
-import { reserveMonths } from './reserve.mjs?v=a5371f1602a3';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=2ad5ddcde4a4';
+import { parseWhatIfMix } from './mix-plan.mjs?v=2ad5ddcde4a4';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=2ad5ddcde4a4';
+import { reserveMonths } from './reserve.mjs?v=2ad5ddcde4a4';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=a5371f1602a3';
-import { asksForAdvice } from './question-scope.mjs?v=a5371f1602a3';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=a5371f1602a3';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=a5371f1602a3';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=a5371f1602a3';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=a5371f1602a3';
-import { parseAmount } from './assistant-clarify.mjs?v=a5371f1602a3';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=a5371f1602a3';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=2ad5ddcde4a4';
+import { asksForAdvice } from './question-scope.mjs?v=2ad5ddcde4a4';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=2ad5ddcde4a4';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=2ad5ddcde4a4';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=2ad5ddcde4a4';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=2ad5ddcde4a4';
+import { parseAmount } from './assistant-clarify.mjs?v=2ad5ddcde4a4';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=2ad5ddcde4a4';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=a5371f1602a3';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=2ad5ddcde4a4';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -351,6 +351,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
   const stepByStepQuestion = /\b(?:step[ -]by[ -]step|(?:simple|clear) (?:plan|steps?)|action plan)\b/.test(input) &&
     /\b(?:portfolio|investments?|holdings?|review|improv\w*)\b/.test(input) && !asksForAdvice(input);
   const openReviewQuestion = /^(?:what should i do(?: next)?|how (?:(?:can|do|should) i|to) (?:improve|optimi[sz]e) (?:my )?(?:portfolio|review|investments?)(?: for (?:my )?(?:age and goal|age|goal))?|where should i start|what can i improve|which holdings? need(?:s)? (?:my )?attention first)[?.!]*$/.test(input) ||
+    /^(?:(?:please|can you)\s+)?review\s+my\s+(?:portfolio|holdings|investments?)[?.!]*$/.test(input) ||
     /^(?:what should i check(?: first)? to (?:improve|optimi[sz]e) (?:my )?(?:portfolio|investments?)|what (?:is|looks) wrong with (?:my|the) (?:portfolio|investments?)|can you help me improve (?:my )?(?:portfolio|investments?))[?.!]*$/.test(input) ||
     /\b(?:what should i do with (?:these|my) investments?|what is the first thing i should check|(?:what is )?my biggest blind spot)\b/.test(input) ||
     stepByStepQuestion;
@@ -632,6 +633,24 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `No validated month-by-month SIP purchase aggregate from a detailed CAS is available in this chat tab.`,
       `A holdings snapshot or goal contribution assumption cannot establish completed payments, missed instalments or an active mandate.`, '#holdings', 'Upload detailed CAS');
   }
+  if (/^(?:is|are) (?:my|our) sips? enough[?.!]*$|^am i saving enough[?.!]*$/.test(input)) {
+    if (goal?.confirmed !== true) return answer(
+      'I cannot tell whether your SIP or monthly saving is enough from holdings alone. Confirm one goal’s target in today’s rupees, time horizon and your age first; then link the holdings intended for it.',
+      'No confirmed selected goal or verified active SIP mandate was used.',
+      'A goal illustration cannot verify your income, payments, other goals or personal capacity.', '#goals', 'Set up a goal');
+    if (!result.goalTotal) return answer(
+      `I cannot tell whether your SIP is enough for ${goal.name}. First link the entered holdings you intend to count toward that goal.`,
+      `Selected goal ${goal.name} has ₹0 assigned entered value; no active SIP mandate is verified.`,
+      'The whole portfolio cannot be treated as assigned to one goal.', '#goals', 'Link goal holdings');
+    if (result.goalDateCheck.count || result.goalAccessCheck.count) return answer(
+      `Before comparing monthly saving with ${goal.name}, check ${result.goalDateCheck.count ? 'the linked holding value dates' : 'when linked other investments can be used'}. I also cannot verify your current SIP mandate from this holdings snapshot.`,
+      `${result.goalDateCheck.count} linked value dates and ${result.goalAccessCheck.count} linked other-investment access terms need checking.`,
+      'Unchecked starting balances can distort a monthly illustration.', '#holdings', 'Check goal holdings');
+    return answer(
+      `I cannot verify your active SIP amount or decide if it is enough. For ${goal.name}, ${money(result.goalTotal)} of entered value is assigned toward your ${money(goal.target)} target in today’s rupees, leaving a current gap of ${money(result.goalGap)}. ${confirmedGoalAssumptions(goal) ? 'Ask “future goal gap” to see the illustration using your confirmed monthly, growth and inflation assumptions.' : 'Confirm your own monthly contribution, growth and inflation assumptions to explore a future what-if.'} Check your current fund or broker mandate for the actual scheduled SIP amount.`,
+      `${money(goal.target)} target today less ${money(result.goalTotal)} assigned value gives a nonnegative ${money(result.goalGap)} current gap; no active SIP mandate or completed payment history was verified.`,
+      `A current gap or fixed-assumption illustration is not a verdict on what you should save. ${coverageNote}`, '#goals', 'Review goal gap');
+  }
   if (isSipAmountQuestion(input)) {
     const historical = /\b(?:invested|paid|deposited|contributed|total|purchases?|payments?)\b/.test(input);
     const currentSchedule = /\b(?:monthly|per month|each month|every month|running|active|mandate|scheduled|currently)\b/.test(input);
@@ -836,9 +855,10 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(Number(row.value))} ÷ ${money(result.total)} entered value; row #${number} is ${row.type}; ${row.asOf ? `supplied value date ${row.asOf}` : 'no supplied value date'}.`,
       `This is one supplied, dated row, not a verified current price, fund look-through, performance result or suitability verdict. ${coverageNote}`, '#holdings', 'Check this holding');
   }
-  const portfolioRiskQuestion = (/\b(?:risks?|risky|safe|safer|volatile|volatility|balanced?)\b/.test(input) &&
+  const riskReductionQuestion = /\bhow (?:can|do|should) i (?:reduce|lower|manage) (?:my )?risk\b/.test(input);
+  const portfolioRiskQuestion = (/\b(?:risks?|risky|safe|safer|volatile|volatility|balanced?|aggressive|conservative)\b/.test(input) &&
     (/\b(?:portfolio|holdings|investments|asset mix|allocation)\b/.test(input) ||
-      /\bam i taking too much risk\b|\bmy money\b/.test(input))) ||
+      /\bam i taking too much risk\b|\bmy money\b/.test(input))) || riskReductionQuestion ||
     /\b(?:biggest|main|top) risk\b/.test(input);
   const descriptiveRiskQuestion = portfolioRiskQuestion && !/\b(?:fall|falls|drop|drops|stress|what if)\b/.test(input);
   if (descriptiveRiskQuestion) {
@@ -859,7 +879,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const largest = (scoped ? result.topGoalPositions : result.topPositions)[0];
     const dateChecks = valuationRowsNeedingCheck(rows, today);
     const summary = scoped ? `For ${goal.name}, the assigned holdings` : `${lead}the entered holdings`;
-    return answer(`${/\b(?:safe|safer)\b/.test(input) ? 'I cannot verify that your investments or accounts are safe. These are visible investment exposure checks: ' : /\b(?:biggest|main|top) risk\b/.test(input) ? 'I cannot rank your personal risks from a holdings snapshot. These are visible exposure checks: ' : ''}${summary} are labelled Equity ${percent(assets.Equity, total)}, Debt ${percent(assets.Debt, total)}, Gold ${percent(assets.Gold, total)} and Other ${percent(assets.Other, total)}. ` +
+    return answer(`${riskReductionQuestion ? 'I cannot choose a risk-reducing trade or personal mix. Start with these visible exposure checks: ' : /\b(?:safe|safer)\b/.test(input) ? 'I cannot verify that your investments or accounts are safe. These are visible investment exposure checks: ' : /\b(?:biggest|main|top) risk\b/.test(input) ? 'I cannot rank your personal risks from a holdings snapshot. These are visible exposure checks: ' : ''}${summary} are labelled Equity ${percent(assets.Equity, total)}, Debt ${percent(assets.Debt, total)}, Gold ${percent(assets.Gold, total)} and Other ${percent(assets.Other, total)}. ` +
       `The largest entered position is ${largest.name} at ${percent(largest.value, total)} of ${scoped ? 'assigned' : 'entered'} value. ` +
       `${dateChecks.length ? `${dateChecks.length} ${dateChecks.length === 1 ? 'value date needs' : 'value dates need'} a check. ` : ''}` +
       `${assets.Other ? `${money(assets.Other)} has an unresolved asset label. ` : ''}` +
