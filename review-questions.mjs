@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=3ce860de2534';
-import { parseWhatIfMix } from './mix-plan.mjs?v=3ce860de2534';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=3ce860de2534';
-import { reserveMonths } from './reserve.mjs?v=3ce860de2534';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=25ef4288d68b';
+import { parseWhatIfMix } from './mix-plan.mjs?v=25ef4288d68b';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=25ef4288d68b';
+import { reserveMonths } from './reserve.mjs?v=25ef4288d68b';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=3ce860de2534';
-import { asksForAdvice } from './question-scope.mjs?v=3ce860de2534';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=3ce860de2534';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=3ce860de2534';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=3ce860de2534';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=3ce860de2534';
-import { parseAmount } from './assistant-clarify.mjs?v=3ce860de2534';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=3ce860de2534';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=25ef4288d68b';
+import { asksForAdvice } from './question-scope.mjs?v=25ef4288d68b';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=25ef4288d68b';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=25ef4288d68b';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=25ef4288d68b';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=25ef4288d68b';
+import { parseAmount } from './assistant-clarify.mjs?v=25ef4288d68b';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=25ef4288d68b';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=3ce860de2534';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=25ef4288d68b';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -1312,6 +1312,18 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(reserve.monthlyEssentials)} × ${months} months = ${money(expenses)} essential spending; ${money(reserve.accessibleMoney)} separate accessible money minus ${money(expenses)} = ${difference < 0 ? '-' : ''}${money(Math.abs(difference))}. No holding value was counted.`,
       'This fixed-spending what-if assumes no other income and does not verify access to the money. Other costs, debt payments and changing expenses are not included. It is not a reserve target or personal advice.',
       'https://investor.sebi.gov.in/moneymatters-inc-exp.html', 'Read SEBI emergency-fund context');
+  }
+  if (/^(?:how much|what amount of)\s+(?:cash|liquid (?:money|savings))\s+(?:should|do|would)\s+i\s+(?:keep|hold|have|need)(?:\s+(?:aside|for emergencies|outside (?:my )?investments))?[?.!]*$/.test(input)) {
+    const months = reserveMonths(reserve);
+    return months === null ? answer(
+      'I cannot choose a cash amount for you from an investment snapshot. To inspect your separate reserve, enter and confirm monthly essential spending and accessible money outside these holdings. I can then show the number of months by division; consider nearer expenses and when the money can actually be used.',
+      'No confirmed pair of monthly essentials and accessible money outside holdings is available. Investment values were not treated as cash.',
+      'The review cannot assess your income stability, debts or personal reserve need.',
+      'https://investor.sebi.gov.in/moneymatters-whysave.html', 'Read SEBI savings context') :
+      answer(`You entered ${money(reserve.accessibleMoney)} accessible money outside these holdings and ${money(reserve.monthlyEssentials)} monthly essentials. That is ${months.toFixed(1)} months by division. I cannot tell you how much cash to keep; check nearer expenses, income uncertainty and access to that money before choosing your own amount.`,
+        `${money(reserve.accessibleMoney)} separate accessible money ÷ ${money(reserve.monthlyEssentials)} monthly essentials = ${months.toFixed(1)} months. No holding value was counted.`,
+        'The two amounts are self reported and this is not a personal reserve target or adequacy verdict.',
+        'https://investor.sebi.gov.in/moneymatters-whysave.html', 'Read SEBI savings context');
   }
   if (/\b(?:reserve|emergency buffer|emergency fund)\b/.test(input)) {
     const months = reserveMonths(reserve);

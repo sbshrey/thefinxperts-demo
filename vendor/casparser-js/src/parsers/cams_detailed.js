@@ -11,16 +11,16 @@
  * not fully supported by the capital-gains side.
  */
 
-import { CASFileType, FileType, TransactionType } from '../enums.js?v=3ce860de2534';
-import { Decimal, ZERO } from '../decimal.js?v=3ce860de2534';
-import { CasDate } from '../dates.js?v=3ce860de2534';
+import { CASFileType, FileType, TransactionType } from '../enums.js?v=25ef4288d68b';
+import { Decimal, ZERO } from '../decimal.js?v=25ef4288d68b';
+import { CasDate } from '../dates.js?v=25ef4288d68b';
 import {
   CASData, Folio, Scheme, SchemeValuation, StatementPeriod, TransactionData,
-} from '../types.js?v=3ce860de2534';
-import { extractGiftFolio, getParsedSchemeName, getTransactionType } from './classify.js?v=3ce860de2534';
-import { extractCamsKfinInvestor } from './investor.js?v=3ce860de2534';
-import { isinSearch } from '../isin.js?v=3ce860de2534';
-import { extractPages } from './extract.js?v=3ce860de2534';
+} from '../types.js?v=25ef4288d68b';
+import { extractGiftFolio, getParsedSchemeName, getTransactionType } from './classify.js?v=25ef4288d68b';
+import { extractCamsKfinInvestor } from './investor.js?v=25ef4288d68b';
+import { isinSearch } from '../isin.js?v=25ef4288d68b';
+import { extractPages } from './extract.js?v=25ef4288d68b';
 
 // ---------------------------------------------------------------------- columns
 

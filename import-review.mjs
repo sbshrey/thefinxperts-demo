@@ -1,7 +1,7 @@
 /** Validate the editable holdings preview before it replaces the current portfolio. */
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=3ce860de2534';
-import { validCostBasis } from './cost-basis.mjs?v=3ce860de2534';
-import { brokerAccountKey, sameBrokerAccount, validBrokerAccountLabel } from './broker-account.mjs?v=3ce860de2534';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=25ef4288d68b';
+import { validCostBasis } from './cost-basis.mjs?v=25ef4288d68b';
+import { brokerAccountKey, sameBrokerAccount, validBrokerAccountLabel } from './broker-account.mjs?v=25ef4288d68b';
 
 export function validateImportReview(holdings) {
   if (!Array.isArray(holdings) || holdings.length === 0) return ['Keep at least one holding to import.'];

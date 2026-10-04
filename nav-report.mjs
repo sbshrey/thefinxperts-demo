@@ -1,4 +1,4 @@
-import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=3ce860de2534';
+import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=25ef4288d68b';
 
 const HEADER = 'Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date';
 const MONTHS = new Map(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
