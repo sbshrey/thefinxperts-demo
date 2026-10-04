@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=a57372f36b39';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=a57372f36b39';
-import { reserveMonths } from './reserve.mjs?v=a57372f36b39';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=bb08bd8b826c';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=bb08bd8b826c';
+import { reserveMonths } from './reserve.mjs?v=bb08bd8b826c';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=a57372f36b39';
-import { asksForAdvice } from './question-scope.mjs?v=a57372f36b39';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=a57372f36b39';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=a57372f36b39';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=a57372f36b39';
-import { parseAmount } from './assistant-clarify.mjs?v=a57372f36b39';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=a57372f36b39';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=bb08bd8b826c';
+import { asksForAdvice } from './question-scope.mjs?v=bb08bd8b826c';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=bb08bd8b826c';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=bb08bd8b826c';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=bb08bd8b826c';
+import { parseAmount } from './assistant-clarify.mjs?v=bb08bd8b826c';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=bb08bd8b826c';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=a57372f36b39';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=bb08bd8b826c';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -120,7 +120,8 @@ function investorDefinition(input) {
 export function isChoosingMixQuestion(question) {
   if (typeof question !== 'string') return false;
   const input = question.trim().toLocaleLowerCase('en-IN');
-  return /\b(?:how (?:do|can|should) i (?:choose|decide|set)|what (?:factors|should guide))\b.{0,75}\b(?:asset mix|asset allocation|target mix|target allocation|portfolio mix|equity (?:and|vs) debt)\b/.test(input) &&
+  return (/\b(?:how (?:do|can|should) i (?:choose|decide|set)|what (?:factors|should guide))\b.{0,75}\b(?:asset mix|asset allocation|target mix|target allocation|portfolio mix|equity (?:and|vs) debt)\b/.test(input) ||
+    /\bhow (?:do|can|should) i diversify(?: my (?:portfolio|investments?))?\b.{0,50}\b(?:for my (?:age|goal)|for (?:my )?retirement|at age \d{1,2})\b/.test(input)) &&
     !/\b(?:for me|buy|sell|switch|redeem|replace|increase|reduce|trade|which fund|which stock|specific percentages?)\b/.test(input);
 }
 
@@ -316,7 +317,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
   }
 
-  const suitabilityWords = '(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match|too high|too much|excessive|overexposed)';
+  const suitabilityWords = '(?:safe|safer|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match|too high|too much|excessive|overexposed)';
   const goalRiskQuestion = new RegExp(`\\b${suitabilityWords}\\b`).test(input) &&
     (new RegExp(`\\b(?:goal|retirement)\\b.{0,65}\\b${suitabilityWords}\\b`).test(input) ||
       new RegExp(`\\b${suitabilityWords}\\b.{0,65}\\b(?:goal|retirement|my age|age and goal)\\b`).test(input));
@@ -662,7 +663,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(Number(row.value))} ÷ ${money(result.total)} entered value; row #${number} is ${row.type}; ${row.asOf ? `supplied value date ${row.asOf}` : 'no supplied value date'}.`,
       `This is one supplied, dated row, not a verified current price, fund look-through, performance result or suitability verdict. ${coverageNote}`, '#holdings', 'Check this holding');
   }
-  const portfolioRiskQuestion = (/\b(?:risks?|risky|safe|volatile|volatility|balanced?)\b/.test(input) &&
+  const portfolioRiskQuestion = (/\b(?:risks?|risky|safe|safer|volatile|volatility|balanced?)\b/.test(input) &&
     (/\b(?:portfolio|holdings|investments|asset mix|allocation)\b/.test(input) ||
       /\bam i taking too much risk\b/.test(input))) ||
     /\b(?:biggest|main|top) risk\b/.test(input);
