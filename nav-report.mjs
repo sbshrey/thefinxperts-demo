@@ -1,4 +1,4 @@
-import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=bc8025ec4ebd';
+import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=47e0c91c56d9';
 
 const HEADER = 'Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date';
 const MONTHS = new Map(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -31,6 +31,7 @@ export function parseAmfiNavReport(text, now = new Date()) {
     return { rows: [], errors: ['This is not the current AMFI text NAV report format. Download the Complete NAV Report from AMFI and open that .txt file.'] };
   const rows = [];
   const codes = new Set();
+  const unavailableNames = new Set();
   let invalid = 0, unavailableNav = 0;
   for (const line of lines.slice(1)) {
     const clean = line.trim();
@@ -44,13 +45,17 @@ export function parseAmfiNavReport(text, now = new Date()) {
         !NAV.test(nav) ||
         !asOf || asOf > indiaToday(now)) { invalid++; continue; }
     codes.add(code);
-    if (!/[1-9]/.test(nav)) { unavailableNav++; continue; }
+    if (!/[1-9]/.test(nav)) {
+      unavailableNav++;
+      unavailableNames.add(schemeNameKey([scheme, plan, option].filter(Boolean).join(' · ')));
+      continue;
+    }
     rows.push({ code, isins: [firstIsin, secondIsin].filter(value => ISIN.test(value)),
       name: [scheme, plan, option].filter(Boolean).join(' · '), nav, asOf });
   }
   if (invalid || !rows.length || rows.length > 25_000)
     return { rows: [], errors: [`The NAV file has ${invalid} invalid or repeated data ${invalid === 1 ? 'row' : 'rows'}, or no usable rows. No values changed.`] };
-  return { rows, unavailableNav, errors: [] };
+  return { rows, unavailableNav, unavailableNames: [...unavailableNames], errors: [] };
 }
 
 /** Stage newer exact identifier or unique full-name matches using unchanged saved units. */
@@ -59,9 +64,14 @@ export function prepareNavReportRefresh(saved, report, now = new Date()) {
     return { errors: ['Confirm mutual-fund holdings with units before using a NAV report.'] };
   if (!report || report.errors?.length || !Array.isArray(report.rows))
     return { errors: report?.errors?.length ? report.errors : ['Read a valid AMFI text NAV report first.'] };
+  if (report.unavailableNames !== undefined &&
+      (!Array.isArray(report.unavailableNames) || report.unavailableNames.length > 25_000 ||
+       !report.unavailableNames.every(name => typeof name === 'string' && name.length <= 600)))
+    return { errors: ['The NAV rows could not be checked. No values changed.'] };
   const byCode = new Map();
   const byIsin = new Map();
   const byName = new Map();
+  const unavailableNames = new Set(report.unavailableNames || []);
   for (const row of report.rows) {
     if (!row || typeof row.code !== 'string' || !/^\d{1,9}$/.test(row.code) ||
         byCode.has(row.code) || !schemeNameKey(row.name) || !Array.isArray(row.isins) ||
@@ -89,7 +99,9 @@ export function prepareNavReportRefresh(saved, report, now = new Date()) {
     eligible++;
     const codeMatch = row.amfi ? byCode.get(row.amfi) : null;
     const isinMatches = ISIN.test(row.isin || '') ? byIsin.get(row.isin) || [] : [];
-    const nameMatches = !row.amfi && !row.isin ? byName.get(schemeNameKey(row.name)) || [] : [];
+    const nameKey = schemeNameKey(row.name);
+    const nameMatches = !row.amfi && !row.isin && !unavailableNames.has(nameKey) ?
+      byName.get(nameKey) || [] : [];
     const candidate = row.amfi && row.isin ?
       codeMatch && isinMatches.length === 1 && isinMatches[0] === codeMatch ? codeMatch : null :
       row.amfi ? codeMatch : row.isin ? isinMatches.length === 1 ? isinMatches[0] : null :
