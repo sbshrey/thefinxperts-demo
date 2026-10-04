@@ -1,8 +1,8 @@
-import { parseAmount } from './assistant-clarify.mjs?v=957ef7c03747';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=957ef7c03747';
-import { removeHoldingAllocation } from './goals.mjs?v=957ef7c03747';
-import { estimateNavValue, realDate } from './nav-estimate.mjs?v=957ef7c03747';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=957ef7c03747';
+import { parseAmount } from './assistant-clarify.mjs?v=1aa14dcc379e';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=1aa14dcc379e';
+import { removeHoldingAllocation } from './goals.mjs?v=1aa14dcc379e';
+import { estimateNavValue, realDate } from './nav-estimate.mjs?v=1aa14dcc379e';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=1aa14dcc379e';
 
 const money = value => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const indiaToday = today => new Date(today.getTime() + 330 * 60_000).toISOString().slice(0, 10);
@@ -205,8 +205,8 @@ export function prepareHoldingCorrection(saved, command, today = new Date()) {
     const originalValue = row.navEstimate?.originalValue ?? row.value;
     const originalAsOf = row.navEstimate?.originalAsOf ?? row.asOf;
     portfolio.holdings[index] = { ...row, value, asOf: command.asOf,
+      valuationOrigin: 'manual',
       navEstimate: { originalValue, originalAsOf, nav: command.nav, navAsOf: command.asOf } };
-    delete portfolio.holdings[index].valuationOrigin;
     const total = portfolio.holdings.reduce((sum, holding) => sum + Number(holding.value), 0);
     if (!Number.isFinite(total) || total > 1_000_000_000_000)
       return { portfolio: null, errors: ['The estimated portfolio total would exceed the supported limit.'] };
@@ -224,8 +224,8 @@ export function prepareHoldingCorrection(saved, command, today = new Date()) {
     const originalValue = row.stockEstimate?.originalValue ?? row.value;
     const originalAsOf = row.stockEstimate?.originalAsOf ?? row.asOf;
     portfolio.holdings[index] = { ...row, value, asOf: command.asOf,
+      valuationOrigin: 'manual',
       stockEstimate: { originalValue, originalAsOf, price: command.price, priceAsOf: command.asOf } };
-    delete portfolio.holdings[index].valuationOrigin;
     const total = portfolio.holdings.reduce((sum, holding) => sum + Number(holding.value), 0);
     if (!Number.isFinite(total) || total > 1_000_000_000_000)
       return { portfolio: null, errors: ['The estimated portfolio total would exceed the supported limit.'] };

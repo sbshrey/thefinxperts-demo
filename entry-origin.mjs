@@ -27,5 +27,6 @@ export function entryOriginText(origin) {
 }
 
 export function valuationOriginText(origin) {
+  if (origin === 'amfi_nav_report') return 'your uploaded AMFI NAV report estimate';
   return origin === 'manual' ? 'your manual update' : entryOriginText(origin);
 }

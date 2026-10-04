@@ -1,10 +1,10 @@
-import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=957ef7c03747';
-import { MIX_ASSETS } from './mix-plan.mjs?v=957ef7c03747';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=957ef7c03747';
-import { reserveMonths } from './reserve.mjs?v=957ef7c03747';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=957ef7c03747';
-import { rupeesWithPaise } from './cost-basis.mjs?v=957ef7c03747';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=957ef7c03747';
+import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=1aa14dcc379e';
+import { MIX_ASSETS } from './mix-plan.mjs?v=1aa14dcc379e';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=1aa14dcc379e';
+import { reserveMonths } from './reserve.mjs?v=1aa14dcc379e';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=1aa14dcc379e';
+import { rupeesWithPaise } from './cost-basis.mjs?v=1aa14dcc379e';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=1aa14dcc379e';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -174,7 +174,7 @@ export function buildReadableReport(state, preparedAt = new Date()) {
   lines.push('', 'ENTERED HOLDINGS');
   appendHoldings(lines, state.holdings, goal);
   lines.push('', 'IMPORTANT LIMITS',
-    'Values and asset labels are as entered or imported; a user-entered NAV or stock-price estimate is not a live price feed.',
+    'Values and asset labels are as entered or imported; a dated NAV or stock-price estimate is not a live price feed.',
     'Unknown fund constituents remain unknown. A fund-house summary is not a scheme-level review.',
     'A checked invested amount can show only an unrealized change on covered holdings; a holdings snapshot cannot establish annualized return, lifetime profit, taxes, exit loads or precise overlap.',
     'This educational review does not recommend buying, selling or rebalancing a security.',
@@ -223,7 +223,7 @@ function buildPortfolioOnlyReport(state, preparedAt) {
     '', 'ENTERED HOLDINGS');
   appendHoldings(lines, state.holdings);
   lines.push('', 'IMPORTANT LIMITS',
-    'Values and asset labels are as entered or imported; a user-entered NAV or stock-price estimate is not a live price feed.',
+    'Values and asset labels are as entered or imported; a dated NAV or stock-price estimate is not a live price feed.',
     'Unknown fund constituents remain unknown. A fund-house summary is not a scheme-level review.',
     'A checked invested amount can show only an unrealized change on covered holdings; a holdings snapshot cannot establish annualized return, lifetime profit, taxes, exit loads or precise overlap.',
     'This educational snapshot does not recommend buying, selling or rebalancing a security.',
@@ -242,7 +242,7 @@ function appendHoldings(lines, holdings, goal = null) {
     const label = goal ? (share ? `${share}% (${rupees(Number(holding.value) * share / 100)}) linked to selected goal` : 'not linked to selected goal') : 'goal allocation not yet confirmed';
     const detail = holding.granularity === 'fund_house' ? ' / fund-house summary, not a scheme' : '';
     lines.push(`- ${clean(holding.name)} | ${holding.type} / ${holding.asset}${detail}${holding.statementCategory ? ` / statement category ${clean(holding.statementCategory)}` : ''}${holding.isin ? ` / supplied ISIN ${clean(holding.isin)}` : ''} | ${rupees(holding.value)} | as of ${holding.asOf || 'unknown'} | originally added from ${entryOriginText(holding.entryOrigin)}${holding.accountLabel ? ` | broker account nickname ${clean(holding.accountLabel)}` : ''}${holding.valuationOrigin ? ` | latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.expenseRatioPct !== undefined ? ` | entered TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''} | ${label}`);
-    if (holding.navEstimate) lines.push(`  User-entered NAV estimate: ${holding.units} statement units × ₹${holding.navEstimate.nav} on ${holding.navEstimate.navAsOf}; original statement value ${rupees(holding.navEstimate.originalValue)} on ${holding.navEstimate.originalAsOf || 'unknown'}. Units and exact scheme were confirmed by the investor, not independently verified here.`);
+    if (holding.navEstimate) lines.push(`  ${holding.valuationOrigin === 'amfi_nav_report' ? 'Investor-uploaded AMFI NAV report estimate' : 'Investor-entered NAV estimate'}: ${holding.units} saved units × ₹${holding.navEstimate.nav} on ${holding.navEstimate.navAsOf}; earlier value ${rupees(holding.navEstimate.originalValue)} on ${holding.navEstimate.originalAsOf || 'unknown'}. Units and exact scheme were checked by the investor, not independently verified here.`);
     if (holding.shares) lines.push(`  Entered direct-stock shares: ${holding.shares}. Check trades and corporate actions against a current broker report.`);
     if (holding.costBasis !== undefined) lines.push(`  Entered invested amount for current units or shares: ${rupeesWithPaise(holding.costBasis)} checked ${holding.costBasisAsOf}. This is investor-supplied, not a verified transaction history.`);
     if (holding.stockEstimate) lines.push(`  User-entered stock-price estimate: ${holding.shares} shares × ₹${holding.stockEstimate.price} on ${holding.stockEstimate.priceAsOf}; earlier entered value ${rupees(holding.stockEstimate.originalValue)} on ${holding.stockEstimate.originalAsOf}. Shares, security and quote were confirmed by the investor, not independently verified here.`);

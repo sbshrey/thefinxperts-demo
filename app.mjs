@@ -1,25 +1,25 @@
-import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=957ef7c03747';
-import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=957ef7c03747';
-import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=957ef7c03747';
+import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=1aa14dcc379e';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=1aa14dcc379e';
+import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=1aa14dcc379e';
 import { validateImportReview, validateImportMerge, findImportMergeConflicts, possibleManualDuplicate, isRepeatedActiveStatement,
-  planActiveStatementRefresh, planDematCasRefresh } from './import-review.mjs?v=957ef7c03747';
-import { prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=957ef7c03747';
-import { findCrossAccountDrafts } from './assistant-save.mjs?v=957ef7c03747';
-import { validBrokerAccountLabel } from './broker-account.mjs?v=957ef7c03747';
-import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=957ef7c03747';
-import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=957ef7c03747';
-import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=957ef7c03747';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=957ef7c03747';
-import { buildReadableReport } from './readable-report.mjs?v=957ef7c03747';
-import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=957ef7c03747';
-import { validReserve, reserveMonths } from './reserve.mjs?v=957ef7c03747';
-import { contextNeedsReview, indiaToday, observeIndiaDateChange } from './market-context.mjs?v=957ef7c03747';
-import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=957ef7c03747';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=957ef7c03747';
-import { chooseNextReviewStep } from './next-step.mjs?v=957ef7c03747';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=957ef7c03747';
-import { answerReviewQuestion } from './review-questions.mjs?v=957ef7c03747';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=957ef7c03747';
+  planActiveStatementRefresh, planDematCasRefresh } from './import-review.mjs?v=1aa14dcc379e';
+import { prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=1aa14dcc379e';
+import { findCrossAccountDrafts } from './assistant-save.mjs?v=1aa14dcc379e';
+import { validBrokerAccountLabel } from './broker-account.mjs?v=1aa14dcc379e';
+import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=1aa14dcc379e';
+import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=1aa14dcc379e';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=1aa14dcc379e';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=1aa14dcc379e';
+import { buildReadableReport } from './readable-report.mjs?v=1aa14dcc379e';
+import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=1aa14dcc379e';
+import { validReserve, reserveMonths } from './reserve.mjs?v=1aa14dcc379e';
+import { contextNeedsReview, indiaToday, observeIndiaDateChange } from './market-context.mjs?v=1aa14dcc379e';
+import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=1aa14dcc379e';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=1aa14dcc379e';
+import { chooseNextReviewStep } from './next-step.mjs?v=1aa14dcc379e';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=1aa14dcc379e';
+import { answerReviewQuestion } from './review-questions.mjs?v=1aa14dcc379e';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=1aa14dcc379e';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -196,7 +196,7 @@ function createDatedUnitWorksheet(holding) {
     }
     state.holdings = state.holdings.map(item => item.id === holding.id ? {
       ...item, value, asOf: priceAsOf,
-      valuationOrigin: undefined,
+      valuationOrigin: 'manual',
       ...(fund ? { navEstimate: { originalValue, originalAsOf: originalDate, nav: price, navAsOf: priceAsOf } } :
         { stockEstimate: { originalValue, originalAsOf: originalDate, price, priceAsOf } }),
     } : item);
@@ -598,7 +598,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.accountLabel ? ` · broker account ${holding.accountLabel}` : ''}${holding.valuationOrigin ? ` · latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.costBasis !== undefined ? ` · invested ${rupees(holding.costBasis)} checked ${holding.costBasisAsOf}` : ''}${holding.costBasisAsOf && holding.asOf && holding.costBasisAsOf > holding.asOf ? ' · refresh value before calculating gain or loss' : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.accountLabel ? ` · broker account ${holding.accountLabel}` : ''}${holding.valuationOrigin ? ` · latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.costBasis !== undefined ? ` · invested ${rupees(holding.costBasis)} checked ${holding.costBasisAsOf}` : ''}${holding.costBasisAsOf && holding.asOf && holding.costBasisAsOf > holding.asOf ? ' · refresh value before calculating gain or loss' : ''}${holding.navEstimate ? holding.valuationOrigin === 'amfi_nav_report' ? ' · investor-uploaded AMFI NAV estimate' : ' · investor-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const sourceCategory = document.createElement('small');
     sourceCategory.className = 'holding-source-category';
     sourceCategory.textContent = holding.statementCategory ?
@@ -921,7 +921,7 @@ function render() {
     if (priorEstimate) {
       const earlier = document.createElement('small');
       earlier.className = 'holding-source-category';
-      earlier.textContent = `Earlier value: ${rupees(priorEstimate.originalValue)} on ${priorEstimate.originalAsOf}. Current review uses your entered ${holding.navEstimate ? 'NAV' : 'stock-price'} estimate, not a verified live balance.`;
+      earlier.textContent = `Earlier value: ${rupees(priorEstimate.originalValue)} on ${priorEstimate.originalAsOf}. Current review uses this dated ${holding.navEstimate ? 'NAV' : 'stock-price'} estimate, not a verified live balance.`;
       info.append(earlier);
     }
     if (holding.statementCategory) info.append(sourceCategory);
@@ -1369,7 +1369,7 @@ $('#broker-read').addEventListener('click', async () => {
       brokerRows = parseBrokerCsvRows(await file.text());
       brokerSource = 'Broker CSV';
     } else if (file.name.toLowerCase().endsWith('.xlsx')) {
-      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=957ef7c03747');
+      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=1aa14dcc379e');
       brokerRows = await readBrokerWorkbook(file);
       brokerSource = 'Broker XLSX';
     } else throw new Error('Choose a broker holdings XLSX or CSV report.');
@@ -1546,7 +1546,7 @@ function refreshImportSummary() {
       `${refresh.added.length} new fund ${refresh.added.length === 1 ? 'row' : 'rows'} will be added; ` +
       `${refresh.removed.length} fund ${refresh.removed.length === 1 ? 'row' : 'rows'} absent from the newer statement will be removed. ` +
       'Direct stocks and links for matched funds stay in place. New funds link to the selected goal.' +
-      (estimateCount ? ` ${estimateCount} user-entered NAV ${estimateCount === 1 ? 'estimate' : 'estimates'} will be replaced by statement values. Download a private JSON backup first if you want to keep the earlier comparison.` : '');
+      (estimateCount ? ` ${estimateCount} investor-checked NAV ${estimateCount === 1 ? 'estimate' : 'estimates'} will be replaced by statement values. Download a private JSON backup first if you want to keep the earlier comparison.` : '');
     const change = message => {
       const row = document.createElement('li');
       row.textContent = message;
@@ -1752,7 +1752,7 @@ $('#preview-active').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Reading in this tab…';
   try {
-    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=957ef7c03747');
+    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=1aa14dcc379e');
     const result = await previewActiveStatementFile(file, password);
     if (result.errors.length) {
       $('#active-error').textContent = result.errors.slice(0, 5).join(' ');
@@ -1806,7 +1806,7 @@ $('#preview-cas').addEventListener('click', async () => {
     let result;
     let responseOk = true;
     if (casMode === 'browser') {
-      const { previewBrowserCas } = await import('./cas-browser.mjs?v=957ef7c03747');
+      const { previewBrowserCas } = await import('./cas-browser.mjs?v=1aa14dcc379e');
       result = await previewBrowserCas(file, password);
     } else {
       const bytes = new Uint8Array(await file.arrayBuffer());

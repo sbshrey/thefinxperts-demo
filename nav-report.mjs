@@ -1,4 +1,4 @@
-import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=957ef7c03747';
+import { estimateNavValue, realDate, validUnits } from './nav-estimate.mjs?v=1aa14dcc379e';
 
 const HEADER = 'Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date';
 const MONTHS = new Map(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -114,8 +114,8 @@ export function prepareNavReportRefresh(saved, report, now = new Date()) {
     const originalValue = row.navEstimate?.originalValue ?? row.value;
     const originalAsOf = row.navEstimate?.originalAsOf ?? row.asOf;
     portfolio.holdings[index] = { ...row, value, asOf: candidate.asOf,
+      valuationOrigin: 'amfi_nav_report',
       navEstimate: { originalValue, originalAsOf, nav: candidate.nav, navAsOf: candidate.asOf } };
-    delete portfolio.holdings[index].valuationOrigin;
     changes.push(`Holding ${index + 1}, saved ${row.name}; AMFI ${candidate.name} (code ${candidate.code}; ${!row.amfi && !row.isin ? 'unique full-name match' : 'identifier match'}): ${money(row.value)} (${row.asOf}) → ${money(value)} (${candidate.asOf}); ${row.units} saved units × NAV ${candidate.nav}`);
   }
   if (!changes.length) return { errors: [], repeated: true,

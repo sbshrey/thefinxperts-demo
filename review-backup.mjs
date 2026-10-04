@@ -1,10 +1,10 @@
-import { validMixPlan } from './mix-plan.mjs?v=957ef7c03747';
-import { validReserve } from './reserve.mjs?v=957ef7c03747';
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=957ef7c03747';
-import { validNavEstimate } from './nav-estimate.mjs?v=957ef7c03747';
-import { validShares, validStockEstimate } from './stock-estimate.mjs?v=957ef7c03747';
-import { validCostBasis } from './cost-basis.mjs?v=957ef7c03747';
-import { validBrokerAccountLabel } from './broker-account.mjs?v=957ef7c03747';
+import { validMixPlan } from './mix-plan.mjs?v=1aa14dcc379e';
+import { validReserve } from './reserve.mjs?v=1aa14dcc379e';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=1aa14dcc379e';
+import { validNavEstimate } from './nav-estimate.mjs?v=1aa14dcc379e';
+import { validShares, validStockEstimate } from './stock-estimate.mjs?v=1aa14dcc379e';
+import { validCostBasis } from './cost-basis.mjs?v=1aa14dcc379e';
+import { validBrokerAccountLabel } from './broker-account.mjs?v=1aa14dcc379e';
 const MAX_BYTES = 2_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
@@ -77,7 +77,8 @@ export function parseReviewBackup(text) {
         (holding.entryOrigin !== undefined && !Object.hasOwn(ENTRY_ORIGINS, holding.entryOrigin)) ||
         (holding.accountLabel !== undefined && (!['broker_csv', 'broker_xlsx'].includes(holding.entryOrigin) ||
           !validBrokerAccountLabel(holding.accountLabel))) ||
-        (holding.valuationOrigin !== undefined && !['manual', 'broker_xlsx', 'broker_csv'].includes(holding.valuationOrigin)) ||
+        (holding.valuationOrigin !== undefined && !['manual', 'broker_xlsx', 'broker_csv', 'amfi_nav_report'].includes(holding.valuationOrigin)) ||
+        (holding.valuationOrigin === 'amfi_nav_report' && (holding.type !== 'Mutual fund' || !holding.navEstimate)) ||
         (holding.amc != null && !isName(holding.amc, 200)) ||
         (holding.isin != null && (typeof holding.isin !== 'string' || !ISIN.test(holding.isin))) ||
         (holding.amfi != null && (typeof holding.amfi !== 'string' || !AMFI.test(holding.amfi))) ||
