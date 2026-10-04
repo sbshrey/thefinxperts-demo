@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=f1c4d4254c74';
-import { parseWhatIfMix } from './mix-plan.mjs?v=f1c4d4254c74';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=f1c4d4254c74';
-import { reserveMonths } from './reserve.mjs?v=f1c4d4254c74';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=bbabee0a4417';
+import { parseWhatIfMix } from './mix-plan.mjs?v=bbabee0a4417';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=bbabee0a4417';
+import { reserveMonths } from './reserve.mjs?v=bbabee0a4417';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=f1c4d4254c74';
-import { asksForAdvice } from './question-scope.mjs?v=f1c4d4254c74';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=f1c4d4254c74';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=f1c4d4254c74';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f1c4d4254c74';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=f1c4d4254c74';
-import { parseAmount } from './assistant-clarify.mjs?v=f1c4d4254c74';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=f1c4d4254c74';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=bbabee0a4417';
+import { asksForAdvice } from './question-scope.mjs?v=bbabee0a4417';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=bbabee0a4417';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=bbabee0a4417';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=bbabee0a4417';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=bbabee0a4417';
+import { parseAmount } from './assistant-clarify.mjs?v=bbabee0a4417';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=bbabee0a4417';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=f1c4d4254c74';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=bbabee0a4417';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -425,6 +425,15 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer('This browser review does not connect to a broker account. You can upload a supported holdings CSV or XLSX export, inspect the mapped rows and dates, and confirm only the holdings you recognize.',
       'The public site reads selected holdings files in this browser and has no broker login or account synchronization.',
       'An export is a dated snapshot; it may omit accounts or assets and does not update itself. Check its value columns and report date before confirmation.', '#report-help-dialog', 'Get a broker report');
+  const batchRefreshQuestion = /\b(?:refresh|update|sync)\b.{0,60}\b(?:portfolio|holdings|investments|all values)\b/.test(input) ||
+    /\b(?:portfolio|holdings|investments)\b.{0,40}\b(?:refresh|update|sync)\b/.test(input) ||
+    /\b(?:cams|cas|statement)\b.{0,25}\b(?:old|outdated|stale|newer)\b/.test(input) ||
+    /\b(?:newer|latest|recent)\b.{0,20}\b(?:cas|statement)\b.{0,35}\b(?:broker|holdings?)\b/.test(input);
+  if (batchRefreshQuestion)
+    return answer(`${source === 'demo' ? 'This is a fictional example; start your own review before adding files. ' : ''}I cannot fetch today's values or sync accounts here. For mutual funds, choose a newer original CAS or CAMS Active Statement; for directly held stocks, choose a broker holdings CSV or XLSX with a current market-value column. Upload each source in this browser, check its as-of date and account, then preview and confirm matched updates. Check possible overlaps before adding new positions. The review recalculates only after you confirm a change.`,
+      `${valid.length} entered holding ${valid.length === 1 ? 'row' : 'rows'}; ${result.asOfSummary}. No source was fetched or holding updated by this answer.`,
+      `A report is a dated account snapshot, not a live quote. CAS, CAMS and broker files can cover different accounts or omit assets; a newer file must be reconciled before changing this review. ${coverageNote}`,
+      source === 'demo' ? '#start-review' : '#input-choice', source === 'demo' ? 'Start my review' : 'Upload newer report');
   if (/\b(?:sector|industry|industries|sectoral)\b/.test(input) &&
       /\b(?:allocation|exposure|split|mix|breakdown|diversif\w*|concentration|holdings?|portfolio|funds?|stocks?)\b/.test(input)) {
     const scope = namesStocks && !namesFunds ? 'direct stocks' : namesFunds && !namesStocks ? 'mutual funds' : 'portfolio';
@@ -1090,7 +1099,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${rupeesWithPaise(change.coveredValue)} entered current value minus ${rupeesWithPaise(change.invested)} entered cost for the covered positions; value dates ${change.earliestValueDate}${change.latestValueDate !== change.earliestValueDate ? ` to ${change.latestValueDate}` : ''}. ${change.missingCount} ${change.missingCount === 1 ? 'row' : 'rows'} excluded${change.costAfterValueCount ? `, including ${change.costAfterValueCount} with cost checked after the value date` : ''}.`,
       'This is not total lifetime profit or an annual return. It excludes sold positions, cash distributions, taxes, exit loads, rows without checked cost or dated value, and cost checked after the value date.', '#holdings', 'Check covered holdings');
   }
-  if (/\b(nav|share price|stock price|market price|live quote|live price|ltp|(?:current|today(?:’s|'s)?|latest).{0,25}(?:price|nav|quote|ltp))\b/.test(input)) {
+  if (/\b(nav|share prices?|stock prices?|market prices?|live quotes?|live prices?|ltp|(?:current|today(?:’s|'s)?|latest).{0,25}(?:prices?|nav|quotes?|ltp))\b/.test(input)) {
     const fundQuestion = /\b(?:nav|mutual fund|scheme|fund)\b/.test(input);
     const stockQuestion = /\b(?:stock|share price|ltp)\b/.test(input);
     const type = fundQuestion && !stockQuestion ? 'Mutual fund' :
@@ -1107,7 +1116,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const next = fund ? ` If you checked the exact scheme NAV and still own its ${selected.units} statement units, say “set NAV of holding ${number} to ₹125.4321 as of YYYY-MM-DD” to preview a dated estimate.` :
       stock ? ` If you checked the exact listed share and still own its ${selected.shares} entered shares, say “set price of holding ${number} to ₹125.43 as of YYYY-MM-DD” to preview a dated estimate.` :
         candidates.length > 1 ? ' Name one holding or use its displayed number so I can give the relevant update step.' : '';
-    return answer('I do not have a live market feed here. Use a dated value from your broker or fund statement, then update the holding in this browser.' + next,
+    return answer('I do not have a live market feed here. Use a dated value from your broker or fund statement, then update the holding in this browser.' +
+      (fundQuestion ? ' For NAV, check the exact scheme, plan, option and publication date with its AMC or from AMFI’s home page.' : '') + next,
       result.asOfSummary,
       'A recent statement value may still differ from the current market value. A checked NAV or share price times old units or shares is only an estimate until you confirm the quantity has not changed.', '#holdings', 'Check entered dates');
   }
