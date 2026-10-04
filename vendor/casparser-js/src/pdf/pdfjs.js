@@ -21,8 +21,8 @@
  * that can do better should report `chars` itself and this step is skipped.
  */
 
-import { CASParseError, IncorrectPasswordError } from '../exceptions.js?v=e78de913e294';
-import { isNonLatinFont, stripFontSubsetPrefix } from './backend.js?v=e78de913e294';
+import { CASParseError, IncorrectPasswordError } from '../exceptions.js?v=da01a4be5c8f';
+import { isNonLatinFont, stripFontSubsetPrefix } from './backend.js?v=da01a4be5c8f';
 
 // Polyfill Promise.withResolvers for Node < 22 or older runtimes where
 // pdfjs-dist relies on Promise.withResolvers.
