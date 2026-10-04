@@ -1,17 +1,17 @@
 import { hasDatedFundTer, planFromName, positionsByIsin, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=d375de8febb6';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=d375de8febb6';
-import { reserveMonths } from './reserve.mjs?v=d375de8febb6';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=6176787af317';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=6176787af317';
+import { reserveMonths } from './reserve.mjs?v=6176787af317';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=d375de8febb6';
-import { asksForAdvice } from './question-scope.mjs?v=d375de8febb6';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=d375de8febb6';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=d375de8febb6';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=d375de8febb6';
-import { parseAmount } from './assistant-clarify.mjs?v=d375de8febb6';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=d375de8febb6';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=6176787af317';
+import { asksForAdvice } from './question-scope.mjs?v=6176787af317';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=6176787af317';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=6176787af317';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=6176787af317';
+import { parseAmount } from './assistant-clarify.mjs?v=6176787af317';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=6176787af317';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure } from './fund-disclosure.mjs?v=d375de8febb6';
+  matchFundDisclosure } from './fund-disclosure.mjs?v=6176787af317';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -258,7 +258,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'Names and expense ratios are not independently verified. A plan label alone does not establish current TER, tax, exit load, service value or whether to switch.', '#holdings', 'Check fund plan labels');
   }
 
-  const openReviewQuestion = /^(?:what should i do(?: next)?|how (?:(?:can|do|should) i|to) (?:improve|optimi[sz]e) (?:my )?(?:portfolio|review|investments?)(?: for (?:my )?(?:age and goal|age|goal))?|where should i start)[?.!]*$/.test(input) ||
+  const openReviewQuestion = /^(?:what should i do(?: next)?|how (?:(?:can|do|should) i|to) (?:improve|optimi[sz]e) (?:my )?(?:portfolio|review|investments?)(?: for (?:my )?(?:age and goal|age|goal))?|where should i start|what can i improve|which holdings? need(?:s)? (?:my )?attention first)[?.!]*$/.test(input) ||
     /^(?:what should i check(?: first)? to (?:improve|optimi[sz]e) (?:my )?(?:portfolio|investments?)|what (?:is|looks) wrong with (?:my|the) (?:portfolio|investments?)|can you help me improve (?:my )?(?:portfolio|investments?))[?.!]*$/.test(input);
   if (openReviewQuestion) {
     if (!valid.length) return answer('Start by adding and confirming a current holding from a supported statement or broker report. Then I can show what the entered portfolio contains and what needs checking.',
@@ -298,9 +298,9 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
   }
 
-  const goalRiskQuestion = /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit)\b/.test(input) &&
-    (/(?:\b(?:goal|retirement)\b.{0,60}\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit)\b)/.test(input) ||
-      /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit)\b.{0,60}\b(?:goal|retirement|my age|age and goal)\b/.test(input));
+  const goalRiskQuestion = /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match)\b/.test(input) &&
+    (/(?:\b(?:goal|retirement)\b.{0,60}\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match)\b)/.test(input) ||
+      /\b(?:safe|risky|risk|suitable|appropriate|right|balance|balanced|aligned|fit|match)\b.{0,60}\b(?:goal|retirement|my age|age and goal)\b/.test(input));
   if (goalRiskQuestion && !/\b(?:buy|sell|switch|redeem|rebalance|replace|increase|reduce|move|shift|trade|invest|allocate|recommend|suggest|optimi[sz]e)\b/.test(input)) {
     if (goal?.confirmed !== true)
       return answer('Confirm the selected goal’s age, target and years until it is due before checking the exposure of its assigned holdings.',
@@ -464,7 +464,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       destination, 'Inspect source rows');
   }
   const nextSourceQuestion = /\b(?:what|which)\b.{0,60}\b(?:statements?|reports?|documents?|files?|sources?)\b.{0,55}\b(?:upload|add|need|next|missing|complete)\b/.test(input) ||
-    /\bwhat (?:should|can|do) i (?:upload|import)\b/.test(input);
+    /\bwhat (?:should|can|do) i (?:upload|import)\b/.test(input) ||
+    /\b(?:what(?:'s| is) missing from my portfolio|have i included (?:all|everything)(?: i own)?|is (?:my|this) portfolio (?:complete|missing anything))\b/.test(input);
   if (nextSourceQuestion) {
     if (source === 'demo') return answer(
       'This is a fictional example, so it cannot identify a statement missing from your accounts. Start my review, then choose Get a report or describe a holding you own.',
@@ -606,11 +607,12 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(Number(row.value))} ÷ ${money(result.total)} entered value; row #${number} is ${row.type}; ${row.asOf ? `supplied value date ${row.asOf}` : 'no supplied value date'}.`,
       `This is one supplied, dated row, not a verified current price, fund look-through, performance result or suitability verdict. ${coverageNote}`, '#holdings', 'Check this holding');
   }
-  const portfolioRiskQuestion = /\b(?:risks?|risky|safe|volatile|volatility|balanced?)\b/.test(input) &&
+  const portfolioRiskQuestion = (/\b(?:risks?|risky|safe|volatile|volatility|balanced?)\b/.test(input) &&
     (/\b(?:portfolio|holdings|investments|asset mix|allocation)\b/.test(input) ||
-      /\bam i taking too much risk\b/.test(input)) &&
-    !/\b(?:fall|falls|drop|drops|stress|what if)\b/.test(input);
-  if (portfolioRiskQuestion) {
+      /\bam i taking too much risk\b/.test(input))) ||
+    /\b(?:biggest|main|top) risk\b/.test(input);
+  const descriptiveRiskQuestion = portfolioRiskQuestion && !/\b(?:fall|falls|drop|drops|stress|what if)\b/.test(input);
+  if (descriptiveRiskQuestion) {
     if (!valid.length) return answer('Add and confirm at least one holding with a value and valuation date before I can describe your entered portfolio exposure.',
       'No positive confirmed holding value is entered.',
       'This cannot establish your personal risk capacity or whether an investment is safe.', '#holdings', 'Add a holding');
@@ -628,7 +630,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     const largest = (scoped ? result.topGoalPositions : result.topPositions)[0];
     const dateChecks = valuationRowsNeedingCheck(rows, today);
     const summary = scoped ? `For ${goal.name}, the assigned holdings` : `${lead}the entered holdings`;
-    return answer(`${summary} are labelled Equity ${percent(assets.Equity, total)}, Debt ${percent(assets.Debt, total)}, Gold ${percent(assets.Gold, total)} and Other ${percent(assets.Other, total)}. ` +
+    return answer(`${/\b(?:biggest|main|top) risk\b/.test(input) ? 'I cannot rank your personal risks from a holdings snapshot. These are visible exposure checks: ' : ''}${summary} are labelled Equity ${percent(assets.Equity, total)}, Debt ${percent(assets.Debt, total)}, Gold ${percent(assets.Gold, total)} and Other ${percent(assets.Other, total)}. ` +
       `The largest entered position is ${largest.name} at ${percent(largest.value, total)} of ${scoped ? 'assigned' : 'entered'} value. ` +
       `${dateChecks.length ? `${dateChecks.length} ${dateChecks.length === 1 ? 'value date needs' : 'value dates need'} a check. ` : ''}` +
       `${assets.Other ? `${money(assets.Other)} has an unresolved asset label. ` : ''}` +
@@ -637,6 +639,24 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(largest.value)} ÷ ${money(total)} for the largest grouped position. ${result.asOfSummary}.`,
       `Fund constituents, other risks and holdings outside this review are not verified. A fund-house summary can contain several schemes. This is not a risk score, safety or suitability verdict, or allocation or trade instruction. ${coverageNote}`,
       scoped ? '#goals' : '#holdings', scoped ? 'Review this goal' : 'Inspect holdings');
+  }
+  if (/\b(?:too much|overexpos\w*|concentrat\w*)\b.{0,40}\b(?:one|single|a)?\s*(?:stock|share)\b|\b(?:one|single)\s+(?:stock|share)\b.{0,40}\b(?:too much|overexpos\w*|concentrat\w*)\b/.test(input)) {
+    if (goalScopeRequested) {
+      const unavailable = unavailableGoalScope();
+      if (unavailable) return unavailable;
+    }
+    const rows = valid.filter(row => row.type === 'Stock').flatMap(row => {
+      const share = goalScopeRequested ? goalShare(goal, row.id) : 100;
+      return share ? [{ ...row, value: Number(row.value) * share / 100 }] : [];
+    });
+    if (!rows.length) return answer(`No directly held stock is ${goalScopeRequested ? `assigned to ${goal.name}` : 'entered in this review'}. Fund-owned shares remain unknown without dated scheme disclosures.`,
+      `0 positive ${goalScopeRequested ? 'assigned ' : ''}direct-stock rows.`,
+      `This cannot establish all your stock exposure or whether any position is suitable. ${coverageNote}`, '#holdings', 'Check stock holdings');
+    const largest = positionsByIsin(rows)[0];
+    const total = goalScopeRequested ? result.goalTotal : result.total;
+    return answer(`${largest.name} is the largest directly held stock in ${goalScopeRequested ? goal.name : 'this review'} at ${money(largest.value)}, or ${percent(largest.value, total)} of ${goalScopeRequested ? 'assigned' : 'entered'} value. I cannot tell whether that is too much for you.`,
+      `${money(largest.value)} ÷ ${money(total)} ${goalScopeRequested ? 'assigned' : 'entered'} value; exact matching supplied ISINs are grouped.`,
+      `This excludes unverified shares inside funds, other accounts and your ability to bear a loss. It does not set a safe threshold or suggest a trade. ${coverageNote}`, goalScopeRequested ? '#goals' : '#holdings', 'Inspect this stock');
   }
   if (/\b(?:largest|biggest|top)\s+(?:holding|position)\b/.test(input) &&
       /\b(?:fall|falls|fell|drop|drops|dropped|halve|halves|halved)\b/.test(input)) {
@@ -689,7 +709,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `${money(largest.value)} in ${largest.entries} ${largest.entries === 1 ? 'entry' : 'entries'} × ${dropPct}% = ${money(loss)} hypothetical loss; ${money(total)} entered ${scoped ? 'assigned ' : ''}value − ${money(loss)} = ${money(after)}. Exact matching supplied ISINs and classifications are grouped. ${result.asOfSummary}.`,
       `This is a one-time arithmetic what-if, not a forecast, risk score or trade instruction. Fund constituents, other price moves, taxes and unentered holdings are unknown. ${coverageNote}`, scoped ? '#goals' : '#holdings', 'Review entered positions');
   }
-  if (/\b(?:on track|can i retire|ready to retire|enough to retire|afford to retire)\b/.test(input)) {
+  if (/\b(?:on track|can i retire|ready to retire|enough to retire|afford to retire|(?:can|will) i reach (?:my|the|this)?\s*(?:\w+\s+){0,3}goal)\b/.test(input)) {
     if (/\bretir\w*\b/.test(input) && !/\bretir\w*\b/i.test(goal?.name || ''))
       return answer(`The selected goal is ${goal?.name || 'unfinished'}, not Retirement. Select or create your retirement goal so this question uses its own target and assigned holdings.`,
         'Only the selected goal can supply a target, horizon and assigned value.',
@@ -1171,6 +1191,28 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         (visible.directCovered ? `; matching direct stocks ${money(visible.directCovered)} dated ${visible.directDates.join(', ')}` : ''),
       `This is a mixed-date, partial look-through of user-supplied values and AMC sheets.${olderCount ? ` ${olderCount} older or undated scheme ${olderCount === 1 ? 'sheet was' : 'sheets were'} excluded.` : ''} Unmatched securities, other fund assets, later trades and missing investments are unknown. It does not establish current prices, full concentration or a trade to make.`, '#holdings', 'Inspect dated sources');
   }
+  if (source === 'demo' && !goalScopeRequested && disclosureQuestion) {
+    const issuers = new Map();
+    for (const row of valid.filter(item => item.type === 'Mutual fund' && item.exposure)) {
+      for (const [issuer, weight] of Object.entries(row.exposure)) {
+        if (issuer === 'Other issuers' || !Number.isFinite(weight) || weight <= 0 || weight > 1) continue;
+        const list = issuers.get(issuer) || [];
+        list.push({ name: row.name, weight, value: Number(row.value), asOf: row.asOf });
+        issuers.set(issuer, list);
+      }
+    }
+    const shared = [...issuers.entries()].filter(([, rows]) => rows.length > 1)
+      .sort((a, b) => b[1].reduce((sum, row) => sum + row.value * row.weight, 0) -
+        a[1].reduce((sum, row) => sum + row.value * row.weight, 0))[0];
+    if (shared) {
+      const [issuer, rows] = shared;
+      const direct = valid.some(row => row.type === 'Stock' && row.name === issuer);
+      return answer(`In the fictional example, ${issuer} appears in ${rows.length} entered funds: ${rows.map(row =>
+        `${row.name} ${percent(row.weight, 1)}`).join('; ')}.${direct ? ' It is also held directly.' : ''} These named weights show only one shared company, not total fund similarity.`,
+      rows.map(row => `${row.name}: ${money(row.value)} × ${percent(row.weight, 1)} from its fictional constituent sample dated ${row.asOf}`).join('; '),
+      'These are fictional, partial constituent weights. Unnamed holdings could add overlap; real funds need their own current, checked AMC disclosures. No trade or suitability conclusion follows.', '#fund-disclosure-card', 'Check fund constituents');
+    }
+  }
   if (fundSimilarityQuestion || /\b(overlaps?|overlapping|duplicates?|same stocks?|same funds?|twice|double.count(?:ed|ing)?)\b/.test(input))
   {
     const byInstrument = new Map();
@@ -1292,8 +1334,8 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `Both results are fixed-assumption illustrations, not forecasts or monthly savings instructions. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
       '#goals', 'Review monthly plan');
   }
-  const monthlyGoalQuestion = /\b(?:per month|monthly)\b/.test(input) &&
-    /\b(?:goal|target|gap)\b/.test(input);
+  const monthlyGoalQuestion = /\b(?:per month|each month|every month|a month|monthly)\b/.test(input) &&
+    (/\b(?:goal|target|gap|retirement)\b/.test(input) || namedGoal);
   const straightLineQuestion = monthlyGoalQuestion &&
     (/\b(?:simple|straight[ -]line|today|without (?:returns?|growth)|zero growth)\b/.test(input) ||
       !confirmedGoalAssumptions(goal) && !/\b(?:future|project\w*|growth|inflation)\b/.test(input));
@@ -1420,7 +1462,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       `The two goal-date rupee amounts refer to different dates. Both results use fixed assumptions, not forecasts or savings instructions. Taxes, fees, losses, access to money and unentered holdings may change outcomes. ${coverageNote}`,
       '#goals', 'Review goal timing');
   }
-  const futureGoalQuestion = /\b(?:future|project(?:ion|ed)?|goal[ -]date|in \d+ years|per month|monthly)\b/.test(input) &&
+  const futureGoalQuestion = /\b(?:future|project(?:ion|ed)?|goal[ -]date|in \d+ years|per month|each month|every month|a month|monthly)\b/.test(input) &&
     /\b(?:goal|target|gap|need|cost|contribut(?:ion|e)|retirement)\b/.test(input);
   if (futureGoalQuestion) {
     if (goal?.confirmed !== true) return answer('Confirm the selected goal’s age, target amount and time horizon before using a future illustration.',
