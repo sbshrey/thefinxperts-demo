@@ -1,19 +1,19 @@
 import { analyzePortfolio, hasDatedFundTer, planFromName, positionsByIsin, summarizeFundCost, summarizeFundGroups, summarizeFundHouses, valuationDateIssue,
-  valuationRowsNeedingCheck } from './analysis.mjs?v=0e4dd62e8c2d';
-import { parseWhatIfMix } from './mix-plan.mjs?v=0e4dd62e8c2d';
-import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=0e4dd62e8c2d';
-import { reserveMonths } from './reserve.mjs?v=0e4dd62e8c2d';
+  valuationRowsNeedingCheck } from './analysis.mjs?v=f51f8897a573';
+import { parseWhatIfMix } from './mix-plan.mjs?v=f51f8897a573';
+import { rupeesWithPaise, summarizeUnrealizedChange } from './cost-basis.mjs?v=f51f8897a573';
+import { reserveMonths } from './reserve.mjs?v=f51f8897a573';
 import { calculateGoalScenario, calculateStraightLineGap,
-  confirmedGoalAssumptions } from './goal-scenario.mjs?v=0e4dd62e8c2d';
-import { asksForAdvice } from './question-scope.mjs?v=0e4dd62e8c2d';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=0e4dd62e8c2d';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=0e4dd62e8c2d';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=0e4dd62e8c2d';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=0e4dd62e8c2d';
-import { parseAmount } from './assistant-clarify.mjs?v=0e4dd62e8c2d';
-import { validatedStatementSipSummary } from './cas-performance.mjs?v=0e4dd62e8c2d';
+  confirmedGoalAssumptions } from './goal-scenario.mjs?v=f51f8897a573';
+import { asksForAdvice } from './question-scope.mjs?v=f51f8897a573';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=f51f8897a573';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=f51f8897a573';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=f51f8897a573';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=f51f8897a573';
+import { parseAmount } from './assistant-clarify.mjs?v=f51f8897a573';
+import { validatedStatementSipSummary } from './cas-performance.mjs?v=f51f8897a573';
 import { compareFundDisclosures, datedSourceIssue, estimateVisibleIssuerExposure,
-  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=0e4dd62e8c2d';
+  matchFundDisclosure, sharedFundIssuers } from './fund-disclosure.mjs?v=f51f8897a573';
 
 const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const percent = (part, whole) => whole ? `${(part / whole * 100).toFixed(1)}%` : '0%';
@@ -192,6 +192,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     ` If none of the ${money(result.goalAccessCheck.value)} in linked other investments can be used for this goal, the gap in today's rupees would be ${money(result.goalGapIfOtherUnavailable)}. Check their terms; this what-if does not establish that the money is locked.` : '';
   const answer = (text, basis, limitation, href = '#holdings', action = 'Check my holdings') =>
     ({ text, basis, limitation, href, action });
+  const absoluteHorizonWhatIf = /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in|i\s+(?:reach|hit)\s+(?:my|the)\s+goal\s+in|i\s+retire\s+in)\s+(\d{1,3})\s+years?(?:\s+instead of\s+(\d{1,3})\s+years?)?[?.!]*$/.exec(input);
   const mentionsGoal = name => typeof name === 'string' && name.trim() &&
     new RegExp(`(?:^|\\W)${name.trim().toLocaleLowerCase('en-IN').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|\\W)`).test(input);
   const namedGoal = mentionsGoal(goal?.name);
@@ -220,6 +221,17 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
     return answer(`You named ${otherNamedGoal.name}, but ${goal?.name || 'another goal'} is selected. Say “select goal ${otherNamedGoal.name}”, then ask again so I use that goal’s assignments.`,
       `The current calculation belongs to the selected goal ${goal?.name || 'unnamed'}; no value for ${otherNamedGoal.name} was used.`,
       'Goal totals and allocations must come from the goal you actually mean.', '#goals', 'Select the named goal');
+
+  const statedHorizon = /\b(?:in|within)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+years?\b/.exec(input);
+  const horizonWords = { one: 1, two: 2, three: 3, four: 4, five: 5,
+    six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  const statedYears = statedHorizon && (horizonWords[statedHorizon[1]] || Number(statedHorizon[1]));
+  if (goal?.confirmed === true && statedHorizon && !absoluteHorizonWhatIf &&
+      /\b(?:goal|money|portfolio|investments?|mix|allocation|retire|retirement|target|gap|future|monthly|sip)\b/.test(input) &&
+      statedYears !== Number(goal.years))
+    return answer(`You mentioned ${statedHorizon[1]} years, but the selected ${goal.name} goal is saved for ${goal.years} years. Is this a separate goal, or has its date changed? Select or update the intended goal before I use its mix or target for this question.`,
+      `Question horizon ${statedHorizon[1]} years; selected goal horizon ${goal.years} years. No goal scenario or suitability conclusion was calculated.`,
+      'A different date can change the target and which holdings belong to it. Age and horizon alone cannot establish a suitable mix.', '#goals', 'Review goal timing');
 
   if (goalScopeRequested && /\b(?:fees?|expense ratios?|ter|fund costs?)\b/.test(input)) {
     const unavailable = unavailableGoalScope();
@@ -427,7 +439,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       'This browser review cannot assess suitability or choose a trade or personal allocation.', '#goals', 'Review selected goal');
   }
 
-  const suitabilityWords = '(?:safe|safer|risky|risk|suitable|appropriate|right|good|balance|balanced|aligned|fit|match|too high|too much|excessive|overexposed)';
+  const suitabilityWords = '(?:safe|safer|risky|risk|suitable|appropriate|right|good|okay|ok|balance|balanced|aligned|fit|match|too high|too much|excessive|overexposed)';
   const riskRankingQuestion = /\b(?:which|what)\b.{0,45}\b(?:holding|investment|fund|stock)s?\b.{0,40}\b(?:most risky|riskiest|least risky|highest risk)\b/.test(input);
   const goalRiskQuestion = new RegExp(`\\b${suitabilityWords}\\b`).test(input) &&
     (new RegExp(`\\b(?:goal|retirement)\\b.{0,65}\\b${suitabilityWords}\\b`).test(input) ||
@@ -457,11 +469,6 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
         `Added the assigned shares of ${rows.length} identified ${namedOther.label} ${rows.length === 1 ? 'row' : 'rows'}; ${result.asOfSummary}.`,
         `Entered balances and goal links are unverified. This is gross value, not confirmed spendable money or a safety verdict. ${coverageNote}`, '#holdings', 'Check account terms');
     }
-    const statedHorizon = /\b(?:goal|retirement)\b.{0,20}\b(?:in|due in)\s+(\d{1,2})\s+years?\b/.exec(input);
-    if (statedHorizon && Number(statedHorizon[1]) !== Number(goal.years))
-      return answer(`You asked about a goal in ${statedHorizon[1]} years, but ${goal.name} is set for ${goal.years} years. Check the selected goal’s horizon before using its exposure for this question.`,
-        `The question says ${statedHorizon[1]} years; the confirmed selected goal says ${goal.years} years.`,
-        'A different date can change the goal target and which holdings you intend to use.', '#goals', 'Check goal timing');
     if (!result.goalTotal)
       return answer(`Link the holdings you intend to count toward ${goal.name} before checking its exposure.`,
         `No entered holding value is assigned to ${goal.name}.`,
@@ -1788,7 +1795,7 @@ export function answerReviewQuestion(question, { holdings, goal, goals, source, 
       return answer('Select or create the retirement goal you mean before comparing retirement dates.',
         `The selected goal is ${goal?.name || 'unnamed'}, not a confirmed retirement goal.`,
         'A different goal may use different holdings, target and horizon.', '#goals', 'Select retirement goal');
-    const absolute = /^(?:what if|test|compare)\s+(?:(?:my|the)\s+goal\s+(?:is|were|was)\s+in|i\s+(?:reach|hit)\s+(?:my|the)\s+goal\s+in|i\s+retire\s+in)\s+(\d{1,3})\s+years?(?:\s+instead of\s+(\d{1,3})\s+years?)?[?.!]*$/.exec(input);
+    const absolute = absoluteHorizonWhatIf;
     const later = /^(?:what if|test|compare)\s+i\s+(?:delay|postpone)\s+(?:my|the)\s+goal\s+by\s+(\d{1,3})\s+years?[?.!]*$/.exec(input) ||
       /^(?:what if|test|compare)\s+i\s+retire\s+(\d{1,3})\s+years?\s+later[?.!]*$/.exec(input);
     const earlier = /^(?:what if|test|compare)\s+i\s+(?:bring|move)\s+(?:my|the)\s+goal\s+(?:forward|earlier)\s+by\s+(\d{1,3})\s+years?[?.!]*$/.exec(input) ||

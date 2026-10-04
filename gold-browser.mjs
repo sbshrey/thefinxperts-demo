@@ -4,7 +4,7 @@ export async function previewGoldStatement(file, password = '') {
     return { holding: null, errors: ['Choose a digital-gold statement PDF smaller than 15 MB.'] };
   const bytes = await file.arrayBuffer();
   return new Promise(resolve => {
-    const worker = new Worker(new URL('./gold-browser-worker.mjs?v=0e4dd62e8c2d', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./gold-browser-worker.mjs?v=f51f8897a573', import.meta.url), { type: 'module' });
     let settled = false;
     const finish = result => {
       if (settled) return;
