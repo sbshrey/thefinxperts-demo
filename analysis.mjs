@@ -1,8 +1,9 @@
-import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=da01a4be5c8f';
-import { compareMixPlan } from './mix-plan.mjs?v=da01a4be5c8f';
-import { goalShare } from './goals.mjs?v=da01a4be5c8f';
-import { reserveMonths } from './reserve.mjs?v=da01a4be5c8f';
-import { summarizeUnrealizedChange } from './cost-basis.mjs?v=da01a4be5c8f';
+import { calculateGoalScenario, calculateEquityShockScenario, compareEnteredLossLimits, confirmedGoalAssumptions } from './goal-scenario.mjs?v=9001bdd7691c';
+import { compareMixPlan } from './mix-plan.mjs?v=9001bdd7691c';
+import { goalShare } from './goals.mjs?v=9001bdd7691c';
+import { reserveMonths } from './reserve.mjs?v=9001bdd7691c';
+import { formatGoalHorizon, goalMonths } from './goal-horizon.mjs?v=9001bdd7691c';
+import { summarizeUnrealizedChange } from './cost-basis.mjs?v=9001bdd7691c';
 
 /** Pure, deliberately narrow calculations for the portfolio prototype. */
 export const sampleHoldings = [
@@ -172,7 +173,7 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
   }, { value: 0, count: 0 });
   const years = Number(goal.years);
   const target = Number(goal.target);
-  const validGoal = goal.confirmed !== false && Number.isFinite(years) && years > 0 &&
+  const validGoal = goal.confirmed !== false && goalMonths(years) !== null &&
     Number.isFinite(target) && target > 0;
   const scenario = validGoal && goalTotal && !goalDateCheck.count && !goalAccessCheck.count && confirmedGoalAssumptions(goal) ?
     calculateGoalScenario(goalTotal, goal) : null;
@@ -327,9 +328,9 @@ export function analyzePortfolio(holdings, goal = { years: 3, target: 2000000 },
 
   if (goalExposureReady && years <= 5 && goalEquityPct >= 60) {
     findings.push({ key: 'horizon', tone: 'amber', label: 'Goal timing', title: 'The linked goal is relatively near',
-      detail: `${goalEquityPct.toFixed(0)}% of the holdings assigned to this goal is equity, while the goal is ${years} ${years === 1 ? 'year' : 'years'} away. Consider how much loss the goal can absorb.`,
+      detail: `${goalEquityPct.toFixed(0)}% of the holdings assigned to this goal is equity, while the goal is ${formatGoalHorizon(years)} away. Consider how much loss the goal can absorb.`,
       question: 'If equity falls before this goal date, how much of the goal cost can you still meet?',
-      basis: `${rupees(goalEquityValue)} labelled Equity ÷ ${rupees(goalTotal)} linked to this goal = ${goalEquityPct.toFixed(1)}%; entered horizon ${years} ${years === 1 ? 'year' : 'years'}.`,
+      basis: `${rupees(goalEquityValue)} labelled Equity ÷ ${rupees(goalTotal)} linked to this goal = ${goalEquityPct.toFixed(1)}%; entered horizon ${formatGoalHorizon(years)}.`,
       limitation: 'Asset labels and values are as entered; this does not assess your cash reserve, liabilities or capacity for loss.' });
   }
   if (goalExposureReady && largestGoalPosition && largestGoalPosition.granularity !== 'fund_house' &&

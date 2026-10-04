@@ -1,8 +1,9 @@
-import { parseAmount } from './assistant-clarify.mjs?v=da01a4be5c8f';
-import { validShares } from './stock-estimate.mjs?v=da01a4be5c8f';
-import { validUnits } from './nav-estimate.mjs?v=da01a4be5c8f';
-import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=da01a4be5c8f';
-import { parseMixPercentages } from './mix-plan.mjs?v=da01a4be5c8f';
+import { parseAmount } from './assistant-clarify.mjs?v=9001bdd7691c';
+import { validShares } from './stock-estimate.mjs?v=9001bdd7691c';
+import { validUnits } from './nav-estimate.mjs?v=9001bdd7691c';
+import { mentionsEmployeeStockAward } from './employee-awards.mjs?v=9001bdd7691c';
+import { parseMixPercentages } from './mix-plan.mjs?v=9001bdd7691c';
+import { goalMonths, yearsForMonths } from './goal-horizon.mjs?v=9001bdd7691c';
 
 /** Stage one clearly described holding. Missing facts remain missing until the investor supplies them. */
 export function parseBrowserHoldingStatement(message, today = new Date()) {
@@ -180,7 +181,7 @@ export function parseBrowserGoalSetup(message) {
   if (detail?.error) return detail;
   if (!detail?.facts || !['age', 'years', 'target'].every(field =>
     Object.hasOwn(detail.facts, field)))
-    return { error: 'Give your own age, years until this goal and target in today’s rupees together. For example: “I want to plan for retirement; I am 32, goal in 20 years, target ₹50 lakh in today’s rupees”.' };
+    return { error: 'Give your own age, months or years until this goal, and target in today’s rupees together. For example: “I want to plan for education; I am 32, goal in 6 months, target ₹50 lakh in today’s rupees”.' };
   return { goalName: start.goalName, facts: detail.facts };
 }
 
@@ -200,12 +201,12 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
     return { facts: { years }, clarification:
       `Your entered age ${currentAge} to intended retirement age ${intendedAge} is ${years} years. Check that horizon in the goal draft. ${nextBrowserGoalQuestion(goal, { ...pending, years })}` };
   }
-  const bundle = /^(?:i am |my age is |age )(\d{1,3})(?: years old)?\s*[,;]\s*(?:this )?goal (?:is )?in (\d{1,2}) years?\s*[,;]\s*target(?: in today['’]?s rupees)?(?: is)?\s+(?:₹\s*)?([\d,]+(?:\.\d{1,2})?)(?:\s*(lakh|crore))?(?:\s+in today['’]?s rupees)?[.!]?$/i.exec(input);
+  const bundle = /^(?:i am |my age is |age )(\d{1,3})(?: years old)?\s*[,;]\s*(?:this )?goal (?:is )?in (\d{1,3}) (years?|months?)\s*[,;]\s*target(?: in today['’]?s rupees)?(?: is)?\s+(?:₹\s*)?([\d,]+(?:\.\d{1,2})?)(?:\s*(lakh|crore))?(?:\s+in today['’]?s rupees)?[.!]?$/i.exec(input);
   if (bundle) {
     const age = Number(bundle[1]);
-    const years = Number(bundle[2]);
-    const target = amount(bundle[3], bundle[4]);
-    if (age < 18 || age > 100 || years < 1 || years > 50 ||
+    const years = bundle[3].toLowerCase().startsWith('month') ? yearsForMonths(Number(bundle[2])) : Number(bundle[2]);
+    const target = amount(bundle[4], bundle[5]);
+    if (age < 18 || age > 100 || goalMonths(years) === null ||
         !Number.isInteger(target) || target < 1000 || target > 1_000_000_000_000)
       return { error: 'Check your own age, the goal horizon and the target amount in today’s rupees before saving.' };
     return { facts: { age, years, target } };
@@ -262,10 +263,10 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
       return { error: `Choose your own ${growth ? 'growth' : 'inflation'} assumption from ${growth ? '-20% to 13%' : '-5% to 15%'}. This is an illustration, not a forecast.` };
     return { facts: { [growth ? 'returnPct' : 'inflationPct']: value } };
   }
-  const datedAmount = /^i (?:will )?(?:need|want) (?:₹\s*)?([0-9][0-9,]*(?:\.[0-9]{1,2})?)(?:\s*(lakh|crore))? in ([0-9]{1,2}) years?[.!]?$/i.exec(input);
+  const datedAmount = /^i (?:will )?(?:need|want) (?:₹\s*)?([0-9][0-9,]*(?:\.[0-9]{1,2})?)(?:\s*(lakh|crore))? in ([0-9]{1,3}) (years?|months?)[.!]?$/i.exec(input);
   if (datedAmount) {
-    const years = Number(datedAmount[3]);
-    if (years < 1 || years > 50) return { error: 'Check the number of years until this goal.' };
+    const years = datedAmount[4].toLowerCase().startsWith('month') ? yearsForMonths(Number(datedAmount[3])) : Number(datedAmount[3]);
+    if (goalMonths(years) === null) return { error: 'Check the time until this goal: use 1 to 600 whole months.' };
     return { facts: { years }, clarification: 'I staged the time horizon, but left the amount out because it could mean today’s purchasing power or the amount at the goal date. What amount would you need in today’s rupees? Reply “I need ₹50 lakh in today’s rupees”.' };
   }
   let field;
@@ -275,10 +276,14 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
   if (!field) {
     match = /^(?:years(?: until (?:the )?goal)? |in )([0-9]{1,2})(?: years?)?[.!]?$/i.exec(input);
     if (match) { field = 'years'; value = Number(match[1]); }
+    else {
+      match = /^(?:months(?: until (?:the )?goal)? |in )([0-9]{1,3})(?: months?)?[.!]?$/i.exec(input);
+      if (match) { field = 'years'; value = yearsForMonths(Number(match[1])); }
+    }
   }
   if (!field) {
-    match = /^(?:i (?:need|want) (?:it|this|my goal)|i (?:want|plan) to (?:retire|reach (?:this|my) goal)|my goal is|the goal is) in ([0-9]{1,2}) years?[.!]?$/i.exec(input);
-    if (match) { field = 'years'; value = Number(match[1]); }
+    match = /^(?:i (?:need|want) (?:it|this|my goal)|i (?:want|plan) to (?:retire|reach (?:this|my) goal)|my goal is|the goal is) in ([0-9]{1,3}) (years?|months?)[.!]?$/i.exec(input);
+    if (match) { field = 'years'; value = match[2].toLowerCase().startsWith('month') ? yearsForMonths(Number(match[1])) : Number(match[1]); }
   }
   if (!field) {
     match = /^(?:target|goal amount|amount needed)(?: is)? ₹?([0-9][0-9,]*(?:\.[0-9]{1,2})?)(?:\s*(lakh|crore))?[.!]?$/i.exec(input);
@@ -293,9 +298,10 @@ export function parseBrowserGoalFact(message, goal, pending = {}) {
     value = Number(input.replaceAll(',', ''));
   }
   if (!field) return null;
-  const limits = { age: [18, 100], years: [1, 50], target: [1000, 1_000_000_000_000] };
+  const limits = { age: [18, 100], years: [1 / 12, 50], target: [1000, 1_000_000_000_000] };
   const [min, max] = limits[field];
-  if (!Number.isFinite(value) || value < min || value > max || !Number.isInteger(value))
+  if (!Number.isFinite(value) || value < min || value > max ||
+      (field === 'years' ? goalMonths(value) === null : !Number.isInteger(value)))
     return { error: `Check the ${field === 'target' ? 'goal amount in rupees' : field} before using it.` };
   return { facts: { [field]: value } };
 }
@@ -313,7 +319,7 @@ function enteredAmount(raw) {
 export function nextBrowserGoalQuestion(goal, pending = {}) {
   if (!goal) return 'Name a goal by saying “create goal named Retirement”.';
   if (goal.age == null && pending.age == null) return 'How old are you now? Reply “I’m 32”, or give all three facts together: “I am 32, goal in 20 years, target 50 lakh in today’s rupees”.';
-  if (goal.years == null && pending.years == null) return `How many years until this goal? You can reply “I need it in 10 years”.${/\bretire(?:ment)?\b/i.test(goal.name || '') ? ' For a retirement goal, you can also say “I plan to retire at 60”; I will use the current age you entered.' : ''}`;
+  if (goal.years == null && pending.years == null) return `When will you need money for this goal? Reply “I need it in 6 months” or “I need it in 10 years”.${/\bretire(?:ment)?\b/i.test(goal.name || '') ? ' For a retirement goal, you can also say “I plan to retire at 60”; I will use the current age you entered.' : ''}`;
   if (goal.target == null && pending.target == null) return 'What amount would you need in today’s rupees? You can reply “I need ₹50 lakh in today’s rupees”.';
   return 'Check the goal facts shown above, then choose “Save goal facts”. A future illustration and a chosen asset mix are optional later.';
 }

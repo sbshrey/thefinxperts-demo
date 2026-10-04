@@ -1,10 +1,11 @@
-import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=da01a4be5c8f';
-import { MIX_ASSETS } from './mix-plan.mjs?v=da01a4be5c8f';
-import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=da01a4be5c8f';
-import { reserveMonths } from './reserve.mjs?v=da01a4be5c8f';
-import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=da01a4be5c8f';
-import { rupeesWithPaise } from './cost-basis.mjs?v=da01a4be5c8f';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=da01a4be5c8f';
+import { analyzePortfolio, valuationRowsNeedingCheck } from './analysis.mjs?v=9001bdd7691c';
+import { MIX_ASSETS } from './mix-plan.mjs?v=9001bdd7691c';
+import { goalShare, summarizeGoalCoverage } from './goals.mjs?v=9001bdd7691c';
+import { reserveMonths } from './reserve.mjs?v=9001bdd7691c';
+import { entryOriginText, valuationOriginText } from './entry-origin.mjs?v=9001bdd7691c';
+import { rupeesWithPaise } from './cost-basis.mjs?v=9001bdd7691c';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=9001bdd7691c';
+import { formatGoalHorizon } from './goal-horizon.mjs?v=9001bdd7691c';
 
 const rupees = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -31,6 +32,7 @@ function allGoalLines(state, preparedAt) {
   const lines = ['', 'GOALS AT A GLANCE'];
   for (const goal of goals) {
     const label = `${clean(goal.name)}${goal.id === state.activeGoalId ? ' [selected]' : ''}`;
+    const horizonLabel = Number.isInteger(goal.years) ? `${goal.years}-year` : formatGoalHorizon(goal.years);
     if (goal.confirmed !== true) {
       lines.push(`- ${label}: details unconfirmed; no gap calculated.`);
       continue;
@@ -41,10 +43,10 @@ function allGoalLines(state, preparedAt) {
       continue;
     }
     if (!result.goalTotal) {
-      lines.push(`- ${label}: ${goal.years}-year horizon; no holdings linked; gap unavailable.`);
+      lines.push(`- ${label}: ${horizonLabel} horizon; no holdings linked; gap unavailable.`);
       continue;
     }
-    lines.push(`- ${label}: ${goal.years}-year horizon; ${rupees(result.goalTotal)} linked across ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}; ${rupees(goal.target)} target in today's rupees; gross current gap ${rupees(result.goalGap)}.${result.goalDateCheck.count ? ` ${result.goalDateCheck.count} linked value ${result.goalDateCheck.count === 1 ? 'date needs' : 'dates need'} checking.` : ''}${result.goalAccessCheck.count ? ` Access to ${result.goalAccessCheck.count} linked other ${result.goalAccessCheck.count === 1 ? 'investment is' : 'investments are'} unverified.` : ''}`);
+    lines.push(`- ${label}: ${horizonLabel} horizon; ${rupees(result.goalTotal)} linked across ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}; ${rupees(goal.target)} target in today's rupees; gross current gap ${rupees(result.goalGap)}.${result.goalDateCheck.count ? ` ${result.goalDateCheck.count} linked value ${result.goalDateCheck.count === 1 ? 'date needs' : 'dates need'} checking.` : ''}${result.goalAccessCheck.count ? ` Access to ${result.goalAccessCheck.count} linked other ${result.goalAccessCheck.count === 1 ? 'investment is' : 'investments are'} unverified.` : ''}`);
   }
   lines.push('Each goal uses only its assigned shares of entered holdings. The portfolio total above counts each holding once; goal lines are not additional assets. Gaps use today’s target amounts, not forecasts or suitable allocations.');
   return lines;
@@ -85,8 +87,8 @@ export function buildReadableReport(state, preparedAt = new Date()) {
     ...allGoalLines(state, preparedAt),
     '',
     `SELECTED GOAL: ${clean(goal.name)}`,
-    `Age at goal date: ${Number(goal.age) + Number(goal.years)}`,
-    `Time until goal: ${goal.years} ${goal.years === 1 ? 'year' : 'years'}`,
+    `Age at goal date: ${Number.isInteger(goal.years) ? Number(goal.age) + Number(goal.years) : 'depends on birthday'}`,
+    `Time until goal: ${formatGoalHorizon(goal.years)}`,
     `Goal cost in today's rupees: ${rupees(goal.target)}`,
     `Value linked to this goal: ${rupees(result.goalTotal)} across ${result.goalHoldingCount} ${result.goalHoldingCount === 1 ? 'holding' : 'holdings'}`,
     `Outside this goal: ${rupees(goalCoverage.elsewhereValue)} assigned to other goals across ${goalCoverage.elsewhereCount} ${goalCoverage.elsewhereCount === 1 ? 'holding' : 'holdings'}; ${rupees(goalCoverage.unassignedValue)} unassigned across ${goalCoverage.unassignedCount} ${goalCoverage.unassignedCount === 1 ? 'holding' : 'holdings'}. A shared holding may appear in more than one count; these amounts are excluded from this goal's figures.`,

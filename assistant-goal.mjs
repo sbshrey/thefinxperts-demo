@@ -1,8 +1,9 @@
-import { asVersionTwo } from './assistant-save.mjs?v=da01a4be5c8f';
-import { goalShare, setHoldingAllocations } from './goals.mjs?v=da01a4be5c8f';
-import { validMixPlan } from './mix-plan.mjs?v=da01a4be5c8f';
+import { asVersionTwo } from './assistant-save.mjs?v=9001bdd7691c';
+import { goalShare, setHoldingAllocations } from './goals.mjs?v=9001bdd7691c';
+import { validMixPlan } from './mix-plan.mjs?v=9001bdd7691c';
+import { goalMonths } from './goal-horizon.mjs?v=9001bdd7691c';
 
-const LIMITS = { age: [18, 100], years: [1, 50], target: [1000, 1_000_000_000_000],
+const LIMITS = { age: [18, 100], years: [1 / 12, 50], target: [1000, 1_000_000_000_000],
   monthlyContribution: [0, 100_000_000], returnPct: [-20, 13], inflationPct: [-5, 15],
   equityDropPct: [0, 60], affordableLoss: [0, 10_000_000_000], tolerableLoss: [0, 10_000_000_000] };
 const normalized = value => value.trim().toLocaleLowerCase('en-IN').replace(/\s+/g, ' ');
@@ -185,7 +186,8 @@ export function prepareAssistantGoalSave(saved, facts, { newId = () => crypto.ra
     if (facts[field] === undefined) continue;
     const value = facts[field];
     if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max ||
-        (['age', 'years'].includes(field) && !Number.isInteger(value)))
+        (field === 'age' && !Number.isInteger(value)) ||
+        (field === 'years' && goalMonths(value) === null))
       return { portfolio: null, errors: [`Check the ${field} value before saving.`] };
     goal[field] = value;
   }

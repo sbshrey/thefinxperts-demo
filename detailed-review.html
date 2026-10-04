@@ -7,10 +7,10 @@
   <meta name="description" content="A free browser-only review for Indian investors to understand their own holdings, goals and missing information.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
   <title>Detailed portfolio review — TheFinxperts</title>
-  <script src="./https-guard.js?v=da01a4be5c8f"></script>
+  <script src="./https-guard.js?v=9001bdd7691c"></script>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./styles.css?v=da01a4be5c8f">
-  <script type="module" src="./app.mjs?v=da01a4be5c8f"></script>
+  <link rel="stylesheet" href="./styles.css?v=9001bdd7691c">
+  <script type="module" src="./app.mjs?v=9001bdd7691c"></script>
 </head>
 <body>
   <main class="https-wait" role="status">
@@ -134,7 +134,7 @@
         </div>
         <form id="goal-form" class="goal-form">
           <p id="goal-confirm-note" class="goal-confirm-note" hidden>Check the goal name and enter your age, goal cost and time horizon to turn on goal figures.</p>
-          <div class="form-pair"><div><label for="age">Your age now (not the beneficiary’s)</label><input id="age" type="number" min="18" max="100" value="32" required></div><div><label for="goal-years">Years until goal</label><input id="goal-years" type="number" min="1" max="50" value="3" required></div></div>
+          <div class="form-pair"><div><label for="age">Your age now (not the beneficiary’s)</label><input id="age" type="number" min="18" max="100" value="32" required></div><div><label for="goal-years">Time until goal</label><div class="horizon-input"><input id="goal-years" type="number" min="1" max="50" step="1" value="3" required><select id="goal-horizon-unit" aria-label="Goal time unit"><option value="years">Years</option><option value="months">Months</option></select></div></div></div>
           <label for="goal-name">Goal name</label><input id="goal-name" value="Home down payment" maxlength="60" required>
           <label for="goal-target">Goal cost in today's rupees (₹)</label><input id="goal-target" type="number" min="1000" max="1000000000000" value="2000000" required>
           <details class="goal-assumptions" id="goal-assumptions"><summary>Monthly amount and what-if assumptions</summary>

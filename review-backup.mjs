@@ -1,10 +1,11 @@
-import { validMixPlan } from './mix-plan.mjs?v=da01a4be5c8f';
-import { validReserve } from './reserve.mjs?v=da01a4be5c8f';
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=da01a4be5c8f';
-import { validNavEstimate } from './nav-estimate.mjs?v=da01a4be5c8f';
-import { validShares, validStockEstimate } from './stock-estimate.mjs?v=da01a4be5c8f';
-import { validCostBasis } from './cost-basis.mjs?v=da01a4be5c8f';
-import { validBrokerAccountLabel } from './broker-account.mjs?v=da01a4be5c8f';
+import { validMixPlan } from './mix-plan.mjs?v=9001bdd7691c';
+import { validReserve } from './reserve.mjs?v=9001bdd7691c';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=9001bdd7691c';
+import { validNavEstimate } from './nav-estimate.mjs?v=9001bdd7691c';
+import { validShares, validStockEstimate } from './stock-estimate.mjs?v=9001bdd7691c';
+import { validCostBasis } from './cost-basis.mjs?v=9001bdd7691c';
+import { validBrokerAccountLabel } from './broker-account.mjs?v=9001bdd7691c';
+import { goalMonths } from './goal-horizon.mjs?v=9001bdd7691c';
 const MAX_BYTES = 2_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
@@ -131,7 +132,7 @@ export function parseReviewBackup(text) {
     const draft = goal?.confirmed === false;
     if (!exactKeys(goal, GOAL_KEYS) || !isUuid(goal.id) || goalIds.has(goal.id) || !isName(goal.name, 60) ||
         !(draft && goal.age === null || boundedNumber(goal.age, 18, 100, true)) ||
-        !(draft && goal.years === null || boundedNumber(goal.years, 1, 50, true)) ||
+        !(draft && goal.years === null || goalMonths(goal.years) !== null) ||
         !(draft && goal.target === null || boundedNumber(goal.target, 1_000, 1_000_000_000_000)) ||
         !boundedNumber(goal.monthlyContribution, 0, 100_000_000) ||
         !boundedNumber(goal.returnPct, -20, 13) || !boundedNumber(goal.inflationPct, -5, 15) ||

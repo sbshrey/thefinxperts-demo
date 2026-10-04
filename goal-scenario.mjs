@@ -1,3 +1,5 @@
+import { goalMonths } from './goal-horizon.mjs?v=9001bdd7691c';
+
 /** A future illustration needs the investor to check every starting assumption. */
 export function confirmedGoalAssumptions(goal) {
   return ['monthlyContribution', 'returnPct', 'inflationPct']
@@ -7,28 +9,28 @@ export function confirmedGoalAssumptions(goal) {
 /** Divide only today's entered gap across the entered horizon; no future-value inputs. */
 export function calculateStraightLineGap(currentValue, goal) {
   const years = Number(goal?.years);
+  const months = goalMonths(years);
   const targetToday = Number(goal?.target);
   if (![currentValue, years, targetToday].every(Number.isFinite) ||
-      currentValue < 0 || currentValue > 1e12 || !Number.isInteger(years) ||
-      years < 1 || years > 50 || targetToday < 1000 || targetToday > 1e12) return null;
+      currentValue < 0 || currentValue > 1e12 || months === null ||
+      targetToday < 1000 || targetToday > 1e12) return null;
   const gapToday = Math.max(0, targetToday - currentValue);
-  const months = years * 12;
   return { gapToday, months, roundedMonthly: Math.ceil(gapToday / months) };
 }
 
 /** Pure arithmetic scenario; no expected-return forecast or suitability decision. */
 export function calculateGoalScenario(currentValue, goal) {
   const years = Number(goal.years);
+  const months = goalMonths(years);
   const targetToday = Number(goal.target);
   const monthlyContribution = Number(goal.monthlyContribution ?? 0);
   const returnPct = Number(goal.returnPct ?? 0);
   const inflationPct = Number(goal.inflationPct ?? 0);
   if (![currentValue, years, targetToday, monthlyContribution, returnPct, inflationPct].every(Number.isFinite) ||
-      currentValue < 0 || currentValue > 1e12 || !Number.isInteger(years) || years < 1 || years > 50 ||
+      currentValue < 0 || currentValue > 1e12 || months === null ||
       targetToday < 1000 || targetToday > 1e12 || monthlyContribution < 0 || monthlyContribution > 1e8 ||
       returnPct < -20 || returnPct > 13 || inflationPct < -5 || inflationPct > 15) return null;
 
-  const months = years * 12;
   const monthlyRate = Math.pow(1 + returnPct / 100, 1 / 12) - 1;
   const contributionFactor = Math.abs(monthlyRate) < 1e-12 ? months : Math.expm1(months * Math.log1p(monthlyRate)) / monthlyRate;
   const currentFutureValue = currentValue * Math.pow(1 + returnPct / 100, years);
