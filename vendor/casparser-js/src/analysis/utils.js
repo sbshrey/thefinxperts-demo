@@ -1,6 +1,6 @@
 /** Cost inflation index lookups and financial-year helpers. */
 
-import { navSearch } from '../isin.js?v=66b6f2dce5e7';
+import { navSearch } from '../isin.js?v=b13730c42bd3';
 
 export { navSearch };
 

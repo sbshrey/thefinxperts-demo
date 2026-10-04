@@ -1,7 +1,7 @@
 /** Validate the editable holdings preview before it replaces the current portfolio. */
-import { ENTRY_ORIGINS } from './entry-origin.mjs?v=66b6f2dce5e7';
-import { validCostBasis } from './cost-basis.mjs?v=66b6f2dce5e7';
-import { sameBrokerAccount, validBrokerAccountLabel } from './broker-account.mjs?v=66b6f2dce5e7';
+import { ENTRY_ORIGINS } from './entry-origin.mjs?v=b13730c42bd3';
+import { validCostBasis } from './cost-basis.mjs?v=b13730c42bd3';
+import { brokerAccountKey, sameBrokerAccount, validBrokerAccountLabel } from './broker-account.mjs?v=b13730c42bd3';
 
 export function validateImportReview(holdings) {
   if (!Array.isArray(holdings) || holdings.length === 0) return ['Keep at least one holding to import.'];
@@ -77,6 +77,12 @@ export function findImportMergeConflicts(existing, incoming) {
   for (const [index, added] of incoming.entries()) {
     let conflict = null;
     for (const current of existing) {
+      // Explicitly separate broker accounts may each hold the same security.
+      const addedAccount = brokerAccountKey(added.accountLabel);
+      const currentAccount = brokerAccountKey(current.accountLabel);
+      if (['broker_csv', 'broker_xlsx'].includes(added.entryOrigin) &&
+          ['broker_csv', 'broker_xlsx'].includes(current.entryOrigin) &&
+          addedAccount && currentAccount && addedAccount !== currentAccount) continue;
       if (added.isin && current.isin && added.isin === current.isin) {
         conflict = `Holding ${index + 1}: this ISIN already appears in your review. Check the two sources before adding it.`;
         break;

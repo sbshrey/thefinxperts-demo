@@ -1,23 +1,25 @@
-import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=66b6f2dce5e7';
-import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=66b6f2dce5e7';
-import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=66b6f2dce5e7';
+import { analyzePortfolio, sampleHoldings, freshFictionalHoldings, overlapPercent, valuationDateIssue } from './analysis.mjs?v=b13730c42bd3';
+import { parseHoldingsCsv, parseBrokerCsvRows } from './csv.mjs?v=b13730c42bd3';
+import { suggestBrokerColumns, detectBrokerHoldingsDate, parseBrokerHoldingsRows } from './broker-xlsx.mjs?v=b13730c42bd3';
 import { validateImportReview, validateImportMerge, findImportMergeConflicts, possibleManualDuplicate, isRepeatedActiveStatement,
-  planActiveStatementRefresh, planBrokerReportRefresh, planDematCasRefresh } from './import-review.mjs?v=66b6f2dce5e7';
-import { prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=66b6f2dce5e7';
-import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=66b6f2dce5e7';
-import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=66b6f2dce5e7';
-import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=66b6f2dce5e7';
-import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=66b6f2dce5e7';
-import { buildReadableReport } from './readable-report.mjs?v=66b6f2dce5e7';
-import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=66b6f2dce5e7';
-import { validReserve, reserveMonths } from './reserve.mjs?v=66b6f2dce5e7';
-import { contextNeedsReview } from './market-context.mjs?v=66b6f2dce5e7';
-import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=66b6f2dce5e7';
-import { estimateStockValue, validShares } from './stock-estimate.mjs?v=66b6f2dce5e7';
-import { chooseNextReviewStep } from './next-step.mjs?v=66b6f2dce5e7';
-import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=66b6f2dce5e7';
-import { answerReviewQuestion } from './review-questions.mjs?v=66b6f2dce5e7';
-import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=66b6f2dce5e7';
+  planActiveStatementRefresh, planDematCasRefresh } from './import-review.mjs?v=b13730c42bd3';
+import { prepareAssistantBrokerRefresh, prepareAssistantCasRefresh } from './assistant-refresh.mjs?v=b13730c42bd3';
+import { findCrossAccountDrafts } from './assistant-save.mjs?v=b13730c42bd3';
+import { validBrokerAccountLabel } from './broker-account.mjs?v=b13730c42bd3';
+import { setGoalHolding, setHoldingAllocations, removeHoldingAllocation, goalShare, relinkAfterReplacingHoldings, linkAddedHoldings, summarizeGoalCoverage } from './goals.mjs?v=b13730c42bd3';
+import { entryOriginFromImport, entryOriginText, valuationOriginText } from './entry-origin.mjs?v=b13730c42bd3';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=b13730c42bd3';
+import { prepareReviewHandoff, receiveReviewHandoff } from './review-handoff.mjs?v=b13730c42bd3';
+import { buildReadableReport } from './readable-report.mjs?v=b13730c42bd3';
+import { MIX_ASSETS, validMixPlan } from './mix-plan.mjs?v=b13730c42bd3';
+import { validReserve, reserveMonths } from './reserve.mjs?v=b13730c42bd3';
+import { contextNeedsReview } from './market-context.mjs?v=b13730c42bd3';
+import { estimateNavValue, fundNavLookupUrl } from './nav-estimate.mjs?v=b13730c42bd3';
+import { estimateStockValue, validShares } from './stock-estimate.mjs?v=b13730c42bd3';
+import { chooseNextReviewStep } from './next-step.mjs?v=b13730c42bd3';
+import { calculateStraightLineGap, confirmedGoalAssumptions } from './goal-scenario.mjs?v=b13730c42bd3';
+import { answerReviewQuestion } from './review-questions.mjs?v=b13730c42bd3';
+import { validCostBasis, rupeesWithPaise } from './cost-basis.mjs?v=b13730c42bd3';
 
 function demoGoal() {
   return { id: crypto.randomUUID(), years: 3, target: 2000000, age: 32, name: 'Home down payment', monthlyContribution: 0,
@@ -595,7 +597,7 @@ function render() {
     const name = document.createElement('strong');
     name.textContent = holding.name;
     const meta = document.createElement('small');
-    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.valuationOrigin ? ` · latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.costBasis !== undefined ? ` · invested ${rupees(holding.costBasis)} checked ${holding.costBasisAsOf}` : ''}${holding.costBasisAsOf && holding.asOf && holding.costBasisAsOf > holding.asOf ? ' · refresh value before calculating gain or loss' : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
+    meta.textContent = `${holding.type} · ${holding.asset} · originally added from ${entryOriginText(holding.entryOrigin)}${holding.accountLabel ? ` · broker account ${holding.accountLabel}` : ''}${holding.valuationOrigin ? ` · latest value from ${valuationOriginText(holding.valuationOrigin)}` : ''}${holding.amc ? ` · ${holding.amc}` : ''}${holding.granularity === 'fund_house' ? ' · fund-house summary' : ''}${holding.isin ? ` · ISIN ${holding.isin}` : ''}${holding.units ? ` · ${holding.units} statement units` : ''}${holding.shares ? ` · ${holding.shares} entered shares` : ''}${holding.costBasis !== undefined ? ` · invested ${rupees(holding.costBasis)} checked ${holding.costBasisAsOf}` : ''}${holding.costBasisAsOf && holding.asOf && holding.costBasisAsOf > holding.asOf ? ' · refresh value before calculating gain or loss' : ''}${holding.navEstimate ? ' · user-entered NAV estimate' : ''}${holding.stockEstimate ? ' · user-entered stock-price estimate' : ''}${holding.expenseRatioPct !== undefined ? ` · TER ${holding.expenseRatioPct}% checked ${holding.expenseRatioAsOf}` : ''}${holding.asOf ? ` · as of ${holding.asOf}` : ' · valuation date unknown'}`;
     const sourceCategory = document.createElement('small');
     sourceCategory.className = 'holding-source-category';
     sourceCategory.textContent = holding.statementCategory ?
@@ -1313,6 +1315,14 @@ $('#broker-file').addEventListener('change', () => {
   brokerRows = null;
   brokerHeaderDate = null;
   $('#broker-date').value = '';
+  $('#broker-account-name').value = '';
+  const options = $('#broker-account-options');
+  options.replaceChildren();
+  for (const label of new Set(state.holdings.map(row => row.accountLabel).filter(validBrokerAccountLabel))) {
+    const option = document.createElement('option');
+    option.value = label;
+    options.append(option);
+  }
   $('#broker-map').hidden = true;
   $('#broker-error').textContent = '';
 });
@@ -1358,7 +1368,7 @@ $('#broker-read').addEventListener('click', async () => {
       brokerRows = parseBrokerCsvRows(await file.text());
       brokerSource = 'Broker CSV';
     } else if (file.name.toLowerCase().endsWith('.xlsx')) {
-      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=66b6f2dce5e7');
+      const { readBrokerWorkbook } = await import('./broker-xlsx-browser.mjs?v=b13730c42bd3');
       brokerRows = await readBrokerWorkbook(file);
       brokerSource = 'Broker XLSX';
     } else throw new Error('Choose a broker holdings XLSX or CSV report.');
@@ -1393,6 +1403,12 @@ $('#broker-read').addEventListener('click', async () => {
 $('#broker-preview').addEventListener('click', () => {
   $('#broker-error').textContent = '';
   if (!brokerRows) return;
+  const accountLabel = $('#broker-account-name').value.trim();
+  if (!validBrokerAccountLabel(accountLabel)) {
+    $('#broker-error').textContent = 'Enter a short broker account nickname using letters, spaces or hyphens. Do not enter PAN or an account number.';
+    $('#import-preview').hidden = true;
+    return;
+  }
   if (brokerHeaderDate && $('#broker-date').value !== brokerHeaderDate) {
     $('#broker-error').textContent = 'The valuation date differs from the holdings-as-of date printed in this report. Check the file.';
     $('#import-preview').hidden = true;
@@ -1408,7 +1424,7 @@ $('#broker-preview').addEventListener('click', () => {
     $('#import-preview').hidden = true;
     return;
   }
-  showImportPreview(result.holdings, brokerSource, result.notices);
+  showImportPreview(result.holdings.map(row => ({ ...row, accountLabel })), brokerSource, result.notices);
 });
 
 function showImportPreview(holdings, label, notices, performance = []) {
@@ -1498,19 +1514,20 @@ function refreshImportSummary() {
   const refresh = label === 'Active Statement' && canAdd && !repeated ?
     planActiveStatementRefresh(state.holdings, pendingImport) : null;
   const brokerOrigin = entryOriginFromImport(label);
-  const brokerRefresh = canAdd && ['broker_xlsx', 'broker_csv'].includes(brokerOrigin) ?
-    planBrokerReportRefresh(state.holdings, pendingImport, brokerOrigin) : null;
+  const brokerRefresh = canAdd && !errors.length && ['broker_xlsx', 'broker_csv'].includes(brokerOrigin) ?
+    prepareAssistantBrokerRefresh({ version: 2, holdings: state.holdings, goals: state.goals,
+      coverage: state.coverage }, pendingImport, brokerOrigin) : null;
   const dematRefresh = canAdd && label === 'Demat CAS' && !errors.length ?
     planDematCasRefresh(state.holdings, pendingImport) : null;
   const casRefresh = canAdd && label === 'CAS' && !errors.length ?
     prepareAssistantCasRefresh({ version: 2, holdings: state.holdings, goals: state.goals,
       coverage: state.coverage }, pendingImport, { detailed: true }) : null;
   const casError = casRefresh?.errors?.join(' ');
-  $('#refresh-statement').hidden = !refresh && !repeated && !brokerRefresh && !dematRefresh &&
+  $('#refresh-statement').hidden = !refresh && !repeated && !brokerRefresh?.portfolio && !dematRefresh &&
     (!casRefresh || casError);
   $('#refresh-explanation').hidden = !refresh && !repeated && !brokerRefresh && !dematRefresh &&
     !casRefresh;
-  $('#refresh-changes').hidden = !refresh && !brokerRefresh && !dematRefresh?.changed.length &&
+  $('#refresh-changes').hidden = !refresh && !brokerRefresh?.changes?.length && !dematRefresh?.changed.length &&
     !casRefresh?.changes?.length;
   const changeList = $('#refresh-change-list');
   changeList.replaceChildren();
@@ -1547,17 +1564,13 @@ function refreshImportSummary() {
     }
   }
   if (brokerRefresh) {
-    const checkedShares = brokerRefresh.matched.filter(({ next }) => next.type === 'Stock' && next.shares).length;
     $('#refresh-changes summary').textContent = 'Review matched positions before updating';
-    $('#refresh-changes').open = true;
+    $('#refresh-changes').open = Boolean(brokerRefresh.changes?.length);
     $('#refresh-statement').textContent = 'Refresh matched positions';
-    $('#refresh-explanation').textContent = `${brokerRefresh.matched.length} exact ISIN ${brokerRefresh.matched.length === 1 ? 'match' : 'matches'} can receive the newer dated value. ` +
-      `${brokerRefresh.skipped} report ${brokerRefresh.skipped === 1 ? 'row is' : 'rows are'} unmatched and will not be added. ` +
-      `No existing holding will be removed. Use this only for a newer view of the same account and positions; another account may hold the same ISIN. Goal links stay in place. Prior units, share counts and manual price estimates clear; ${checkedShares} checked stock share ${checkedShares === 1 ? 'count replaces' : 'counts replace'} the old count from this report. Old invested amounts clear; only newly checked report amounts replace them.` +
-      (brokerRefresh.skipped ? ' Your self-reported portfolio coverage answer will clear for review.' : '');
-    for (const { current, next } of brokerRefresh.matched) {
+    $('#refresh-explanation').textContent = brokerRefresh.errors?.join(' ') || brokerRefresh.description;
+    for (const change of brokerRefresh.changes || []) {
       const row = document.createElement('li');
-      row.textContent = `${current.name} · ISIN ${current.isin} · ${rupees(current.value)} as of ${current.asOf} → ${rupees(next.value)} as of ${next.asOf}${next.type === 'Stock' && next.shares ? ` · shares ${current.shares || 'unknown'} → ${next.shares} from report` : current.shares ? ` · prior ${current.shares} shares clear; no checked report count` : ''}. Goal links stay in place.`;
+      row.textContent = change;
       changeList.append(row);
     }
   }
@@ -1617,6 +1630,7 @@ function renderImportRows() {
     const refreshMetadata = () => {
       const parts = [];
       if (holding.amc) parts.push(`Fund house: ${holding.amc}`);
+      if (holding.accountLabel) parts.push(`Broker account: ${holding.accountLabel}`);
       if (holding.isin) parts.push(`ISIN as supplied: ${holding.isin}`);
       if (holding.amfi) parts.push(`AMFI code: ${holding.amfi}`);
       if (holding.units) parts.push(`Statement units: ${holding.units}`);
@@ -1737,7 +1751,7 @@ $('#preview-active').addEventListener('click', async () => {
   button.disabled = true;
   button.textContent = 'Reading in this tab…';
   try {
-    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=66b6f2dce5e7');
+    const { previewActiveStatementFile } = await import('./active-statement-pdf.mjs?v=b13730c42bd3');
     const result = await previewActiveStatementFile(file, password);
     if (result.errors.length) {
       $('#active-error').textContent = result.errors.slice(0, 5).join(' ');
@@ -1791,7 +1805,7 @@ $('#preview-cas').addEventListener('click', async () => {
     let result;
     let responseOk = true;
     if (casMode === 'browser') {
-      const { previewBrowserCas } = await import('./cas-browser.mjs?v=66b6f2dce5e7');
+      const { previewBrowserCas } = await import('./cas-browser.mjs?v=b13730c42bd3');
       result = await previewBrowserCas(file, password);
     } else {
       const bytes = new Uint8Array(await file.arrayBuffer());
@@ -1868,10 +1882,15 @@ function applyImport(mode) {
       return;
     }
     if (state.source === 'user' && ['broker_xlsx', 'broker_csv'].includes(origin)) {
-      const refresh = planBrokerReportRefresh(state.holdings, pendingImport, origin);
-      if (!refresh || !window.confirm(`Refresh ${refresh.matched.length} matched ${refresh.matched.length === 1 ? 'position' : 'positions'} from this newer broker report? Confirm this is the same account and positions, not another account or an extra lot. ${refresh.skipped} unmatched report ${refresh.skipped === 1 ? 'row will' : 'rows will'} be left out. No holding will be removed, and matched goal links will stay. Old invested amounts clear; only newly checked report amounts replace them.`)) return;
-      state.holdings = refresh.holdings;
-      if (refresh.skipped) state.coverage = null;
+      const refresh = prepareAssistantBrokerRefresh({ version: 2, holdings: state.holdings,
+        goals: state.goals, coverage: state.coverage }, pendingImport, origin);
+      if (!refresh?.portfolio || refresh.errors?.length) {
+        $('#import-error').textContent = refresh?.errors?.join(' ') || 'This report cannot safely refresh a saved broker account.';
+        return;
+      }
+      if (!window.confirm(refresh.description)) return;
+      state.holdings = refresh.portfolio.holdings;
+      state.coverage = refresh.portfolio.coverage || null;
       pendingImport = null;
       pendingPerformance.clear();
       $('#broker-file').value = '';
@@ -1881,7 +1900,7 @@ function applyImport(mode) {
       $('#broker-map').hidden = true;
       $('#import-preview').hidden = true;
       render();
-      $('#live-status').textContent = `${refresh.matched.length} matched positions refreshed from the broker report. ${refresh.skipped} unmatched rows left out. Goal links kept. Old invested amounts cleared unless a new report amount was checked.${refresh.skipped ? ' Recheck what your portfolio includes.' : ''}`;
+      $('#live-status').textContent = refresh.result;
       $('#review').scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
@@ -1917,6 +1936,10 @@ function applyImport(mode) {
     return;
   }
   if (mode === 'add' && (state.source !== 'user' || !state.holdings.length || validateImportMerge(state.holdings, pendingImport).length)) return;
+  if (mode === 'add') {
+    const overlaps = findCrossAccountDrafts(state.holdings, pendingImport);
+    if (overlaps.length && !window.confirm(`${overlaps.length} imported ${overlaps.length === 1 ? 'holding also appears' : 'holdings also appear'} in another labelled broker account. Confirm these are separate account positions before adding both to the review.`)) return;
+  }
   if (mode === 'replace' && state.source === 'user' && state.holdings.length &&
       !window.confirm(`Replace ${state.holdings.length} current ${state.holdings.length === 1 ? 'holding' : 'holdings'} and remove their goal links? This also removes any direct stocks not in the new preview. Download a private backup first if you want to keep this review.`)) return;
   const imported = pendingImport.map(holding => {
