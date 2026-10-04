@@ -1,5 +1,5 @@
-import { disclosureSchemeKey, matchFundDisclosure } from './fund-disclosure.mjs?v=416b8426a5c0';
-import { parseReviewBackup } from './review-backup.mjs?v=416b8426a5c0';
+import { disclosureSchemeKey, matchFundDisclosure } from './fund-disclosure.mjs?v=979cff73e85b';
+import { parseReviewBackup } from './review-backup.mjs?v=979cff73e85b';
 
 const ISIN = /^[A-Z]{2}[A-Z0-9]{10}$/;
 const disclosureKeys = 'amc|asOf|coveredPct|notIncludedPct|scheme|scope|securities';

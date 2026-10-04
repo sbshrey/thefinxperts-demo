@@ -1,7 +1,7 @@
-import { validShares } from './stock-estimate.mjs?v=416b8426a5c0';
-import { validUnits } from './nav-estimate.mjs?v=416b8426a5c0';
-import { validCostBasis } from './cost-basis.mjs?v=416b8426a5c0';
-import { npsTier } from './account-label.mjs?v=416b8426a5c0';
+import { validShares } from './stock-estimate.mjs?v=979cff73e85b';
+import { validUnits } from './nav-estimate.mjs?v=979cff73e85b';
+import { validCostBasis } from './cost-basis.mjs?v=979cff73e85b';
+import { npsTier } from './account-label.mjs?v=979cff73e85b';
 
 const ASSETS = new Set(['Equity', 'Debt', 'Gold', 'Other']);
 const SOURCES = new Set(['manual', 'active_statement', 'broker_csv', 'broker_xlsx', 'simple_csv', 'cas', 'demat_cas', 'epfo_passbook', 'nps_statement', 'digital_gold_statement']);
@@ -44,24 +44,28 @@ function fundHouseKey(value) {
 }
 
 /** A matching name or ISIN may be the same position in another report. Never sum it silently. */
-export function findAssistantOverlap(existing, draft, { allowComplementarySummary = false } = {}) {
+function findAssistantOverlapDetail(existing, draft, { allowComplementarySummary = false } = {}) {
   if (!Array.isArray(existing) || !draft || typeof draft.name !== 'string' ||
       !['Mutual fund', 'Stock', 'Other investment'].includes(draft.type)) return null;
   const isin = typeof draft.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{10}$/.test(draft.isin) ? draft.isin : null;
   for (const row of existing) {
     if (!row || typeof row.name !== 'string') continue;
-    if (row.type === draft.type && key(row) === key(draft)) return { existingName: row.name, reason: 'name' };
-    if (isin && row.isin === isin) return { existingName: row.name, reason: 'ISIN' };
+    const evidence = reason => ({ existingName: row.name, reason,
+      existingValue: row.value, existingAsOf: row.asOf, existingOrigin: row.entryOrigin,
+      ...(row.shares ? { existingShares: row.shares } : {}),
+      ...(row.units ? { existingUnits: row.units } : {}) });
+    if (row.type === draft.type && key(row) === key(draft)) return evidence('name');
+    if (isin && row.isin === isin) return evidence('ISIN');
     if (row.type === 'Other investment' && draft.type === 'Other investment' &&
         (row.entryOrigin === 'nps_statement') !== (draft.entryOrigin === 'nps_statement')) {
       const oldTier = npsTier(row.name), nextTier = npsTier(draft.name);
       if (oldTier && nextTier && !(oldTier === 'one' && nextTier === 'two') &&
           !(oldTier === 'two' && nextTier === 'one'))
-        return { existingName: row.name, reason: 'possible NPS account' };
+        return evidence('possible NPS account');
     }
     if (row.type === 'Mutual fund' && draft.type === 'Mutual fund') {
       if (draft.amfi && row.amfi && draft.amfi === row.amfi)
-        return { existingName: row.name, reason: 'AMFI code' };
+        return evidence('AMFI code');
       // A CAMS fund-house total may be split into disjoint Equity and Other portions.
       if (allowComplementarySummary && row.granularity === 'fund_house' && draft.granularity === 'fund_house' &&
           row.asset !== draft.asset) continue;
@@ -70,18 +74,23 @@ export function findAssistantOverlap(existing, draft, { allowComplementarySummar
       if ((row.granularity === 'fund_house' || draft.granularity === 'fund_house') &&
           (!existingHouse || !draftHouse || existingHouse === draftHouse ||
             existingHouse.split(' ')[0] === draftHouse.split(' ')[0]))
-        return { existingName: row.name, reason: 'fund-house summary' };
+        return evidence('fund-house summary');
     }
   }
   return null;
+}
+
+export function findAssistantOverlap(existing, draft, options = {}) {
+  const detail = findAssistantOverlapDetail(existing, draft, options);
+  return detail ? { existingName: detail.existingName, reason: detail.reason } : null;
 }
 
 /** Preview saved-position matches without deciding whether they are truly duplicates. */
 export function findSavedDraftOverlaps(existing, drafts) {
   if (!Array.isArray(drafts)) return [];
   return drafts.flatMap((draft, index) => {
-    const match = findAssistantOverlap(existing, draft);
-    return match ? [{ index, draft, ...match }] : [];
+    const match = findAssistantOverlapDetail(existing, draft);
+    return match ? [{ index, draft, location: 'saved', ...match }] : [];
   });
 }
 
@@ -89,9 +98,9 @@ export function findSavedDraftOverlaps(existing, drafts) {
 export function findDraftBatchOverlaps(drafts) {
   if (!Array.isArray(drafts)) return [];
   return drafts.flatMap((draft, index) => {
-    const match = findAssistantOverlap(drafts.slice(0, index), draft,
+    const match = findAssistantOverlapDetail(drafts.slice(0, index), draft,
       { allowComplementarySummary: true });
-    return match ? [{ index, draft, ...match }] : [];
+    return match ? [{ index, draft, location: 'draft', ...match }] : [];
   });
 }
 

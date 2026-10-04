@@ -1,7 +1,7 @@
-import { valuationDateIssue } from './analysis.mjs?v=416b8426a5c0';
-import { goalShare } from './goals.mjs?v=416b8426a5c0';
-import { confirmedGoalAssumptions } from './goal-scenario.mjs?v=416b8426a5c0';
-import { unansweredCoverageFields } from './coverage-state.mjs?v=416b8426a5c0';
+import { valuationDateIssue } from './analysis.mjs?v=979cff73e85b';
+import { goalShare } from './goals.mjs?v=979cff73e85b';
+import { confirmedGoalAssumptions } from './goal-scenario.mjs?v=979cff73e85b';
+import { unansweredCoverageFields } from './coverage-state.mjs?v=979cff73e85b';
 
 /** Choose one concrete next action for the selected goal, without scoring suitability. */
 export function chooseNextReviewStep({ source, holdings, goal, coverage, findings = [] }, today = new Date()) {

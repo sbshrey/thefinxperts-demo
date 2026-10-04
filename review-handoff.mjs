@@ -1,4 +1,4 @@
-import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=416b8426a5c0';
+import { buildReviewBackup, parseReviewBackup } from './review-backup.mjs?v=979cff73e85b';
 
 const PREFIX = 'thefinxperts-review-handoff-';
 const TOKEN = /^#handoff=([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
